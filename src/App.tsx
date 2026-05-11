@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2 } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2, Search } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -33,6 +33,7 @@ function App() {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
+  const [searchQuery, setSearchQuery] = useState("");
   
   const mainContentRef = useRef<HTMLDivElement>(null);
 
@@ -239,7 +240,11 @@ function App() {
     checkHealth();
   }, []);
 
-  const sortedProjects = [...existingProjects].sort((a, b) => {
+  const filteredProjects = existingProjects.filter(p => 
+    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
     if (sortBy === "alphabetical") return a.name.localeCompare(b.name);
     return b.last_modified - a.last_modified;
   });
@@ -423,14 +428,14 @@ function App() {
               )}
 
               <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                  <div className="flex items-center gap-3">
+                {/* Section Header */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+                  <div className="flex items-center gap-3 shrink-0">
                     <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
                     <h2 className="text-xl font-bold uppercase tracking-tight">Projets</h2>
                   </div>
                   
-                  <div className="flex items-center gap-4">
-                    {/* Filters */}
+                  <div className="flex items-center gap-4 shrink-0">
                     <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                       <button 
                         onClick={() => setSortBy("recent")}
@@ -464,6 +469,26 @@ function App() {
                   </div>
                 </div>
 
+                {/* Search Bar - Moved Lower */}
+                <div className="mb-8 relative group">
+                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" />
+                  <input 
+                    type="text" 
+                    placeholder="Rechercher un projet..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-black/60 border border-white/5 hover:border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none transition-all placeholder:text-white/10"
+                  />
+                  {searchQuery && (
+                    <button 
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
                 <div className="flex flex-col gap-2 relative">
                   {sortedProjects.length > 0 ? (
                     sortedProjects.map(p => (
@@ -481,7 +506,10 @@ function App() {
                     <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5">
                       <div className="flex flex-col items-center gap-4">
                         <FolderOpen size={48} className="text-white/5" />
-                        <p className="text-white/20 italic text-sm">Aucun projet trouvé dans ce répertoire.</p>
+                        <p className="text-white/20 italic text-sm">
+                          {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun projet trouvé dans ce répertoire."}
+                        </p>
+                        {searchQuery && <button onClick={() => setSearchQuery("")} className="text-xs text-blue-500 hover:underline font-bold">Effacer la recherche</button>}
                       </div>
                     </div>
                   )}
