@@ -8,6 +8,8 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .manage(watcher::WatcherState(std::sync::Arc::new(std::sync::Mutex::new(None))))
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
@@ -22,7 +24,9 @@ pub fn run() {
             project::create_project,
             project::list_projects,
             project::list_templates,
-            watcher::start_watch
+            project::open_in_vscode,
+            watcher::start_watch,
+            watcher::stop_watch
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

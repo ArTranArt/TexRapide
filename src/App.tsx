@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Activity, Plus, Settings, Play, CheckCircle2, XCircle, FolderOpen, Eye } from "lucide-react";
-import "./App.css";
+import { open } from "@tauri-apps/plugin-dialog";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus } from "lucide-react";
+import "./index.css";
 
 interface HealthStatus {
   binary: String;
@@ -10,9 +11,8 @@ interface HealthStatus {
 }
 
 function App() {
-  const [view, setView] = useState<"dashboard" | "new" | "settings">("dashboard");
+  const [view, setView] = useState<"dashboard" | "new" | "settings" | "project">("dashboard");
   const [health, setHealth] = useState<HealthStatus[]>([]);
-  const [loading, setLoading] = useState(true);
   const [projectName, setProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
   const [targetDir, setTargetDir] = useState("/Users/arthur/Documents/LaTeX_Projects");
@@ -22,16 +22,14 @@ function App() {
   const [existingProjects, setExistingProjects] = useState<string[]>([]);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [isWatching, setIsWatching] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const checkHealth = async () => {
-    setLoading(true);
     try {
       const status: HealthStatus[] = await invoke("check_latex_health");
       setHealth(status);
     } catch (error) {
       console.error("Health check failed:", error);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -62,13 +60,28 @@ function App() {
     if (view === "new") {
       fetchTemplates();
     }
-  }, [view]);
+  }, [view, targetDir]); // Refresh on targetDir change
 
   const activateProject = (name: string) => {
     const path = `${targetDir}/${name}`;
     setActiveProject(path);
     setProjectName(name);
-    setIsWatching(false); // Reset watch mode when changing project
+    setIsWatching(false);
+  };
+
+  const handleSelectDir = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: targetDir,
+      });
+      if (selected && typeof selected === 'string') {
+        setTargetDir(selected);
+      }
+    } catch (error) {
+      console.error("Failed to select directory:", error);
+    }
   };
 
   const handleCreateProject = async () => {
@@ -78,20 +91,38 @@ function App() {
         args: { name: projectName, target_dir: targetDir, template_dir: fullTemplatePath } 
       });
       setActiveProject(path);
-      setView("dashboard");
-      alert("Projet créé avec succès !");
+      setView("project");
     } catch (error) {
       alert(`Erreur : ${error}`);
     }
   };
 
-  const handleStartWatch = async () => {
+  const handleToggleWatch = async () => {
+    if (!activeProject) return;
+    
+    if (isWatching) {
+      try {
+        await invoke("stop_watch");
+        setIsWatching(false);
+      } catch (error) {
+        alert(`Erreur : ${error}`);
+      }
+    } else {
+      try {
+        await invoke("start_watch", { projectPath: activeProject, mainFile: mainFile });
+        setIsWatching(true);
+      } catch (error) {
+        alert(`Erreur : ${error}`);
+      }
+    }
+  };
+
+  const handleOpenVSCode = async () => {
     if (!activeProject) return;
     try {
-      await invoke("start_watch", { projectPath: activeProject, mainFile: mainFile });
-      setIsWatching(true);
+      await invoke("open_in_vscode", { path: activeProject });
     } catch (error) {
-      alert(`Erreur : ${error}`);
+      alert(`Erreur VSCode : ${error}`);
     }
   };
 
@@ -100,186 +131,381 @@ function App() {
   }, []);
 
   return (
-    <div className="app-container">
-      <aside className="sidebar">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '40px' }}>
-          <div style={{ background: 'var(--accent-primary)', padding: '8px', borderRadius: '8px' }}>
-            <Activity size={24} color="white" />
+    <div className="flex h-screen bg-[#0a0a0c] text-white font-sans selection:bg-blue-500/30 overflow-hidden">
+      {/* Sidebar */}
+      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-[#0f0f12] border-r border-white/5 flex flex-col p-6 transition-all duration-300 z-10 shrink-0 relative group`}>
+        <button 
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="absolute -right-3 top-20 bg-[#1e1e24] border border-white/10 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-blue-500 hover:border-blue-500"
+        >
+          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+        </button>
+
+        <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} w-full mb-12`}>
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-600 p-2 rounded-lg shrink-0">
+              <Activity size={20} className="text-white" />
+            </div>
+            {!isSidebarCollapsed && (
+              <span className="font-display text-xl font-bold tracking-tight text-white/90">
+                TexRapide
+              </span>
+            )}
           </div>
-          <span style={{ fontSize: '20px', fontWeight: 'bold' }}>TexRapide</span>
         </div>
         
-        <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div className={`sidebar-item ${view === "dashboard" ? "active" : ""}`} onClick={() => setView("dashboard")}>
-            <Activity size={18} />
-            <span>Dashboard</span>
-          </div>
-          <div className={`sidebar-item ${view === "new" ? "active" : ""}`} onClick={() => setView("new")}>
-            <Plus size={18} />
-            <span>Nouveau Projet</span>
-          </div>
-          <div className={`sidebar-item ${view === "settings" ? "active" : ""}`} onClick={() => setView("settings")}>
-            <Settings size={18} />
-            <span>Paramètres</span>
-          </div>
+        <nav className="flex flex-col gap-1.5">
+          <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<Layers size={18} />} label="Dashboard" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "new"} onClick={() => setView("new")} icon={<Plus size={18} />} label="Nouveau Projet" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => setView("settings")} icon={<Settings size={18} />} label="Paramètres" />
         </nav>
 
         {activeProject && (
-          <div style={{ marginTop: 'auto', padding: '20px 0' }}>
-            <div className="card" style={{ padding: '12px', fontSize: '12px' }}>
-              <div style={{ color: 'var(--text-secondary)', marginBottom: '5px' }}>PROJET ACTIF</div>
-              <div style={{ fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {projectName || "Sans titre"}
-              </div>
+          <div className="mt-auto pt-8">
+            <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-2`}>
+              <button 
+                onClick={handleToggleWatch}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all ${isWatching ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
+                title={isWatching ? "Arrêter" : "Démarrer"}
+              >
+                {isWatching ? <div className="w-2.5 h-2.5 bg-red-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+              </button>
+              {!isSidebarCollapsed && (
+                <button 
+                  onClick={handleOpenVSCode}
+                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                  title="VSCode"
+                >
+                  <VSCodeIcon size={20} />
+                </button>
+              )}
             </div>
           </div>
         )}
       </aside>
 
-      <main className="main-content">
-        {view === "dashboard" && (
-          <>
-            <header>
-              <h1>Tableau de bord</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>Surveillance et contrôle de vos sessions.</p>
-            </header>
-
-            <section className="card">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                <h2 style={{ fontSize: '18px' }}>État du Système</h2>
-                <button onClick={checkHealth} className="button secondary" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                  Actualiser
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
+        <div className="max-w-5xl mx-auto flex flex-col gap-8 md:gap-10">
+          
+          {view === "dashboard" && (
+            <div className="fade-in flex flex-col gap-10">
+              <header className="flex justify-between items-end">
+                <div>
+                  <h1 className="text-3xl font-bold text-white mb-2">Tableau de bord</h1>
+                  <p className="text-white/40 text-sm">Gérez vos projets et votre environnement LaTeX.</p>
+                </div>
+                <button onClick={() => setView("new")} className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                  <Plus size={16} /> Nouveau
                 </button>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '15px' }}>
-                {health.map((status) => (
-                  <div key={status.binary.toString()} className="status-indicator card" style={{ padding: '15px' }}>
-                    {status.installed ? <CheckCircle2 color="var(--accent-success)" size={20} /> : <XCircle color="var(--accent-error)" size={20} />}
-                    <div>
-                      <div style={{ fontWeight: '600' }}>{status.binary}</div>
-                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{status.installed ? status.version : "Non trouvé"}</div>
+              </header>
+
+              {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
+              {activeProject ? (
+                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-xl">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Projet Actuel</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4 truncate">{projectName}</h2>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={handleToggleWatch}
+                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${isWatching ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
+                        title={isWatching ? "Arrêter" : "Démarrer"}
+                      >
+                        {isWatching ? <div className="w-3 h-3 bg-red-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                      </button>
+                      <button 
+                        onClick={handleOpenVSCode}
+                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                        title="VSCode"
+                      >
+                        <VSCodeIcon size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setView("project")}
+                        className="ml-2 flex items-center gap-2 px-4 h-11 rounded-xl text-white/40 hover:text-white hover:bg-white/5 font-bold text-xs transition-all whitespace-nowrap"
+                      >
+                        <Info size={16} />
+                        Plus d'infos
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="card">
-              <h2 style={{ fontSize: '18px', marginBottom: '15px' }}>Tes Projets</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {existingProjects.length > 0 ? (
-                  existingProjects.map(p => (
-                    <div 
-                      key={p} 
-                      className={`sidebar-item ${activeProject === `${targetDir}/${p}` ? 'active' : ''}`}
-                      onClick={() => activateProject(p)}
-                      style={{ background: 'rgba(255, 255, 255, 0.03)' }}
-                    >
-                      <FolderOpen size={16} />
-                      <span style={{ flex: 1 }}>{p}</span>
-                      {activeProject === `${targetDir}/${p}` && <div className="dot success"></div>}
-                    </div>
-                  ))
-                ) : (
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>Aucun projet trouvé dans {targetDir}</p>
-                )}
-              </div>
-            </section>
-
-            {activeProject ? (
-              <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h2 style={{ fontSize: '18px' }}>Contrôle de Session</h2>
-                    <p style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>{activeProject}</p>
+                  <div className="hidden md:block w-px h-16 bg-white/5 shrink-0"></div>
+                  <div className="hidden md:flex flex-col gap-2 text-right shrink-0">
+                    <div className="text-[10px] font-bold text-white/20 uppercase tracking-wider">Répertoire</div>
+                    <div className="text-[10px] font-mono text-white/40 truncate max-w-[180px]">{activeProject}</div>
                   </div>
-                  <div style={{ display: 'flex', gap: '10px' }}>
+                </section>
+              ) : (
+                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+                   <FolderOpen size={32} className="text-white/10 mb-4" />
+                   <p className="text-white/30 text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
+                </section>
+              )}
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
+                  <div className="flex items-center gap-3 mb-6">
+                    <Box size={18} className="text-blue-500" />
+                    <h2 className="text-lg font-bold">Récents</h2>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {existingProjects.length > 0 ? (
+                      existingProjects.slice(0, 3).map(p => (
+                        <ProjectCard key={p} name={p} active={activeProject === `${targetDir}/${p}`} onClick={() => activateProject(p)} />
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-white/10 italic text-xs">Aucun projet récent.</div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center gap-3">
+                      <Layers size={18} className="text-blue-500" />
+                      <h2 className="text-lg font-bold">Tous les Projets</h2>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button 
+                        onClick={handleSelectDir}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-blue-500 transition-all"
+                        title="Changer de dossier"
+                      >
+                        <FolderPlus size={16} />
+                      </button>
+                      <span className="text-[10px] font-bold bg-white/5 px-2 py-0.5 rounded text-white/30">{existingProjects.length}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                    {existingProjects.length > 0 ? (
+                      existingProjects.map(p => (
+                        <ProjectCard key={p} name={p} active={activeProject === `${targetDir}/${p}`} onClick={() => activateProject(p)} />
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-white/10 italic text-xs">Répertoire vide.</div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </div>
+          )}
+
+          {view === "project" && activeProject && (
+            <div className="fade-in flex flex-col gap-10">
+              <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="min-w-0">
+                  <button onClick={() => setView("dashboard")} className="text-blue-500 text-xs font-bold mb-4 flex items-center gap-1 hover:underline">
+                    <ChevronLeft size={14} /> Dashboard
+                  </button>
+                  <h1 className="text-4xl font-bold mb-2 truncate">{projectName}</h1>
+                  <p className="text-white/30 font-mono text-[10px] truncate">{activeProject}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button 
+                    onClick={handleOpenVSCode} 
+                    className="w-12 h-12 shrink-0 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+                    title="Ouvrir VSCode"
+                  >
+                    <VSCodeIcon size={24} />
+                  </button>
+                  <button 
+                    onClick={handleToggleWatch} 
+                    className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-xl transition-all ${isWatching ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                    title={isWatching ? "Arrêter" : "Démarrer"}
+                  >
+                    {isWatching ? <div className="w-3.5 h-3.5 bg-white rounded-sm" /> : <Play size={20} fill="currentColor" />}
+                  </button>
+                </div>
+              </header>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="md:col-span-2 space-y-8">
+                  <section className="bg-[#121216] border border-white/5 rounded-3xl p-10 flex flex-col items-center text-center">
+                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-8 ${isWatching ? 'bg-green-500/10 text-green-400' : 'bg-blue-600 text-white'}`}>
+                      {isWatching ? <Activity size={32} className="animate-pulse" /> : <Play size={32} fill="currentColor" />}
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4">{isWatching ? "TexRapide en action" : "Prêt pour la compilation"}</h2>
+                    <p className="text-white/40 max-w-sm mb-8 text-sm">
+                      {isWatching ? "Le système surveille vos fichiers. Sauvegardez pour compiler." : "Activez le mode surveillance pour automatiser vos builds LaTeX."}
+                    </p>
+                    <button onClick={handleToggleWatch} className={`px-10 py-4 rounded-xl font-bold text-lg transition-all ${isWatching ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                      {isWatching ? "Couper" : "Lancer"}
+                    </button>
+                  </section>
+                </div>
+
+                <div className="space-y-6">
+                  <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6">
+                    <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Détails</h3>
+                    <div className="space-y-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-bold text-white/30 uppercase">Main File</label>
+                        <div className="text-xs font-mono text-white/70 truncate">{mainFile}</div>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-bold text-white/30 uppercase">Status</label>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-400' : 'bg-white/10'}`}></div>
+                          <span className="text-xs font-bold text-white/70">{isWatching ? "Running" : "Idle"}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {view === "new" && (
+             <div className="fade-in flex flex-col gap-8">
+               <header>
+                 <h1 className="text-3xl font-bold mb-2">Nouveau Projet</h1>
+                 <p className="text-white/40 text-sm">Initialisez votre structure LaTeX.</p>
+               </header>
+               
+               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                 <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 space-y-6">
+                   <InputGroup label="Nom du projet" value={projectName} onChange={setProjectName} placeholder="mon-memoire" />
+                   <InputGroup label="Fichier racine" value={mainFile} onChange={setMainFile} placeholder="main.tex" />
+                   <div className="space-y-1.5">
+                     <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Template</label>
+                     <select 
+                       value={selectedTemplate} 
+                       onChange={(e) => setSelectedTemplate(e.target.value)}
+                       className="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none"
+                     >
+                       {availableTemplates.length > 0 ? availableTemplates.map(t => <option key={t} value={t}>{t}</option>) : <option disabled>Aucun template</option>}
+                     </select>
+                   </div>
+                 </section>
+
+                 <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 flex flex-col justify-between gap-8">
+                   <InputGroup label="Dossier Cible" value={targetDir} onChange={setTargetDir} />
+                   <div className="flex gap-3">
+                     <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all" onClick={handleCreateProject}>Créer</button>
+                     <button className="bg-white/5 hover:bg-white/10 px-6 py-3.5 rounded-xl font-bold transition-all border border-white/5" onClick={() => setView("dashboard")}>Annuler</button>
+                   </div>
+                 </section>
+               </div>
+             </div>
+          )}
+
+          {view === "settings" && (
+            <div className="fade-in flex flex-col gap-8">
+              <header>
+                <h1 className="text-3xl font-bold mb-2">Paramètres</h1>
+                <p className="text-white/40 text-sm">Configuration globale.</p>
+              </header>
+              <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 md:p-10 space-y-10">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <InputGroup label="Dossier des Projets" value={targetDir} onChange={setTargetDir} />
                     <button 
-                      className={`button ${isWatching ? 'secondary' : ''}`} 
-                      onClick={handleStartWatch}
-                      disabled={isWatching}
+                      onClick={handleSelectDir}
+                      className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1"
                     >
-                      <Play size={18} style={{ marginRight: '8px', verticalAlign: 'middle' }} />
-                      {isWatching ? "Mode Watch Actif" : "Lancer Watch"}
+                      <FolderPlus size={12} /> Parcourir...
                     </button>
                   </div>
+                  <InputGroup label="Dossier des Templates" value={templateDir} onChange={setTemplateDir} />
                 </div>
-                {isWatching && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-success)' }}>
-                    <div className="dot success"></div>
-                    <span style={{ fontSize: '14px' }}>iTeX surveille vos fichiers...</span>
-                  </div>
-                )}
               </section>
-            ) : (
-              <section className="card" style={{ textAlign: 'center', padding: '40px' }}>
-                <Plus size={48} color="var(--text-secondary)" style={{ marginBottom: '20px' }} />
-                <h3>Aucun projet actif</h3>
-                <p style={{ color: 'var(--text-secondary)', marginBottom: '20px' }}>Commencez par créer un nouveau projet.</p>
-                <button className="button" onClick={() => setView("new")}>Créer un projet</button>
-              </section>
-            )}
-          </>
-        )}
-
-        {view === "new" && (
-          <>
-            <header>
-              <h1>Nouveau Projet</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>Configurez votre nouvel espace de travail.</p>
-            </header>
-            <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="input-group">
-                <label>Nom du projet</label>
-                <input type="text" placeholder="MonSuperProjet" value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>Fichier principal (.tex)</label>
-                <input type="text" placeholder="main.tex" value={mainFile} onChange={(e) => setMainFile(e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>Dossier de destination</label>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <input type="text" style={{ flex: 1 }} value={targetDir} onChange={(e) => setTargetDir(e.target.value)} />
-                  <button className="button secondary"><FolderOpen size={18} /></button>
-                </div>
-              </div>
-              <div className="input-group">
-                <label>Choisir un Template</label>
-                <select 
-                  value={selectedTemplate} 
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="select-input"
-                >
-                  {availableTemplates.length > 0 ? (
-                    availableTemplates.map(t => <option key={t} value={t}>{t}</option>)
-                  ) : (
-                    <option disabled>Aucun template trouvé</option>
-                  )}
-                </select>
-              </div>
-              <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                <button className="button" onClick={handleCreateProject}>Initialiser le projet</button>
-                <button className="button secondary" onClick={() => setView("dashboard")}>Annuler</button>
-              </div>
-            </section>
-          </>
-        )}
-
-        {view === "settings" && (
-          <>
-            <header>
-              <h1>Paramètres</h1>
-              <p style={{ color: 'var(--text-secondary)' }}>Configurez vos préférences iTeX.</p>
-            </header>
-            <section className="card">
-              <p>Configuration des chemins par défaut et du viewer (Skim).</p>
-              {/* Plus de paramètres ici plus tard */}
-            </section>
-          </>
-        )}
+            </div>
+          )}
+        </div>
       </main>
     </div>
+  );
+}
+
+function NavItem({ active, onClick, icon, label, collapsed }: { active: boolean, onClick: () => void, icon: any, label: string, collapsed: boolean }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-white/30 hover:bg-white/5 hover:text-white/70'}`}
+      title={collapsed ? label : ""}
+    >
+      <div className={`${active ? 'text-blue-500' : 'group-hover:text-white/70'} transition-colors shrink-0`}>{icon}</div>
+      {!collapsed && <span className="text-sm font-semibold">{label}</span>}
+    </button>
+  );
+}
+
+function ProjectCard({ name, active, onClick }: { name: string, active: boolean, onClick: () => void }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${active ? 'bg-blue-600/5 border-blue-600/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+    >
+      <FolderOpen size={16} className={`shrink-0 ${active ? 'text-blue-500' : 'text-white/20'}`} />
+      <span className="flex-1 text-left text-sm font-medium truncate">{name}</span>
+      {active && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>}
+    </button>
+  );
+}
+
+function InputGroup({ label, value, onChange, placeholder }: { label: string, value: string, onChange: (v: string) => void, placeholder?: string }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">{label}</label>
+      <input 
+        type="text" 
+        className="bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+function VSCodeIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <mask id="vsc-mask0" mask-type="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+        <path fill-rule="evenodd" clip-rule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1872 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+      </mask>
+      <g mask="url(#vsc-mask0)">
+        <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
+        <g filter="url(#vsc-filter0_d)">
+          <path d="M96.4614 89.2038L75.8569 99.1245C73.4719 100.273 70.6217 99.7884 68.75 97.9167L1.29858 36.4169C-0.515693 34.7627 -0.513607 31.9063 1.30308 30.2548L6.81272 25.246C8.29793 23.8958 10.5347 23.7964 12.1338 25.0095L93.3609 86.6301C96.086 88.6974 100 86.7538 100 83.3334V83.5726C100 85.9735 98.6246 88.1622 96.4614 89.2038Z" fill="#007ACC"/>
+        </g>
+        <g filter="url(#vsc-filter1_d)">
+          <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 98.5895 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08332C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
+        </g>
+        <g style={{ mixBlendMode: 'overlay' }} opacity="0.25">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M70.8511 99.3171C72.4261 99.9306 74.2221 99.8913 75.8117 99.1264L96.4 89.2197C98.5634 88.1787 99.9392 85.9892 99.9392 83.5871V16.4133C99.9392 14.0112 98.5635 11.8217 96.4001 10.7807L75.8117 0.873695C73.7255 -0.13019 71.2838 0.115699 69.4527 1.44688C69.1912 1.63705 68.942 1.84937 68.7082 2.08335L29.2943 38.0414L12.1264 25.0096C10.5283 23.7964 8.29285 23.8959 6.80855 25.246L1.30225 30.2548C-0.513334 31.9064 -0.515415 34.7627 1.29775 36.4169L16.1863 50L1.29775 63.5832C-0.515415 65.2374 -0.513334 68.0937 1.30225 69.7452L6.80855 74.754C8.29285 76.1042 10.5283 76.2036 12.1264 74.9905L29.2943 61.9586L68.7082 97.9167C69.3317 98.5405 70.0638 99.0104 70.8511 99.3171ZM74.9544 27.2989L45.0483 50L74.9544 72.7012V27.2989Z" fill="url(#vsc-paint0_linear)"/>
+        </g>
+      </g>
+      <defs>
+        <filter id="vsc-filter0_d" x="-8.39411" y="15.8291" width="116.727" height="92.2456" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+          <feOffset/>
+          <feGaussianBlur stdDeviation="4.16667"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+          <feBlend mode="overlay" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+        </filter>
+        <filter id="vsc-filter1_d" x="60.4167" y="-8.07558" width="47.9167" height="116.151" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
+          <feOffset/>
+          <feGaussianBlur stdDeviation="4.16667"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
+          <feBlend mode="overlay" in2="BackgroundImageFix" result="effect1_dropShadow"/>
+          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+        </filter>
+        <linearGradient id="vsc-paint0_linear" x1="49.9392" y1="0.257812" x2="49.9392" y2="99.7423" gradientUnits="userSpaceOnUse">
+          <stop stop-color="white"/>
+          <stop offset="1" stop-color="white" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
   );
 }
 

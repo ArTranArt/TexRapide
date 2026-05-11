@@ -1,6 +1,18 @@
 use std::fs;
 use std::path::Path;
 use fs_extra::dir::{copy, CopyOptions};
+use std::process::Command;
+
+#[tauri::command]
+pub fn open_in_vscode(path: String) -> Result<(), String> {
+    Command::new("open")
+        .arg("-a")
+        .arg("Visual Studio Code")
+        .arg(path)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    Ok(())
+}
 
 #[derive(serde::Deserialize)]
 pub struct CreateProjectArgs {

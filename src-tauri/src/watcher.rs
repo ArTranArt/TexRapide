@@ -3,10 +3,30 @@ use std::process::Command;
 use std::path::Path;
 use std::sync::mpsc::channel;
 use std::time::Duration;
-use tauri::AppHandle;
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use tauri::{AppHandle, State};
+
+pub struct WatcherState(pub Arc<Mutex<Option<Arc<AtomicBool>>>>);
 
 #[tauri::command]
-pub fn start_watch(_handle: AppHandle, project_path: String, main_file: String) -> std::result::Result<(), String> {
+pub fn start_watch(
+    _handle: AppHandle, 
+    state: State<'_, WatcherState>,
+    project_path: String, 
+    main_file: String
+) -> std::result::Result<(), String> {
+    // Arrêter un watcher existant s'il y en a un
+    stop_watch(state.clone())?;
+
+    let stop_signal = Arc::new(AtomicBool::new(false));
+    let thread_stop_signal = stop_signal.clone();
+    
+    {
+        let mut watcher_lock = state.0.lock().unwrap();
+        *watcher_lock = Some(stop_signal);
+    }
+
     let path = project_path.clone();
     let file = main_file.clone();
     
@@ -14,38 +34,44 @@ pub fn start_watch(_handle: AppHandle, project_path: String, main_file: String) 
         let (tx, rx) = channel();
         let mut watcher = notify::recommended_watcher(tx).unwrap();
 
-        watcher.watch(Path::new(&path), RecursiveMode::Recursive).unwrap();
+        if let Err(e) = watcher.watch(Path::new(&path), RecursiveMode::Recursive) {
+            println!("Error watching: {}", e);
+            return;
+        }
 
         println!("Watching: {} (main: {})", path, file);
-
-        // Premier build immédiat à l'activation
         run_build(&path, &file);
 
         let debounce_duration = Duration::from_millis(500);
 
-        loop {
-            // On attend un événement
-            if let Ok(res) = rx.recv() {
+        while !thread_stop_signal.load(Ordering::Relaxed) {
+            // On attend un événement avec un timeout pour pouvoir vérifier le signal d'arrêt
+            if let Ok(res) = rx.recv_timeout(Duration::from_millis(500)) {
                 if let Ok(event) = res {
                     if is_relevant_event(event) {
-                        // On vide le channel des événements accumulés
                         while let Ok(_) = rx.try_recv() {}
-                        
-                        // Délai pour laisser l'éditeur finir d'écrire
                         std::thread::sleep(debounce_duration);
-                        
                         run_build(&path, &file);
                     }
                 }
             }
         }
+        println!("Watcher stopped for: {}", path);
     });
 
     Ok(())
 }
 
+#[tauri::command]
+pub fn stop_watch(state: State<'_, WatcherState>) -> std::result::Result<(), String> {
+    let mut watcher_lock = state.0.lock().unwrap();
+    if let Some(signal) = watcher_lock.take() {
+        signal.store(true, Ordering::Relaxed);
+    }
+    Ok(())
+}
+
 fn is_relevant_event(event: Event) -> bool {
-    // On réagit aux modifs de fichiers LaTeX courants
     event.paths.iter().any(|p| {
         let ext = p.extension().map_or("", |e| e.to_str().unwrap_or(""));
         ext == "tex" || ext == "bib" || ext == "cls" || ext == "sty"
@@ -53,24 +79,17 @@ fn is_relevant_event(event: Event) -> bool {
 }
 
 fn run_build(project_path: &str, main_file: &str) {
-    // 1. Chercher le fichier principal choisi
     let target = Path::new(project_path).join(main_file);
-    
-    if !target.exists() {
-        return;
-    }
+    if !target.exists() { return; }
 
-    // 2. Lancer latexmk avec nettoyage et changement de dossier
     let _ = Command::new("latexmk")
         .arg("-pdf")
         .arg("-interaction=nonstopmode")
-        .arg("-cd") // Très important pour les fichiers inclus
+        .arg("-cd")
         .arg(main_file)
         .current_dir(project_path)
         .status();
 
-    // 3. Pause de STABILISATION (500ms) avant de notifier Skim
-    // C'est ici que se règle l'erreur "Chargement impossible"
     std::thread::sleep(Duration::from_millis(500));
 
     let pdf_path = target.with_extension("pdf");
