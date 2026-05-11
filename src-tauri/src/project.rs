@@ -4,6 +4,27 @@ use fs_extra::dir::{copy, CopyOptions};
 use std::process::Command;
 
 #[tauri::command]
+pub fn list_tex_files(path: String) -> Result<Vec<String>, String> {
+    let mut tex_files = Vec::new();
+    let dir = std::path::Path::new(&path);
+
+    if dir.is_dir() {
+        for entry in std::fs::read_dir(dir).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("tex") {
+                if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
+                    tex_files.push(name.to_string());
+                }
+            }
+        }
+    }
+    
+    tex_files.sort();
+    Ok(tex_files)
+}
+
+#[tauri::command]
 pub fn open_in_vscode(path: String) -> Result<(), String> {
     Command::new("open")
         .arg("-a")

@@ -24,6 +24,7 @@ pub fn run() {
             project::create_project,
             project::list_projects,
             project::list_templates,
+            project::list_tex_files,
             project::open_in_vscode,
             watcher::start_watch,
             watcher::stop_watch

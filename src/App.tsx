@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -21,8 +21,10 @@ function App() {
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [existingProjects, setExistingProjects] = useState<string[]>([]);
   const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
   const [isWatching, setIsWatching] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [confirmRemoval, setConfirmRemoval] = useState(false);
 
   const checkHealth = async () => {
     try {
@@ -52,6 +54,18 @@ function App() {
     }
   };
 
+  const fetchProjectTexFiles = async (path: string) => {
+    try {
+      const files: string[] = await invoke("list_tex_files", { path });
+      setProjectTexFiles(files);
+      if (files.length > 0 && !files.includes(mainFile)) {
+        setMainFile(files[0]);
+      }
+    } catch (error) {
+      console.error("Failed to fetch tex files:", error);
+    }
+  };
+
   useEffect(() => {
     if (view === "dashboard") {
       fetchProjects();
@@ -60,12 +74,25 @@ function App() {
     if (view === "new") {
       fetchTemplates();
     }
-  }, [view, targetDir]); // Refresh on targetDir change
+  }, [view, targetDir]);
+
+  useEffect(() => {
+    if (activeProject) {
+      fetchProjectTexFiles(activeProject);
+    }
+  }, [activeProject]);
 
   const activateProject = (name: string) => {
     const path = `${targetDir}/${name}`;
     setActiveProject(path);
     setProjectName(name);
+    setIsWatching(false);
+    setConfirmRemoval(false);
+  };
+
+  const handleDeselectProject = () => {
+    setActiveProject(null);
+    setConfirmRemoval(false);
     setIsWatching(false);
   };
 
@@ -202,18 +229,77 @@ function App() {
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-xl">
-                  <div className="flex-1 min-w-0">
+                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[180px]">
+                  {/* Close button */}
+                  {!confirmRemoval ? (
+                    <button 
+                      onClick={() => setConfirmRemoval(true)}
+                      className="absolute top-4 right-4 p-2 text-white/10 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover/card:opacity-100"
+                      title="Retirer ce projet"
+                    >
+                      <X size={16} />
+                    </button>
+                  ) : (
+                    <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500/10 border border-red-500/20 p-1.5 rounded-lg fade-in z-20">
+                      <span className="text-[10px] font-bold text-red-400 px-2 uppercase tracking-tighter">Sûr ?</span>
+                      <button onClick={handleDeselectProject} className="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-black hover:bg-red-600 transition-colors">OUI</button>
+                      <button onClick={() => setConfirmRemoval(false)} className="text-white/40 hover:text-white px-2 py-0.5 text-[10px] font-bold">NON</button>
+                    </div>
+                  )}
+
+                  <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
                       <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Projet Actuel</span>
                     </div>
-                    <h2 className="text-2xl font-bold mb-4 truncate">{projectName}</h2>
+                    <h2 className="text-3xl font-bold truncate">{projectName}</h2>
+                  </div>
+
+                  <div className="flex items-end justify-between gap-4 mt-4">
+                    <div className="flex flex-col gap-1.5 group/file relative">
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-0.5">Fichier Racine</span>
+                      <div className="relative">
+                        {projectTexFiles.length > 0 ? (
+                          <>
+                            <select 
+                              value={mainFile}
+                              onChange={(e) => {
+                                setMainFile(e.target.value);
+                                if (isWatching) {
+                                   handleToggleWatch().then(() => handleToggleWatch());
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            >
+                              {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                            <div className="flex items-center gap-2 text-xs font-mono text-white/40 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5 hover:border-white/20 hover:text-white/70 transition-all cursor-pointer">
+                              <Code size={12} className="text-blue-500/50" />
+                              <span className="truncate max-w-[150px]">{mainFile}</span>
+                              {projectTexFiles.length > 1 && <ChevronDown size={12} className="text-white/10" />}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-amber-500/60 bg-amber-500/5 px-2.5 py-1.5 rounded-md border border-amber-500/10">
+                            <Info size={12} />
+                            Aucun .tex détecté
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handleToggleWatch}
-                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${isWatching ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
-                        title={isWatching ? "Arrêter" : "Démarrer"}
+                        disabled={projectTexFiles.length === 0}
+                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${
+                          projectTexFiles.length === 0 
+                            ? 'bg-white/5 text-white/10 border border-white/5 cursor-not-allowed' 
+                            : isWatching 
+                              ? 'bg-red-500/10 text-red-400 border border-red-500/20 shadow-lg shadow-red-500/5' 
+                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
+                        }`}
+                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier .tex)" : isWatching ? "Arrêter" : "Démarrer"}
                       >
                         {isWatching ? <div className="w-3 h-3 bg-red-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
                       </button>
@@ -224,23 +310,11 @@ function App() {
                       >
                         <VSCodeIcon size={20} />
                       </button>
-                      <button 
-                        onClick={() => setView("project")}
-                        className="ml-2 flex items-center gap-2 px-4 h-11 rounded-xl text-white/40 hover:text-white hover:bg-white/5 font-bold text-xs transition-all whitespace-nowrap"
-                      >
-                        <Info size={16} />
-                        Plus d'infos
-                      </button>
                     </div>
-                  </div>
-                  <div className="hidden md:block w-px h-16 bg-white/5 shrink-0"></div>
-                  <div className="hidden md:flex flex-col gap-2 text-right shrink-0">
-                    <div className="text-[10px] font-bold text-white/20 uppercase tracking-wider">Répertoire</div>
-                    <div className="text-[10px] font-mono text-white/40 truncate max-w-[180px]">{activeProject}</div>
                   </div>
                 </section>
               ) : (
-                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center">
+                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[180px]">
                    <FolderOpen size={32} className="text-white/10 mb-4" />
                    <p className="text-white/30 text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
                 </section>
