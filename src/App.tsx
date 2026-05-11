@@ -16,6 +16,7 @@ function App() {
   const [projectName, setProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
   const [targetDir, setTargetDir] = useState("/Users/arthur/Documents/LaTeX_Projects");
+  const [dashboardProjectsDir, setDashboardProjectsDir] = useState(targetDir);
   const [templateDir, setTemplateDir] = useState("/Users/arthur/templates/my_latex_templates");
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
@@ -37,7 +38,7 @@ function App() {
 
   const fetchProjects = async () => {
     try {
-      const projects: string[] = await invoke("list_projects", { targetDir });
+      const projects: string[] = await invoke("list_projects", { targetDir: dashboardProjectsDir });
       setExistingProjects(projects);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
@@ -74,7 +75,7 @@ function App() {
     if (view === "new") {
       fetchTemplates();
     }
-  }, [view, targetDir]);
+  }, [view, dashboardProjectsDir]);
 
   useEffect(() => {
     if (activeProject) {
@@ -82,8 +83,13 @@ function App() {
     }
   }, [activeProject]);
 
+  // Sync dashboard with settings on load or settings change
+  useEffect(() => {
+    setDashboardProjectsDir(targetDir);
+  }, [targetDir]);
+
   const activateProject = (name: string) => {
-    const path = `${targetDir}/${name}`;
+    const path = `${dashboardProjectsDir}/${name}`;
     setActiveProject(path);
     setProjectName(name);
     setIsWatching(false);
@@ -108,6 +114,36 @@ function App() {
       }
     } catch (error) {
       console.error("Failed to select directory:", error);
+    }
+  };
+
+  const handleSelectDashboardDir = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: dashboardProjectsDir,
+      });
+      if (selected && typeof selected === 'string') {
+        setDashboardProjectsDir(selected);
+      }
+    } catch (error) {
+      console.error("Failed to select dashboard directory:", error);
+    }
+  };
+
+  const handleSelectTemplateDir = async () => {
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        defaultPath: templateDir,
+      });
+      if (selected && typeof selected === 'string') {
+        setTemplateDir(selected);
+      }
+    } catch (error) {
+      console.error("Failed to select template directory:", error);
     }
   };
 
@@ -345,9 +381,9 @@ function App() {
                     </div>
                     <div className="flex items-center gap-3">
                       <button 
-                        onClick={handleSelectDir}
+                        onClick={handleSelectDashboardDir}
                         className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-blue-500 transition-all"
-                        title="Changer de dossier"
+                        title="Explorer un autre dossier"
                       >
                         <FolderPlus size={16} />
                       </button>
@@ -475,21 +511,49 @@ function App() {
                 <p className="text-white/40 text-sm">Configuration globale.</p>
               </header>
               <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 md:p-10">
-                <div className="flex flex-col gap-10 max-w-2xl">
-                  <div className="space-y-2">
-                    <InputGroup label="Dossier des Projets" value={targetDir} onChange={setTargetDir} />
-                    <button 
-                      onClick={handleSelectDir}
-                      className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1 px-1"
-                    >
-                      <FolderPlus size={12} /> Parcourir le dossier...
-                    </button>
-                  </div>
+                <div className="flex flex-col gap-12 max-w-3xl">
                   
-                  <div className="space-y-2">
-                    <InputGroup label="Dossier des Templates" value={templateDir} onChange={setTemplateDir} />
+                  {/* Projets */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Dossier des Projets</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
+                        value={targetDir}
+                        onChange={(e) => setTargetDir(e.target.value)}
+                      />
+                      <button 
+                        onClick={handleSelectDir}
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-xs font-bold text-white/60 hover:text-white transition-all flex items-center gap-2 shrink-0"
+                      >
+                        <FolderPlus size={14} />
+                        Parcourir
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Templates */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Dossier des Templates</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
+                        value={templateDir}
+                        onChange={(e) => setTemplateDir(e.target.value)}
+                      />
+                      <button 
+                        onClick={handleSelectTemplateDir}
+                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-xs font-bold text-white/60 hover:text-white transition-all flex items-center gap-2 shrink-0"
+                      >
+                        <FolderPlus size={14} />
+                        Parcourir
+                      </button>
+                    </div>
                     <p className="text-[10px] text-white/20 px-1 italic">Utilisé pour générer de nouveaux projets LaTeX à partir de modèles.</p>
                   </div>
+
                 </div>
               </section>
             </div>
