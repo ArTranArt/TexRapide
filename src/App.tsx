@@ -474,18 +474,22 @@ function App() {
                 <h1 className="text-3xl font-bold mb-2">Paramètres</h1>
                 <p className="text-white/40 text-sm">Configuration globale.</p>
               </header>
-              <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 md:p-10 space-y-10">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 md:p-10">
+                <div className="flex flex-col gap-10 max-w-2xl">
                   <div className="space-y-2">
                     <InputGroup label="Dossier des Projets" value={targetDir} onChange={setTargetDir} />
                     <button 
                       onClick={handleSelectDir}
-                      className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1"
+                      className="text-[10px] font-bold text-blue-500 hover:underline flex items-center gap-1 px-1"
                     >
-                      <FolderPlus size={12} /> Parcourir...
+                      <FolderPlus size={12} /> Parcourir le dossier...
                     </button>
                   </div>
-                  <InputGroup label="Dossier des Templates" value={templateDir} onChange={setTemplateDir} />
+                  
+                  <div className="space-y-2">
+                    <InputGroup label="Dossier des Templates" value={templateDir} onChange={setTemplateDir} />
+                    <p className="text-[10px] text-white/20 px-1 italic">Utilisé pour générer de nouveaux projets LaTeX à partir de modèles.</p>
+                  </div>
                 </div>
               </section>
             </div>
