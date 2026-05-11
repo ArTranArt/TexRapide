@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2, Search } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2, Search, Check } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -16,9 +16,10 @@ interface Project {
 }
 
 function App() {
-  const [view, setView] = useState<"dashboard" | "new" | "settings" | "project">("dashboard");
+  const [view, setView] = useState<"dashboard" | "settings" | "project">("dashboard");
   const [health, setHealth] = useState<HealthStatus[]>([]);
   const [projectName, setProjectName] = useState("");
+  const [newProjectName, setNewProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
   const [targetDir, setTargetDir] = useState("/Users/arthur/Documents/LaTeX_Projects");
   const [dashboardProjectsDir, setDashboardProjectsDir] = useState(targetDir);
@@ -34,8 +35,10 @@ function App() {
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
+  const [isCreatingInline, setIsCreatingInline] = useState(false);
   
   const mainContentRef = useRef<HTMLDivElement>(null);
+  const inlineInputRef = useRef<HTMLInputElement>(null);
 
   // Ignore files feature
   const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>(() => {
@@ -101,8 +104,6 @@ function App() {
     if (view === "dashboard") {
       fetchProjects();
       checkHealth();
-    }
-    if (view === "new") {
       fetchTemplates();
     }
   }, [view, dashboardProjectsDir]);
@@ -116,6 +117,15 @@ function App() {
   useEffect(() => {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
+
+  useEffect(() => {
+    if (isCreatingInline) {
+      setNewProjectName(""); // Clear field when opening
+      if (inlineInputRef.current) {
+        inlineInputRef.current.focus();
+      }
+    }
+  }, [isCreatingInline]);
 
   const activateProject = (name: string, path?: string) => {
     if (isWatching) return; 
@@ -184,13 +194,17 @@ function App() {
   };
 
   const handleCreateProject = async () => {
+    if (!newProjectName.trim()) return;
     try {
       const fullTemplatePath = `${templateDir}/${selectedTemplate}`;
+      // Use dashboardProjectsDir to create the project in the currently viewed directory
       const path: string = await invoke("create_project", { 
-        args: { name: projectName, target_dir: targetDir, template_dir: fullTemplatePath } 
+        args: { name: newProjectName, target_dir: dashboardProjectsDir, template_dir: fullTemplatePath } 
       });
-      activateProject(projectName, path); 
-      setView("project");
+      activateProject(newProjectName, path); 
+      setIsCreatingInline(false);
+      setNewProjectName("");
+      fetchProjects();
     } catch (error) {
       alert(`Erreur : ${error}`);
     }
@@ -272,9 +286,19 @@ function App() {
           {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} w-full mb-12`}>
+        <div 
+          onClick={() => {
+            if (isWatching) return;
+            setDashboardProjectsDir(targetDir);
+            setActiveProject(null);
+            setView("dashboard");
+            setIsCreatingInline(false);
+          }}
+          className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} w-full mb-12 cursor-pointer active:scale-95 transition-transform`}
+          title="Retour au dossier par défaut"
+        >
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg shrink-0">
+            <div className="bg-blue-600 p-2 rounded-lg shrink-0 shadow-lg shadow-blue-600/20">
               <Activity size={20} className="text-white" />
             </div>
             {!isSidebarCollapsed && (
@@ -286,9 +310,8 @@ function App() {
         </div>
         
         <nav className="flex flex-col gap-1.5">
-          <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<Layers size={18} />} label="Dashboard" />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "new"} onClick={() => setView("new")} icon={<Plus size={18} />} label="Nouveau Projet" disabled={isWatching} />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => setView("settings")} icon={<Settings size={18} />} label="Paramètres" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} icon={<Layers size={18} />} label="Dashboard" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => { setView("settings"); setIsCreatingInline(false); }} icon={<Settings size={18} />} label="Paramètres" />
         </nav>
 
         {activeProject && (
@@ -321,18 +344,11 @@ function App() {
           
           {view === "dashboard" && (
             <div className="fade-in flex flex-col gap-10">
-              <header className="flex justify-between items-end">
+              <header className="flex justify-between items-end px-4">
                 <div>
                   <h1 className="text-3xl font-bold text-white mb-2">Tableau de bord</h1>
                   <p className="text-white/40 text-sm">Gérez vos projets et votre environnement LaTeX.</p>
                 </div>
-                <button 
-                   onClick={() => setView("new")} 
-                   disabled={isWatching}
-                   className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${isWatching ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-50' : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white'}`}
-                >
-                  <Plus size={16} /> Nouveau
-                </button>
               </header>
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
@@ -428,7 +444,7 @@ function App() {
               )}
 
               <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col">
-                {/* Section Header - Always Visible */}
+                {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
                     <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
@@ -469,7 +485,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* Search Bar - Always Visible */}
+                {/* Search Bar */}
                 <div className="mb-8 px-4 relative group">
                   <Search size={14} className="absolute left-7.5 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors pl-4" />
                   <input 
@@ -489,8 +505,79 @@ function App() {
                   )}
                 </div>
 
-                {/* Internal Scrollable List with Side Margin/Padding */}
+                {/* Internal Scrollable List */}
                 <div className="flex flex-col gap-2 relative max-h-[880px] overflow-y-auto px-4 pb-4 custom-scrollbar transition-all duration-500">
+                  
+                  {/* Inline Creation Card */}
+                  {!isCreatingInline ? (
+                    <button 
+                      onClick={() => setIsCreatingInline(true)}
+                      disabled={isWatching}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all group ${isWatching ? 'border-white/5 text-white/5 opacity-50 cursor-not-allowed' : 'border-white/5 text-white/20 hover:border-blue-500/30 hover:bg-blue-500/[0.02] hover:scale-[1.01]'}`}
+                    >
+                      <div className="p-2.5 rounded-xl bg-white/5 text-white/10 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
+                        <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <span className="block text-sm font-bold uppercase tracking-widest transition-colors">Nouveau Projet</span>
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-4 p-5 rounded-2xl border border-blue-500/30 bg-blue-500/[0.03] fade-in shadow-lg shadow-blue-500/5">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="flex items-center gap-2">
+                           <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+                           <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Initialisation</span>
+                        </div>
+                        <button onClick={() => setIsCreatingInline(false)} className="text-white/20 hover:text-white transition-colors"><X size={14} /></button>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-1">Nom du projet</label>
+                          <input 
+                            ref={inlineInputRef}
+                            type="text" 
+                            className="bg-black/60 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                            placeholder="ex: rapport-stage"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleCreateProject()}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-1">Template</label>
+                          <div className="relative">
+                            <select 
+                              className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors appearance-none pr-10"
+                              value={selectedTemplate}
+                              onChange={(e) => setSelectedTemplate(e.target.value)}
+                            >
+                              {availableTemplates.length > 0 ? availableTemplates.map(t => <option key={t} value={t}>{t}</option>) : <option disabled>Aucun template</option>}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 mt-2">
+                        <button 
+                          onClick={() => setIsCreatingInline(false)}
+                          className="px-4 py-2 rounded-lg text-xs font-bold text-white/40 hover:text-white transition-colors"
+                        >
+                          Annuler
+                        </button>
+                        <button 
+                          onClick={handleCreateProject}
+                          disabled={!newProjectName.trim()}
+                          className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-white/5 disabled:text-white/10 text-white px-6 py-2 rounded-lg text-xs font-bold transition-all ${newProjectName.trim() ? 'shadow-lg shadow-blue-600/20' : 'shadow-none'}`}
+                        >
+                          <Check size={14} /> Créer
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {sortedProjects.length > 0 ? (
                     sortedProjects.map(p => (
                       <ProjectListRow 
@@ -504,15 +591,17 @@ function App() {
                       />
                     ))
                   ) : (
-                    <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5 mx-2">
-                      <div className="flex flex-col items-center gap-4">
-                        <FolderOpen size={48} className="text-white/5" />
-                        <p className="text-white/20 italic text-sm">
-                          {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun projet trouvé dans ce répertoire."}
-                        </p>
-                        {searchQuery && <button onClick={() => setSearchQuery("")} className="text-xs text-blue-500 hover:underline font-bold">Effacer la recherche</button>}
+                    !isCreatingInline && (
+                      <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5 mx-2">
+                        <div className="flex flex-col items-center gap-4">
+                          <FolderOpen size={48} className="text-white/5" />
+                          <p className="text-white/20 italic text-sm">
+                            {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun projet trouvé dans ce répertoire."}
+                          </p>
+                          {searchQuery && <button onClick={() => setSearchQuery("")} className="text-xs text-blue-500 hover:underline font-bold">Effacer la recherche</button>}
+                        </div>
                       </div>
-                    </div>
+                    )
                   )}
                 </div>
               </section>
@@ -583,40 +672,6 @@ function App() {
                 </div>
               </div>
             </div>
-          )}
-
-          {view === "new" && (
-             <div className="fade-in flex flex-col gap-8">
-               <header>
-                 <h1 className="text-3xl font-bold mb-2">Nouveau Projet</h1>
-                 <p className="text-white/40 text-sm">Initialisez votre structure LaTeX.</p>
-               </header>
-               
-               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                 <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 space-y-6">
-                   <InputGroup label="Nom du projet" value={projectName} onChange={setProjectName} placeholder="mon-memoire" />
-                   <InputGroup label="Fichier racine" value={mainFile} onChange={setMainFile} placeholder="main.tex" />
-                   <div className="space-y-1.5">
-                     <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Template</label>
-                     <select 
-                       value={selectedTemplate} 
-                       onChange={(e) => setSelectedTemplate(e.target.value)}
-                       className="w-full bg-black/40 border border-white/10 rounded-xl p-3.5 text-sm outline-none"
-                     >
-                       {availableTemplates.length > 0 ? availableTemplates.map(t => <option key={t} value={t}>{t}</option>) : <option disabled>Aucun template</option>}
-                     </select>
-                   </div>
-                 </section>
-
-                 <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 flex flex-col justify-between gap-8">
-                   <InputGroup label="Dossier Cible" value={targetDir} onChange={setTargetDir} />
-                   <div className="flex gap-3">
-                     <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-xl font-bold transition-all" onClick={handleCreateProject}>Créer</button>
-                     <button className="bg-white/5 hover:bg-white/10 px-6 py-3.5 rounded-xl font-bold transition-all border border-white/5" onClick={() => setView("dashboard")}>Annuler</button>
-                   </div>
-                 </section>
-               </div>
-             </div>
           )}
 
           {view === "settings" && (
@@ -787,44 +842,22 @@ function InputGroup({ label, value, onChange, placeholder }: { label: string, va
 function VSCodeIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <mask id="vsc-mask0" maskType="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-        <path fillRule="evenodd" clipRule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1264 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+      <mask id="vsc-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+        <path fillRule="evenodd" clipRule="evenodd" d="M70.9 99.3c1.6.6 3.4.6 5 0l20.6-9.9c2.2-1 3.5-3.2 3.5-5.6V16.4c0-2.4-1.3-4.6-3.5-5.6L75.9.9c-2.1-1-4.5-.8-6.4.5-.2.2-.5.4-.7.6L29.4 38 12.2 25c-1.6-1.2-3.8-1.1-5.3.2L1.4 30.3C-.4 32-.4 34.8 1.4 36.4L16.2 50 1.4 63.6c-1.8 1.6-1.8 4.4 0 6.1l5.5 5c1.5 1.4 3.7 1.5 5.2.3l17.2-13L68.7 98c.6.6 1.3 1.1 2.2 1.3zM75 27.3L45.1 50 75 72.7V27.3z" fill="white"/>
       </mask>
-      <g mask="url(#vsc-mask0)">
-        <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
-        <g filter="url(#vsc-filter0_d)">
-          <path d="M96.4614 89.2038L75.8569 99.1245C73.4719 100.273 70.6217 99.7884 68.75 97.9167L1.29858 36.4169C-0.515693 34.7627 -0.513607 31.9063 1.30308 30.2548L6.81272 25.246C8.29793 23.8958 10.5347 23.7964 12.1338 25.0095L93.3609 86.6301C96.086 88.6974 100 86.7538 100 83.3334V83.5726C100 85.9735 98.6246 88.1622 96.4614 89.2038Z" fill="#007ACC"/>
+      <g mask="url(#vsc-mask)">
+        <path d="M96.5 10.8L75.9.9c-2.4-1.2-5.3-.7-7.2 1.2L1.3 63.6c-1.8 1.6-1.8 4.5 0 6.1l5.5 5c1.5 1.4 3.7 1.5 5.3.3l81.2-61.6c2.7-2.1 6.6-.2 6.6 3.2v-.2c0-2.4-1.4-4.6-3.5-5.6z" fill="#0065A9"/>
+        <g filter="url(#vsc-shadow)">
+          <path d="M96.5 89.2L75.9 99.1c-2.4 1.1-5.3.6-7.2-1.2L1.3 36.4c-1.8-1.6-1.8-4.5 0-6.1l5.5-5c1.5-1.4 3.7-1.5 5.3-.3L93.4 86.6c2.7 2.1 6.6.2 6.6-3.2v.2c0 2.4-1.4 4.6-3.5 5.6z" fill="#007ACC"/>
         </g>
-        <g filter="url(#vsc-filter1_d)">
-          <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 98.5895 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08332C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6246 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
-        </g>
-        <g style={{ mixBlendMode: 'overlay' }} opacity="0.25">
-          <path fillRule="evenodd" clipRule="evenodd" d="M70.8511 99.3171C72.4261 99.9306 74.2221 99.8913 75.8117 99.1264L96.4 89.2197C98.5634 88.1787 99.9392 85.9892 99.9392 83.5871V16.4133C99.9392 14.0112 98.5635 11.8217 96.4001 10.7807L75.8117 0.873695C73.7255 -0.13019 71.2838 0.115699 69.4527 1.44688C69.1912 1.63705 68.942 1.84937 68.7082 2.08335L29.2943 38.0414L12.1264 25.0096C10.5283 23.7964 8.29285 23.8959 6.80855 25.246L1.30225 30.2548C-0.513334 31.9064 -0.515415 34.7627 1.29775 36.4169L16.1863 50L1.29775 63.5832C-0.515415 65.2374 -0.513334 68.0937 1.30225 69.7452L6.80855 74.754C8.29285 76.1042 10.5283 76.2036 12.1264 74.9905L29.2943 61.9586L68.7082 97.9167C69.3317 98.5405 70.0638 99.0104 70.8511 99.3171ZM74.9544 27.2989L45.0483 50L74.9544 72.7012V27.2989Z" fill="url(#vsc-paint0_linear)"/>
-        </g>
+        <path d="M75.9 99.1c-2.4 1.2-5.3.7-7.2-1.2 2.3 2.3 6.3.7 6.3-2.6V4.7c0-3.3-4-4.9-6.3-2.6 1.9-1.9 4.8-2.4 7.2-1.2l20.6 9.9c2.2 1 3.5 3.2 3.5 5.6v67.2c0 2.4-1.3 4.6-3.5 5.6l-20.6 9.9z" fill="#1F9CF0"/>
       </g>
       <defs>
-        <filter id="vsc-filter0_d" x="-8.39411" y="15.8291" width="116.727" height="92.2456" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-          <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
-          <feOffset/>
-          <feGaussianBlur stdDeviation="4.16667"/>
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
-          <feBlend mode="overlay" in2="BackgroundImageFix" result="effect1_dropShadow"/>
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
+        <filter id="vsc-shadow" x="-10" y="20" width="120" height="100" filterUnits="userSpaceOnUse">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.2 0"/>
+          <feBlend mode="normal" in="SourceGraphic" in2="blur"/>
         </filter>
-        <filter id="vsc-filter1_d" x="60.4167" y="-8.07558" width="47.9167" height="116.151" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
-          <feFlood floodOpacity="0" result="BackgroundImageFix"/>
-          <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
-          <feOffset/>
-          <feGaussianBlur stdDeviation="4.16667"/>
-          <feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.25 0"/>
-          <feBlend mode="overlay" in2="BackgroundImageFix" result="effect1_dropShadow"/>
-          <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
-        </filter>
-        <linearGradient id="vsc-paint0_linear" x1="49.9392" y1="0.257812" x2="49.9392" y2="99.7423" gradientUnits="userSpaceOnUse">
-          <stop stopColor="white"/>
-          <stop offset="1" stopColor="white" stopOpacity="0"/>
-        </linearGradient>
       </defs>
     </svg>
   );
