@@ -28,6 +28,7 @@ function App() {
   const [existingProjects, setExistingProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
+  const [unfilteredTexCount, setUnfilteredTexCount] = useState(0);
   const [isWatching, setIsWatching] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [confirmRemoval, setConfirmRemoval] = useState(false);
@@ -75,6 +76,8 @@ function App() {
   const fetchProjectTexFiles = async (path: string) => {
     try {
       const files: string[] = await invoke("list_tex_files", { path });
+      setUnfilteredTexCount(files.length);
+      
       const filtered = files.filter(file => {
         const lowerFile = file.toLowerCase();
         return !ignoredPatterns.some(pattern => lowerFile.includes(pattern.toLowerCase()));
@@ -376,7 +379,7 @@ function App() {
                         ) : (
                           <div className="flex items-center gap-2 text-[10px] font-bold text-amber-500/60 bg-amber-500/5 px-2.5 py-1.5 rounded-md border border-amber-500/10">
                             <Info size={12} />
-                            {projectTexFiles.length === 0 && ignoredPatterns.length > 0 ? 'Fichiers ignorés' : 'Aucun .tex détecté'}
+                            {unfilteredTexCount > 0 ? 'Fichiers ignorés' : 'Aucun .tex détecté'}
                           </div>
                         )}
                       </div>
