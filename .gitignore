@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Node modules
+node_modules
+dist
+dist-ssr
+*.local
+
+# Rust / Tauri
+src-tauri/target
+src-tauri/binaries
+src-tauri/gen
+src-tauri/dump.rdb
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# LaTeX (Project specific as it's a LaTeX manager)
+*.aux
+*.fdb_latexmk
+*.fls
+*.gz
+*.pdf
+*.toc
+*.out
+*.log
+*.nav
+*.snm
+*.vrb
+*.bbl
+*.blg
+*.run.xml
+*.bcf
+*-blx.bib
