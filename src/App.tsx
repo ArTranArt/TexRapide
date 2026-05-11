@@ -427,9 +427,9 @@ function App() {
                 </section>
               )}
 
-              <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
-                {/* Section Header */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+              <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col">
+                {/* Section Header - Always Visible */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
                     <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
                     <h2 className="text-xl font-bold uppercase tracking-tight">Projets</h2>
@@ -469,9 +469,9 @@ function App() {
                   </div>
                 </div>
 
-                {/* Search Bar - Moved Lower */}
-                <div className="mb-8 relative group">
-                  <Search size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors" />
+                {/* Search Bar - Always Visible */}
+                <div className="mb-8 px-4 relative group">
+                  <Search size={14} className="absolute left-7.5 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors pl-4" />
                   <input 
                     type="text" 
                     placeholder="Rechercher un projet..."
@@ -482,14 +482,15 @@ function App() {
                   {searchQuery && (
                     <button 
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-colors"
+                      className="absolute right-7 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-colors pr-4"
                     >
                       <X size={12} />
                     </button>
                   )}
                 </div>
 
-                <div className="flex flex-col gap-2 relative">
+                {/* Internal Scrollable List with Side Margin/Padding */}
+                <div className="flex flex-col gap-2 relative max-h-[880px] overflow-y-auto px-4 pb-4 custom-scrollbar transition-all duration-500">
                   {sortedProjects.length > 0 ? (
                     sortedProjects.map(p => (
                       <ProjectListRow 
@@ -503,7 +504,7 @@ function App() {
                       />
                     ))
                   ) : (
-                    <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5">
+                    <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5 mx-2">
                       <div className="flex flex-col items-center gap-4">
                         <FolderOpen size={48} className="text-white/5" />
                         <p className="text-white/20 italic text-sm">
