@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2 } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -33,6 +33,17 @@ function App() {
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   
+  // Ignore files feature
+  const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>(() => {
+    const saved = localStorage.getItem("texrapide_ignored");
+    return saved ? JSON.parse(saved) : ["preamble", "macros", "letterfonts"];
+  });
+  const [newPattern, setNewPattern] = useState("");
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_ignored", JSON.stringify(ignoredPatterns));
+  }, [ignoredPatterns]);
+
   const checkHealth = async () => {
     try {
       const status: HealthStatus[] = await invoke("check_latex_health");
@@ -64,9 +75,16 @@ function App() {
   const fetchProjectTexFiles = async (path: string) => {
     try {
       const files: string[] = await invoke("list_tex_files", { path });
-      setProjectTexFiles(files);
-      if (files.length > 0 && !files.includes(mainFile)) {
-        setMainFile(files[0]);
+      const filtered = files.filter(file => {
+        const lowerFile = file.toLowerCase();
+        return !ignoredPatterns.some(pattern => lowerFile.includes(pattern.toLowerCase()));
+      });
+      
+      setProjectTexFiles(filtered);
+      if (filtered.length > 0 && !filtered.includes(mainFile)) {
+        setMainFile(filtered[0]);
+      } else if (filtered.length === 0) {
+        setMainFile("");
       }
     } catch (error) {
       console.error("Failed to fetch tex files:", error);
@@ -87,14 +105,14 @@ function App() {
     if (activeProject) {
       fetchProjectTexFiles(activeProject);
     }
-  }, [activeProject]);
+  }, [activeProject, ignoredPatterns]);
 
-  // Sync dashboard with settings on load or settings change
   useEffect(() => {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
 
   const activateProject = (name: string, path?: string) => {
+    if (isWatching) return; 
     const fullPath = path || `${dashboardProjectsDir}/${name}`;
     setActiveProject(fullPath);
     setProjectName(name);
@@ -103,6 +121,7 @@ function App() {
   };
 
   const handleDeselectProject = () => {
+    if (isWatching) return;
     setActiveProject(null);
     setConfirmRemoval(false);
     setIsWatching(false);
@@ -124,6 +143,7 @@ function App() {
   };
 
   const handleSelectDashboardDir = async () => {
+    if (isWatching) return;
     try {
       const selected = await open({
         directory: true,
@@ -196,6 +216,17 @@ function App() {
     }
   };
 
+  const addIgnoredPattern = () => {
+    if (newPattern && !ignoredPatterns.includes(newPattern)) {
+      setIgnoredPatterns([...ignoredPatterns, newPattern]);
+      setNewPattern("");
+    }
+  };
+
+  const removeIgnoredPattern = (pattern: string) => {
+    setIgnoredPatterns(ignoredPatterns.filter(p => p !== pattern));
+  };
+
   useEffect(() => {
     checkHealth();
   }, []);
@@ -243,7 +274,7 @@ function App() {
         
         <nav className="flex flex-col gap-1.5">
           <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => setView("dashboard")} icon={<Layers size={18} />} label="Dashboard" />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "new"} onClick={() => setView("new")} icon={<Plus size={18} />} label="Nouveau Projet" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "new"} onClick={() => setView("new")} icon={<Plus size={18} />} label="Nouveau Projet" disabled={isWatching} />
           <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => setView("settings")} icon={<Settings size={18} />} label="Paramètres" />
         </nav>
 
@@ -252,10 +283,10 @@ function App() {
             <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-2`}>
               <button 
                 onClick={handleToggleWatch}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all ${isWatching ? 'bg-red-500/10 text-red-400 border border-red-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all ${isWatching ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
                 title={isWatching ? "Arrêter" : "Démarrer"}
               >
-                {isWatching ? <div className="w-2.5 h-2.5 bg-red-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                {isWatching ? <div className="w-2.5 h-2.5 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
               </button>
               {!isSidebarCollapsed && (
                 <button 
@@ -273,7 +304,7 @@ function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
-        <div className="max-w-5xl mx-auto flex flex-col gap-8 md:gap-10">
+        <div className="max-w-6xl mx-auto flex flex-col gap-8">
           
           {view === "dashboard" && (
             <div className="fade-in flex flex-col gap-10">
@@ -282,20 +313,25 @@ function App() {
                   <h1 className="text-3xl font-bold text-white mb-2">Tableau de bord</h1>
                   <p className="text-white/40 text-sm">Gérez vos projets et votre environnement LaTeX.</p>
                 </div>
-                <button onClick={() => setView("new")} className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all">
+                <button 
+                   onClick={() => setView("new")} 
+                   disabled={isWatching}
+                   className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all ${isWatching ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-50' : 'bg-white/5 hover:bg-white/10 border border-white/10 text-white'}`}
+                >
                   <Plus size={16} /> Nouveau
                 </button>
               </header>
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px]">
+                <section className={`bg-[#121216] border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-white/5'}`}>
                   {/* Close button */}
                   {!confirmRemoval ? (
                     <button 
                       onClick={() => setConfirmRemoval(true)}
-                      className="absolute top-4 right-4 p-2 text-white/10 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover/card:opacity-100"
-                      title="Retirer ce projet"
+                      disabled={isWatching}
+                      className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-white/5' : 'text-white/10 hover:text-red-400 hover:bg-red-500/10'}`}
+                      title={isWatching ? "Arrêtez le watch mode d'abord" : "Retirer ce projet"}
                     >
                       <X size={16} />
                     </button>
@@ -310,39 +346,37 @@ function App() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Projet Actuel</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400/60' : 'text-white/30'}`}>Projet Actuel</span>
                     </div>
-                    <h2 className="text-3xl font-bold truncate">{projectName}</h2>
+                    <h2 className="text-3xl font-bold truncate text-white">{projectName}</h2>
                   </div>
 
                   <div className="flex items-end justify-between gap-4 mt-4">
                     <div className="flex flex-col gap-1.5 group/file relative">
-                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest px-0.5">Fichier Racine</span>
+                      <span className={`text-[9px] font-bold uppercase tracking-widest px-0.5 ${isWatching ? 'text-green-400/30' : 'text-white/20'}`}>Fichier Racine</span>
                       <div className="relative">
                         {projectTexFiles.length > 0 ? (
                           <>
                             <select 
                               value={mainFile}
+                              disabled={isWatching}
                               onChange={(e) => {
                                 setMainFile(e.target.value);
-                                if (isWatching) {
-                                   handleToggleWatch().then(() => handleToggleWatch());
-                                }
                               }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                             >
                               {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                             </select>
-                            <div className="flex items-center gap-2 text-xs font-mono text-white/40 bg-white/5 px-2.5 py-1.5 rounded-md border border-white/5 hover:border-white/20 hover:text-white/70 transition-all cursor-pointer">
-                              <Code size={12} className="text-blue-500/50" />
+                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-white/[0.02] border-green-500/20 text-green-400/70' : 'text-white/40 bg-white/5 border-white/5 hover:border-white/20 hover:text-white/70'}`}>
+                              <Code size={12} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
                               <span className="truncate max-w-[150px]">{mainFile}</span>
-                              {projectTexFiles.length > 1 && <ChevronDown size={12} className="text-white/10" />}
+                              {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-white/10" />}
                             </div>
                           </>
                         ) : (
                           <div className="flex items-center gap-2 text-[10px] font-bold text-amber-500/60 bg-amber-500/5 px-2.5 py-1.5 rounded-md border border-amber-500/10">
                             <Info size={12} />
-                            Aucun .tex détecté
+                            {projectTexFiles.length === 0 && ignoredPatterns.length > 0 ? 'Fichiers ignorés' : 'Aucun .tex détecté'}
                           </div>
                         )}
                       </div>
@@ -356,12 +390,12 @@ function App() {
                           projectTexFiles.length === 0 
                             ? 'bg-white/5 text-white/10 border border-white/5 cursor-not-allowed' 
                             : isWatching 
-                              ? 'bg-red-500/10 text-red-400 border border-red-500/20 shadow-lg shadow-red-500/5' 
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/30 shadow-lg shadow-green-500/5' 
                               : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
                         }`}
-                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier .tex)" : isWatching ? "Arrêter" : "Démarrer"}
+                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter" : "Démarrer"}
                       >
-                        {isWatching ? <div className="w-3 h-3 bg-red-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                        {isWatching ? <div className="w-3 h-3 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
                       </button>
                       <button 
                         onClick={handleOpenVSCode}
@@ -383,7 +417,7 @@ function App() {
               <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                   <div className="flex items-center gap-3">
-                    <Layers size={20} className="text-blue-500" />
+                    <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
                     <h2 className="text-xl font-bold uppercase tracking-tight">Projets</h2>
                   </div>
                   
@@ -392,13 +426,15 @@ function App() {
                     <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
                       <button 
                         onClick={() => setSortBy("recent")}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}
+                        disabled={isWatching}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40 disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <Clock size={12} /> Récents
                       </button>
                       <button 
                         onClick={() => setSortBy("alphabetical")}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}
+                        disabled={isWatching}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40 disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <SortAsc size={12} /> A-Z
                       </button>
@@ -409,8 +445,9 @@ function App() {
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handleSelectDashboardDir}
-                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-blue-500 transition-all"
-                        title="Explorer un autre dossier"
+                        disabled={isWatching}
+                        className={`p-2 rounded-lg border transition-all ${isWatching ? 'bg-white/5 border-white/5 text-white/5 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white/40 hover:text-blue-500'}`}
+                        title={isWatching ? "Verrouillé pendant le watch mode" : "Explorer un autre dossier"}
                       >
                         <FolderPlus size={16} />
                       </button>
@@ -419,7 +456,7 @@ function App() {
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 relative">
                   {sortedProjects.length > 0 ? (
                     sortedProjects.map(p => (
                       <ProjectListRow 
@@ -427,6 +464,8 @@ function App() {
                         name={p.name} 
                         date={formatDate(p.last_modified)}
                         active={activeProject === `${dashboardProjectsDir}/${p.name}`} 
+                        isWatching={isWatching}
+                        disabled={isWatching && activeProject !== `${dashboardProjectsDir}/${p.name}`}
                         onClick={() => activateProject(p.name)} 
                       />
                     ))
@@ -447,7 +486,7 @@ function App() {
             <div className="fade-in flex flex-col gap-10">
               <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="min-w-0">
-                  <button onClick={() => setView("dashboard")} className="text-blue-500 text-xs font-bold mb-4 flex items-center gap-1 hover:underline">
+                  <button onClick={() => setView("dashboard")} className={`text-xs font-bold mb-4 flex items-center gap-1 hover:underline ${isWatching ? 'text-green-500' : 'text-blue-500'}`}>
                     <ChevronLeft size={14} /> Dashboard
                   </button>
                   <h1 className="text-4xl font-bold mb-2 truncate">{projectName}</h1>
@@ -463,7 +502,7 @@ function App() {
                   </button>
                   <button 
                     onClick={handleToggleWatch} 
-                    className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-xl transition-all ${isWatching ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                    className={`w-12 h-12 shrink-0 flex items-center justify-center rounded-xl transition-all ${isWatching ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                     title={isWatching ? "Arrêter" : "Démarrer"}
                   >
                     {isWatching ? <div className="w-3.5 h-3.5 bg-white rounded-sm" /> : <Play size={20} fill="currentColor" />}
@@ -473,7 +512,7 @@ function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="md:col-span-2 space-y-8">
-                  <section className="bg-[#121216] border border-white/5 rounded-3xl p-10 flex flex-col items-center text-center">
+                  <section className={`border rounded-3xl p-10 flex flex-col items-center text-center transition-colors duration-500 ${isWatching ? 'bg-green-500/5 border-green-500/20' : 'bg-[#121216] border-white/5'}`}>
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-8 ${isWatching ? 'bg-green-500/10 text-green-400' : 'bg-blue-600 text-white'}`}>
                       {isWatching ? <Activity size={32} className="animate-pulse" /> : <Play size={32} fill="currentColor" />}
                     </div>
@@ -481,8 +520,8 @@ function App() {
                     <p className="text-white/40 max-w-sm mb-8 text-sm">
                       {isWatching ? "Le système surveille vos fichiers. Sauvegardez pour compiler." : "Activez le mode surveillance pour automatiser vos builds LaTeX."}
                     </p>
-                    <button onClick={handleToggleWatch} className={`px-10 py-4 rounded-xl font-bold text-lg transition-all ${isWatching ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
-                      {isWatching ? "Couper" : "Lancer"}
+                    <button onClick={handleToggleWatch} className={`px-10 py-4 rounded-xl font-bold text-lg transition-all ${isWatching ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
+                      {isWatching ? "Arrêter" : "Lancer"}
                     </button>
                   </section>
                 </div>
@@ -499,7 +538,7 @@ function App() {
                         <label className="text-[9px] font-bold text-white/30 uppercase">Status</label>
                         <div className="flex items-center gap-2">
                           <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-400' : 'bg-white/10'}`}></div>
-                          <span className="text-xs font-bold text-white/70">{isWatching ? "Running" : "Idle"}</span>
+                          <span className="text-xs font-bold text-white/70">{isWatching ? "Compiling..." : "Idle"}</span>
                         </div>
                       </div>
                     </div>
@@ -544,57 +583,103 @@ function App() {
           )}
 
           {view === "settings" && (
-            <div className="fade-in flex flex-col gap-8">
-              <header>
-                <h1 className="text-3xl font-bold mb-2">Paramètres</h1>
-                <p className="text-white/40 text-sm">Configuration globale.</p>
-              </header>
-              <section className="bg-[#121216] border border-white/5 rounded-2xl p-8 md:p-10">
-                <div className="flex flex-col gap-12 max-w-3xl">
-                  
-                  {/* Projets */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Dossier des Projets</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
-                        value={targetDir}
-                        onChange={(e) => setTargetDir(e.target.value)}
-                      />
-                      <button 
-                        onClick={handleSelectDir}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-xs font-bold text-white/60 hover:text-white transition-all flex items-center gap-2 shrink-0"
-                      >
-                        <FolderPlus size={14} />
-                        Parcourir
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Templates */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">Dossier des Templates</label>
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        className="flex-1 bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
-                        value={templateDir}
-                        onChange={(e) => setTemplateDir(e.target.value)}
-                      />
-                      <button 
-                        onClick={handleSelectTemplateDir}
-                        className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 rounded-xl text-xs font-bold text-white/60 hover:text-white transition-all flex items-center gap-2 shrink-0"
-                      >
-                        <FolderPlus size={14} />
-                        Parcourir
-                      </button>
-                    </div>
-                    <p className="text-[10px] text-white/20 px-1 italic">Utilisé pour générer de nouveaux projets LaTeX à partir de modèles.</p>
-                  </div>
-
+            <div className="fade-in flex flex-col gap-6">
+              <header className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-2xl font-bold text-white mb-1">Paramètres</h1>
+                  <p className="text-white/30 text-xs">Configuration de l'environnement.</p>
                 </div>
-              </section>
+                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                  <span className="text-[10px] font-bold text-white/50 uppercase tracking-tight">Système Prêt</span>
+                </div>
+              </header>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                {/* System Folders - Column Left */}
+                <div className="lg:col-span-7 space-y-6">
+                  <section className="bg-[#121216] border border-white/5 rounded-xl p-6">
+                    <div className="flex items-center gap-2 mb-8">
+                      <FolderOpen size={16} className="text-blue-500" />
+                      <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Chemins Système</h2>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Dossier Projets</label>
+                          <button onClick={handleSelectDir} disabled={isWatching} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-30">Modifier</button>
+                        </div>
+                        <div className="bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs font-mono text-white/50 truncate">
+                          {targetDir}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center px-1">
+                          <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Dossier Templates</label>
+                          <button onClick={handleSelectTemplateDir} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors">Modifier</button>
+                        </div>
+                        <div className="bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs font-mono text-white/50 truncate">
+                          {templateDir}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+
+                {/* Filters - Column Right */}
+                <div className="lg:col-span-5 space-y-6">
+                  <section className="bg-[#121216] border border-white/5 rounded-xl p-6 h-full flex flex-col">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="flex items-center gap-2">
+                        <EyeOff size={16} className="text-amber-500" />
+                        <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Filtres .tex</h2>
+                      </div>
+                      <span className="text-[10px] font-bold text-white/20 bg-white/5 px-2 py-0.5 rounded-full">{ignoredPatterns.length}</span>
+                    </div>
+                    
+                    <div className="space-y-4 flex-1">
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Mot-clé..."
+                          className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs focus:border-amber-500/50 outline-none transition-colors"
+                          value={newPattern}
+                          onChange={(e) => setNewPattern(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && addIgnoredPattern()}
+                        />
+                        <button 
+                          onClick={addIgnoredPattern}
+                          className="bg-amber-600/10 hover:bg-amber-600/20 text-amber-500 px-3 rounded-lg text-xs font-bold transition-all border border-amber-500/10"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
+                        {ignoredPatterns.map(pattern => (
+                          <div key={pattern} className="flex items-center gap-1.5 bg-white/5 border border-white/5 pl-2.5 pr-1 py-1 rounded-md group hover:border-amber-500/20 transition-all">
+                            <span className="text-[10px] font-bold text-white/40">{pattern}</span>
+                            <button 
+                              onClick={() => removeIgnoredPattern(pattern)}
+                              className="p-1 text-white/10 hover:text-red-400 transition-colors"
+                            >
+                              <X size={12} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    <div className="mt-6 pt-4 border-t border-white/5">
+                       <p className="text-[9px] text-white/20 leading-relaxed italic">
+                        Les noms contenant ces mots seront exclus du sélecteur racine.
+                      </p>
+                    </div>
+                  </section>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -603,11 +688,12 @@ function App() {
   );
 }
 
-function NavItem({ active, onClick, icon, label, collapsed }: { active: boolean, onClick: () => void, icon: any, label: string, collapsed: boolean }) {
+function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active: boolean, onClick: () => void, icon: any, label: string, collapsed: boolean, disabled?: boolean }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-white/30 hover:bg-white/5 hover:text-white/70'}`}
+      disabled={disabled}
+      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-white/30 hover:bg-white/5 hover:text-white/70'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
       title={collapsed ? label : ""}
     >
       <div className={`${active ? 'text-blue-500' : 'group-hover:text-white/70'} transition-colors shrink-0`}>{icon}</div>
@@ -616,18 +702,23 @@ function NavItem({ active, onClick, icon, label, collapsed }: { active: boolean,
   );
 }
 
-function ProjectListRow({ name, date, active, onClick }: { name: string, date: string, active: boolean, onClick: () => void }) {
+function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: { name: string, date: string, active: boolean, isWatching: boolean, disabled: boolean, onClick: () => void }) {
+  const activeColorClass = isWatching ? 'text-green-400' : 'text-blue-400';
+  const activeBgClass = isWatching ? 'bg-green-600/5 border-green-500/20 shadow-green-500/5' : 'bg-blue-600/5 border-blue-600/20 shadow-sm';
+  const iconBgClass = isWatching ? (active ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/5') : (active ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-white/10');
+
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? 'bg-blue-600/5 border-blue-600/20 shadow-sm' : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'}`}
+      disabled={disabled}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? activeBgClass : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
     >
-      <div className={`p-2.5 rounded-xl transition-colors ${active ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-white/10 group-hover/row:text-white/30'}`}>
-        <FolderOpen size={18} />
+      <div className={`p-2.5 rounded-xl transition-colors ${iconBgClass} group-hover/row:text-white/30`}>
+        {disabled && active ? <Lock size={18} className="text-white/20" /> : <FolderOpen size={18} />}
       </div>
       
       <div className="flex-1 min-w-0 text-left">
-        <span className={`block text-sm font-bold truncate ${active ? 'text-blue-400' : 'text-white/80'}`}>{name}</span>
+        <span className={`block text-sm font-bold truncate ${active ? activeColorClass : 'text-white/80'}`}>{name}</span>
         <div className="flex items-center gap-2 mt-0.5">
            <Calendar size={10} className="text-white/10" />
            <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">{date}</span>
@@ -635,7 +726,7 @@ function ProjectListRow({ name, date, active, onClick }: { name: string, date: s
       </div>
 
       <div className={`transition-all duration-300 ${active ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
-         <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+         <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-blue-500 shadow-lg shadow-blue-500/50'}`}></div>
       </div>
     </button>
   );
@@ -660,7 +751,7 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
       <mask id="vsc-mask0" maskType="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-        <path fillRule="evenodd" clipRule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7964 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.452552 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1264 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+        <path fillRule="evenodd" clipRule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1264 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
       </mask>
       <g mask="url(#vsc-mask0)">
         <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
@@ -668,7 +759,7 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
           <path d="M96.4614 89.2038L75.8569 99.1245C73.4719 100.273 70.6217 99.7884 68.75 97.9167L1.29858 36.4169C-0.515693 34.7627 -0.513607 31.9063 1.30308 30.2548L6.81272 25.246C8.29793 23.8958 10.5347 23.7964 12.1338 25.0095L93.3609 86.6301C96.086 88.6974 100 86.7538 100 83.3334V83.5726C100 85.9735 98.6246 88.1622 96.4614 89.2038Z" fill="#007ACC"/>
         </g>
         <g filter="url(#vsc-filter1_d)">
-          <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 98.5895 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08332C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
+          <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 98.5895 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08332C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6246 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
         </g>
         <g style={{ mixBlendMode: 'overlay' }} opacity="0.25">
           <path fillRule="evenodd" clipRule="evenodd" d="M70.8511 99.3171C72.4261 99.9306 74.2221 99.8913 75.8117 99.1264L96.4 89.2197C98.5634 88.1787 99.9392 85.9892 99.9392 83.5871V16.4133C99.9392 14.0112 98.5635 11.8217 96.4001 10.7807L75.8117 0.873695C73.7255 -0.13019 71.2838 0.115699 69.4527 1.44688C69.1912 1.63705 68.942 1.84937 68.7082 2.08335L29.2943 38.0414L12.1264 25.0096C10.5283 23.7964 8.29285 23.8959 6.80855 25.246L1.30225 30.2548C-0.513334 31.9064 -0.515415 34.7627 1.29775 36.4169L16.1863 50L1.29775 63.5832C-0.515415 65.2374 -0.513334 68.0937 1.30225 69.7452L6.80855 74.754C8.29285 76.1042 10.5283 76.2036 12.1264 74.9905L29.2943 61.9586L68.7082 97.9167C69.3317 98.5405 70.0638 99.0104 70.8511 99.3171ZM74.9544 27.2989L45.0483 50L74.9544 72.7012V27.2989Z" fill="url(#vsc-paint0_linear)"/>
