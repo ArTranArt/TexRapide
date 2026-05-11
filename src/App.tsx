@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2 } from "lucide-react";
@@ -34,6 +34,8 @@ function App() {
   const [confirmRemoval, setConfirmRemoval] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
   // Ignore files feature
   const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>(() => {
     const saved = localStorage.getItem("texrapide_ignored");
@@ -121,6 +123,9 @@ function App() {
     setProjectName(name);
     setIsWatching(false);
     setConfirmRemoval(false);
+
+    // Smooth scroll to top when activating a project
+    mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeselectProject = () => {
@@ -306,7 +311,7 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
+      <main ref={mainContentRef} className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
           
           {view === "dashboard" && (
