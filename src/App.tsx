@@ -1,13 +1,18 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
   binary: String;
   installed: boolean;
   version: string | null;
+}
+
+interface Project {
+  name: string;
+  last_modified: number;
 }
 
 function App() {
@@ -20,13 +25,14 @@ function App() {
   const [templateDir, setTemplateDir] = useState("/Users/arthur/templates/my_latex_templates");
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
-  const [existingProjects, setExistingProjects] = useState<string[]>([]);
+  const [existingProjects, setExistingProjects] = useState<Project[]>([]);
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
   const [isWatching, setIsWatching] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [confirmRemoval, setConfirmRemoval] = useState(false);
-
+  const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
+  
   const checkHealth = async () => {
     try {
       const status: HealthStatus[] = await invoke("check_latex_health");
@@ -38,7 +44,7 @@ function App() {
 
   const fetchProjects = async () => {
     try {
-      const projects: string[] = await invoke("list_projects", { targetDir: dashboardProjectsDir });
+      const projects: Project[] = await invoke("list_projects", { targetDir: dashboardProjectsDir });
       setExistingProjects(projects);
     } catch (error) {
       console.error("Failed to fetch projects:", error);
@@ -88,9 +94,9 @@ function App() {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
 
-  const activateProject = (name: string) => {
-    const path = `${dashboardProjectsDir}/${name}`;
-    setActiveProject(path);
+  const activateProject = (name: string, path?: string) => {
+    const fullPath = path || `${dashboardProjectsDir}/${name}`;
+    setActiveProject(fullPath);
     setProjectName(name);
     setIsWatching(false);
     setConfirmRemoval(false);
@@ -126,6 +132,7 @@ function App() {
       });
       if (selected && typeof selected === 'string') {
         setDashboardProjectsDir(selected);
+        setSortBy("alphabetical"); 
       }
     } catch (error) {
       console.error("Failed to select dashboard directory:", error);
@@ -153,7 +160,7 @@ function App() {
       const path: string = await invoke("create_project", { 
         args: { name: projectName, target_dir: targetDir, template_dir: fullTemplatePath } 
       });
-      setActiveProject(path);
+      activateProject(projectName, path); 
       setView("project");
     } catch (error) {
       alert(`Erreur : ${error}`);
@@ -192,6 +199,23 @@ function App() {
   useEffect(() => {
     checkHealth();
   }, []);
+
+  const sortedProjects = [...existingProjects].sort((a, b) => {
+    if (sortBy === "alphabetical") return a.name.localeCompare(b.name);
+    return b.last_modified - a.last_modified;
+  });
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp * 1000);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+
+    if (days === 0) return "Aujourd'hui";
+    if (days === 1) return "Hier";
+    if (days < 7) return `Il y a ${days} jours`;
+    return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+  };
 
   return (
     <div className="flex h-screen bg-[#0a0a0c] text-white font-sans selection:bg-blue-500/30 overflow-hidden">
@@ -356,51 +380,66 @@ function App() {
                 </section>
               )}
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
-                <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <Box size={18} className="text-blue-500" />
-                    <h2 className="text-lg font-bold">Récents</h2>
+              <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                  <div className="flex items-center gap-3">
+                    <Layers size={20} className="text-blue-500" />
+                    <h2 className="text-xl font-bold uppercase tracking-tight">Projets</h2>
                   </div>
-                  <div className="flex flex-col gap-2">
-                    {existingProjects.length > 0 ? (
-                      existingProjects.slice(0, 3).map(p => (
-                        <ProjectCard key={p} name={p} active={activeProject === `${targetDir}/${p}`} onClick={() => activateProject(p)} />
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-white/10 italic text-xs">Aucun projet récent.</div>
-                    )}
-                  </div>
-                </section>
-
-                <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8">
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-3">
-                      <Layers size={18} className="text-blue-500" />
-                      <h2 className="text-lg font-bold">Tous les Projets</h2>
+                  
+                  <div className="flex items-center gap-4">
+                    {/* Filters */}
+                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                      <button 
+                        onClick={() => setSortBy("recent")}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}
+                      >
+                        <Clock size={12} /> Récents
+                      </button>
+                      <button 
+                        onClick={() => setSortBy("alphabetical")}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40'}`}
+                      >
+                        <SortAsc size={12} /> A-Z
+                      </button>
                     </div>
-                    <div className="flex items-center gap-3">
+
+                    <div className="h-6 w-px bg-white/5"></div>
+
+                    <div className="flex items-center gap-2">
                       <button 
                         onClick={handleSelectDashboardDir}
-                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-blue-500 transition-all"
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/5 text-white/40 hover:text-blue-500 transition-all"
                         title="Explorer un autre dossier"
                       >
                         <FolderPlus size={16} />
                       </button>
-                      <span className="text-[10px] font-bold bg-white/5 px-2 py-0.5 rounded text-white/30">{existingProjects.length}</span>
+                      <span className="text-[10px] font-bold bg-white/5 px-2 py-1 rounded text-white/30">{existingProjects.length}</span>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                    {existingProjects.length > 0 ? (
-                      existingProjects.map(p => (
-                        <ProjectCard key={p} name={p} active={activeProject === `${targetDir}/${p}`} onClick={() => activateProject(p)} />
-                      ))
-                    ) : (
-                      <div className="text-center py-8 text-white/10 italic text-xs">Répertoire vide.</div>
-                    )}
-                  </div>
-                </section>
-              </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  {sortedProjects.length > 0 ? (
+                    sortedProjects.map(p => (
+                      <ProjectListRow 
+                        key={p.name} 
+                        name={p.name} 
+                        date={formatDate(p.last_modified)}
+                        active={activeProject === `${dashboardProjectsDir}/${p.name}`} 
+                        onClick={() => activateProject(p.name)} 
+                      />
+                    ))
+                  ) : (
+                    <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5">
+                      <div className="flex flex-col items-center gap-4">
+                        <FolderOpen size={48} className="text-white/5" />
+                        <p className="text-white/20 italic text-sm">Aucun projet trouvé dans ce répertoire.</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
           )}
 
@@ -577,15 +616,27 @@ function NavItem({ active, onClick, icon, label, collapsed }: { active: boolean,
   );
 }
 
-function ProjectCard({ name, active, onClick }: { name: string, active: boolean, onClick: () => void }) {
+function ProjectListRow({ name, date, active, onClick }: { name: string, date: string, active: boolean, onClick: () => void }) {
   return (
     <button 
       onClick={onClick}
-      className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${active ? 'bg-blue-600/5 border-blue-600/30' : 'bg-white/5 border-white/5 hover:bg-white/10'}`}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? 'bg-blue-600/5 border-blue-600/20 shadow-sm' : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'}`}
     >
-      <FolderOpen size={16} className={`shrink-0 ${active ? 'text-blue-500' : 'text-white/20'}`} />
-      <span className="flex-1 text-left text-sm font-medium truncate">{name}</span>
-      {active && <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0"></div>}
+      <div className={`p-2.5 rounded-xl transition-colors ${active ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-white/10 group-hover/row:text-white/30'}`}>
+        <FolderOpen size={18} />
+      </div>
+      
+      <div className="flex-1 min-w-0 text-left">
+        <span className={`block text-sm font-bold truncate ${active ? 'text-blue-400' : 'text-white/80'}`}>{name}</span>
+        <div className="flex items-center gap-2 mt-0.5">
+           <Calendar size={10} className="text-white/10" />
+           <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">{date}</span>
+        </div>
+      </div>
+
+      <div className={`transition-all duration-300 ${active ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'}`}>
+         <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+      </div>
     </button>
   );
 }
@@ -608,8 +659,8 @@ function InputGroup({ label, value, onChange, placeholder }: { label: string, va
 function VSCodeIcon({ size = 20 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <mask id="vsc-mask0" mask-type="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
-        <path fill-rule="evenodd" clip-rule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7965 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.454633 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1872 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
+      <mask id="vsc-mask0" maskType="alpha" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+        <path fillRule="evenodd" clipRule="evenodd" d="M70.9119 99.3171C72.4869 99.9307 74.2828 99.8914 75.8725 99.1264L96.4608 89.2197C98.6242 88.1787 100 85.9892 100 83.5872V16.4133C100 14.0113 98.6243 11.8218 96.4609 10.7808L75.8725 0.873756C73.7862 -0.130129 71.3446 0.11576 69.5135 1.44695C69.252 1.63711 69.0028 1.84943 68.769 2.08341L29.3551 38.0415L12.1872 25.0096C10.589 23.7964 8.35363 23.8959 6.86933 25.2461L1.36303 30.2549C-0.452552 31.9064 -0.454633 34.7627 1.35853 36.417L16.2471 50.0001L1.35853 63.5832C-0.452552 65.2374 -0.452552 68.0938 1.36303 69.7453L6.86933 74.7541C8.35363 76.1043 10.589 76.2037 12.1264 74.9905L29.3551 61.9587L68.769 97.9167C69.3925 98.5406 70.1246 99.0104 70.9119 99.3171ZM75.0152 27.2989L45.1091 50.0001L75.0152 72.7012V27.2989Z" fill="white"/>
       </mask>
       <g mask="url(#vsc-mask0)">
         <path d="M96.4614 10.7962L75.8569 0.875542C73.4719 -0.272773 70.6217 0.211611 68.75 2.08333L1.29858 63.5832C-0.515693 65.2373 -0.513607 68.0937 1.30308 69.7452L6.81272 74.754C8.29793 76.1042 10.5347 76.2036 12.1338 74.9905L93.3609 13.3699C96.086 11.3026 100 13.2462 100 16.6667V16.4275C100 14.0265 98.6246 11.8378 96.4614 10.7962Z" fill="#0065A9"/>
@@ -620,12 +671,12 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
           <path d="M75.8578 99.1263C73.4721 100.274 70.6219 99.7885 68.75 97.9166C71.0564 100.223 75 98.5895 75 95.3278V4.67213C75 1.41039 71.0564 -0.223106 68.75 2.08332C70.6219 0.211402 73.4721 -0.273666 75.8578 0.873633L96.4587 10.7807C98.6234 11.8217 100 14.0112 100 16.4132V83.5871C100 85.9891 98.6234 88.1786 96.4586 89.2196L75.8578 99.1263Z" fill="#1F9CF0"/>
         </g>
         <g style={{ mixBlendMode: 'overlay' }} opacity="0.25">
-          <path fill-rule="evenodd" clip-rule="evenodd" d="M70.8511 99.3171C72.4261 99.9306 74.2221 99.8913 75.8117 99.1264L96.4 89.2197C98.5634 88.1787 99.9392 85.9892 99.9392 83.5871V16.4133C99.9392 14.0112 98.5635 11.8217 96.4001 10.7807L75.8117 0.873695C73.7255 -0.13019 71.2838 0.115699 69.4527 1.44688C69.1912 1.63705 68.942 1.84937 68.7082 2.08335L29.2943 38.0414L12.1264 25.0096C10.5283 23.7964 8.29285 23.8959 6.80855 25.246L1.30225 30.2548C-0.513334 31.9064 -0.515415 34.7627 1.29775 36.4169L16.1863 50L1.29775 63.5832C-0.515415 65.2374 -0.513334 68.0937 1.30225 69.7452L6.80855 74.754C8.29285 76.1042 10.5283 76.2036 12.1264 74.9905L29.2943 61.9586L68.7082 97.9167C69.3317 98.5405 70.0638 99.0104 70.8511 99.3171ZM74.9544 27.2989L45.0483 50L74.9544 72.7012V27.2989Z" fill="url(#vsc-paint0_linear)"/>
+          <path fillRule="evenodd" clipRule="evenodd" d="M70.8511 99.3171C72.4261 99.9306 74.2221 99.8913 75.8117 99.1264L96.4 89.2197C98.5634 88.1787 99.9392 85.9892 99.9392 83.5871V16.4133C99.9392 14.0112 98.5635 11.8217 96.4001 10.7807L75.8117 0.873695C73.7255 -0.13019 71.2838 0.115699 69.4527 1.44688C69.1912 1.63705 68.942 1.84937 68.7082 2.08335L29.2943 38.0414L12.1264 25.0096C10.5283 23.7964 8.29285 23.8959 6.80855 25.246L1.30225 30.2548C-0.513334 31.9064 -0.515415 34.7627 1.29775 36.4169L16.1863 50L1.29775 63.5832C-0.515415 65.2374 -0.513334 68.0937 1.30225 69.7452L6.80855 74.754C8.29285 76.1042 10.5283 76.2036 12.1264 74.9905L29.2943 61.9586L68.7082 97.9167C69.3317 98.5405 70.0638 99.0104 70.8511 99.3171ZM74.9544 27.2989L45.0483 50L74.9544 72.7012V27.2989Z" fill="url(#vsc-paint0_linear)"/>
         </g>
       </g>
       <defs>
-        <filter id="vsc-filter0_d" x="-8.39411" y="15.8291" width="116.727" height="92.2456" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+        <filter id="vsc-filter0_d" x="-8.39411" y="15.8291" width="116.727" height="92.2456" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+          <feFlood floodOpacity="0" result="BackgroundImageFix"/>
           <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
           <feOffset/>
           <feGaussianBlur stdDeviation="4.16667"/>
@@ -633,8 +684,8 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
           <feBlend mode="overlay" in2="BackgroundImageFix" result="effect1_dropShadow"/>
           <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
         </filter>
-        <filter id="vsc-filter1_d" x="60.4167" y="-8.07558" width="47.9167" height="116.151" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
-          <feFlood flood-opacity="0" result="BackgroundImageFix"/>
+        <filter id="vsc-filter1_d" x="60.4167" y="-8.07558" width="47.9167" height="116.151" filterUnits="userSpaceOnUse" colorInterpolationFilters="sRGB">
+          <feFlood floodOpacity="0" result="BackgroundImageFix"/>
           <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"/>
           <feOffset/>
           <feGaussianBlur stdDeviation="4.16667"/>
@@ -643,8 +694,8 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
           <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow" result="shape"/>
         </filter>
         <linearGradient id="vsc-paint0_linear" x1="49.9392" y1="0.257812" x2="49.9392" y2="99.7423" gradientUnits="userSpaceOnUse">
-          <stop stop-color="white"/>
-          <stop offset="1" stop-color="white" stop-opacity="0"/>
+          <stop stopColor="white"/>
+          <stop offset="1" stopColor="white" stopOpacity="0"/>
         </linearGradient>
       </defs>
     </svg>

@@ -35,6 +35,12 @@ pub fn open_in_vscode(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[derive(serde::Serialize)]
+pub struct ProjectInfo {
+    pub name: String,
+    pub last_modified: u64,
+}
+
 #[derive(serde::Deserialize)]
 pub struct CreateProjectArgs {
     pub name: String,
@@ -43,7 +49,7 @@ pub struct CreateProjectArgs {
 }
 
 #[tauri::command]
-pub fn list_projects(target_dir: String) -> Result<Vec<String>, String> {
+pub fn list_projects(target_dir: String) -> Result<Vec<ProjectInfo>, String> {
     let path = Path::new(&target_dir);
     if !path.exists() {
         return Ok(Vec::new());
@@ -53,15 +59,27 @@ pub fn list_projects(target_dir: String) -> Result<Vec<String>, String> {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries {
             if let Ok(entry) = entry {
-                if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+                let p = entry.path();
+                if p.is_dir() {
                     if let Some(name) = entry.file_name().to_str() {
-                        projects.push(name.to_string());
+                        let metadata = fs::metadata(&p).map_err(|e| e.to_string())?;
+                        let last_modified = metadata.modified()
+                            .map_err(|e| e.to_string())?
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map_err(|e| e.to_string())?
+                            .as_secs();
+
+                        projects.push(ProjectInfo {
+                            name: name.to_string(),
+                            last_modified,
+                        });
                     }
                 }
             }
         }
     }
-    projects.sort();
+    // Sort by modification date descending by default
+    projects.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
     Ok(projects)
 }
 
