@@ -229,7 +229,7 @@ function App() {
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[180px]">
+                <section className="bg-[#121216] border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px]">
                   {/* Close button */}
                   {!confirmRemoval ? (
                     <button 
@@ -314,7 +314,7 @@ function App() {
                   </div>
                 </section>
               ) : (
-                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[180px]">
+                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[210px]">
                    <FolderOpen size={32} className="text-white/10 mb-4" />
                    <p className="text-white/30 text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
                 </section>
