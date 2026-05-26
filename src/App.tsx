@@ -23,6 +23,9 @@ function App() {
   const hasSkim = health.find(h => h.binary === "skim")?.installed ?? false;
   const isSystemReady = hasDistribution && hasCliTools && hasSkim;
 
+  const [analysisStep, setAnalysisStep] = useState<number>(3);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
@@ -58,10 +61,32 @@ function App() {
 
   const checkHealth = async () => {
     try {
+      setIsAnalyzing(true);
+      setAnalysisStep(0);
+      
       const status: HealthStatus[] = await invoke("check_latex_health");
-      setHealth(status);
+      
+      // Etape 0 -> 1 : Analyse de la distribution
+      setTimeout(() => {
+        setAnalysisStep(1);
+        
+        // Etape 1 -> 2 : Analyse des outils CLI
+        setTimeout(() => {
+          setAnalysisStep(2);
+          
+          // Etape 2 -> 3 : Analyse du lecteur Skim
+          setTimeout(() => {
+            setHealth(status);
+            setAnalysisStep(3);
+            setIsAnalyzing(false);
+          }, 800);
+        }, 800);
+      }, 800);
+
     } catch (error) {
       console.error("Health check failed:", error);
+      setIsAnalyzing(false);
+      setAnalysisStep(3);
     }
   };
 
@@ -703,76 +728,250 @@ function App() {
                   </div>
                   <button 
                     onClick={checkHealth}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-[10px] font-bold border border-white/5"
+                    disabled={isAnalyzing}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-[10px] font-bold border border-white/5 disabled:opacity-35 disabled:cursor-not-allowed"
                     title="Relancer le diagnostic"
                   >
-                    <RefreshCw size={10} className="hover:rotate-180 transition-transform duration-500" />
-                    Re-analyser
+                    <RefreshCw size={10} className={`transition-transform duration-500 ${isAnalyzing ? 'animate-spin' : 'hover:rotate-180'}`} />
+                    {isAnalyzing ? "Analyse..." : "Re-analyser"}
                   </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="flex flex-col md:flex-row items-stretch md:items-stretch gap-4 md:gap-0">
+                  
                   {/* 1. LaTeX Distribution */}
-                  <div className={`p-4 rounded-xl border transition-all ${hasDistribution ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs font-bold text-white/80">1. Distribution LaTeX</span>
-                      <div className={`w-2.5 h-2.5 rounded-full ${hasDistribution ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
-                    </div>
-                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
-                      MacTeX, BasicTeX ou TeX Live requis pour la structure et la compilation des documents.
-                    </p>
-                    {hasDistribution ? (
-                      <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block truncate max-w-full">
-                        {health.find(h => h.binary === "distribution")?.version || "Détectée"}
+                  {(() => {
+                    const checking = isAnalyzing && analysisStep === 0;
+                    const active = !isAnalyzing || analysisStep >= 1;
+                    const success = hasDistribution;
+                    
+                    const cardBgBorder = checking 
+                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500/[0.02] border-green-500/10' 
+                          : 'bg-red-500/[0.02] border-red-500/10'
+                        : 'bg-white/[0.01] border-white/5 opacity-30';
+                    
+                    const ledColor = checking 
+                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
+                          : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                        : 'bg-white/10';
+
+                    return (
+                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-white/80">1. Distribution LaTeX</span>
+                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
+                          </div>
+                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
+                            MacTeX, BasicTeX ou TeX Live requis pour la structure et la compilation des documents.
+                          </p>
+                        </div>
+                        <div>
+                          {checking ? (
+                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Recherche...</span>
+                          ) : active ? (
+                            success ? (
+                              <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block truncate max-w-full">
+                                {health.find(h => h.binary === "distribution")?.version || "Détectée"}
+                              </div>
+                            ) : (
+                              <div className="text-[9px] font-bold text-red-400 bg-red-500/5 px-2 py-1 rounded inline-block">
+                                Non détectée (MacTeX requis)
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[9px] text-white/20">En attente...</span>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-[9px] font-bold text-red-400 bg-red-500/5 px-2 py-1 rounded inline-block">
-                        Non détectée (MacTeX requis)
+                    );
+                  })()}
+
+                  {/* Connector 1 */}
+                  {(() => {
+                    const active = !isAnalyzing || analysisStep >= 1;
+                    const success = hasDistribution;
+                    const color = active ? (success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                    const isAnimating = isAnalyzing && analysisStep === 0;
+                    return (
+                      <div className="hidden md:flex items-center justify-center w-10 shrink-0">
+                        <svg className="w-full h-2" viewBox="0 0 40 10" preserveAspectRatio="none">
+                          <line 
+                            x1="0" 
+                            y1="5" 
+                            x2="40" 
+                            y2="5" 
+                            stroke={color} 
+                            strokeWidth="2" 
+                            strokeDasharray="6,4" 
+                            className={`transition-all duration-500 ${isAnimating || (active && success) ? 'animate-dash' : ''}`}
+                          />
+                        </svg>
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   {/* 2. CLI Tools */}
-                  <div className={`p-4 rounded-xl border transition-all ${hasCliTools ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs font-bold text-white/80">2. Outils en Ligne de Commande</span>
-                      <div className={`w-2.5 h-2.5 rounded-full ${hasCliTools ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
-                    </div>
-                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
-                      Les exécutables requis pour l'automatisation : pdflatex, latexmk et bibtex.
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
-                      {["pdflatex", "latexmk", "bibtex"].map(bin => {
-                        const isBinInstalled = health.find(h => h.binary === bin)?.installed ?? false;
-                        return (
-                          <div key={bin} className={`text-[9px] font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${isBinInstalled ? 'bg-green-500/5 border-green-500/10 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
-                            <div className={`w-1 h-1 rounded-full ${isBinInstalled ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                            {bin}
+                  {(() => {
+                    const checking = isAnalyzing && analysisStep === 1;
+                    const active = !isAnalyzing || analysisStep >= 2;
+                    const success = hasCliTools;
+                    
+                    const cardBgBorder = checking 
+                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500/[0.02] border-green-500/10' 
+                          : 'bg-red-500/[0.02] border-red-500/10'
+                        : 'bg-white/[0.01] border-white/5 opacity-30';
+                    
+                    const ledColor = checking 
+                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
+                          : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
+                        : 'bg-white/10';
+
+                    return (
+                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-white/80">2. Outils CLI</span>
+                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  </div>
+                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
+                            Les exécutables requis pour l'automatisation : pdflatex, latexmk et bibtex.
+                          </p>
+                        </div>
+                        <div className="flex flex-col gap-1.5 w-full">
+                          {checking ? (
+                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Vérification des binaires...</span>
+                          ) : active ? (
+                            <div className="grid grid-cols-1 gap-1 w-full animate-fade-in">
+                              {["pdflatex", "latexmk", "bibtex"].map(bin => {
+                                const isBinInstalled = health.find(h => h.binary === bin)?.installed ?? false;
+                                const rawVersion = health.find(h => h.binary === bin)?.version ?? "";
+                                
+                                let displayVer = "Détecté";
+                                if (isBinInstalled && rawVersion) {
+                                  if (bin === "pdflatex") {
+                                    const match = rawVersion.match(/3\.14\S*/);
+                                    displayVer = match ? `v${match[0]}` : "Détecté";
+                                  } else if (bin === "latexmk") {
+                                    const match = rawVersion.match(/v\d+\.\d+\S*/);
+                                    displayVer = match ? match[0] : "Détecté";
+                                  } else if (bin === "bibtex") {
+                                    const match = rawVersion.match(/0\.99\S*/);
+                                    displayVer = match ? `v${match[0]}` : "Détecté";
+                                  } else {
+                                    displayVer = rawVersion.substring(0, 10);
+                                  }
+                                }
+
+                                return (
+                                  <div key={bin} className={`text-[9px] font-mono px-2 py-1 rounded border flex items-center justify-between ${isBinInstalled ? 'bg-green-500/5 border-green-500/10 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
+                                    <div className="flex items-center gap-1">
+                                      <div className={`w-1 h-1 rounded-full ${isBinInstalled ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                                      <span className="font-bold">{bin}</span>
+                                    </div>
+                                    {isBinInstalled && <span className="text-[8px] text-white/30 font-semibold">{displayVer}</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-[9px] text-white/20">En attente...</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Connector 2 */}
+                  {(() => {
+                    const active = !isAnalyzing || analysisStep >= 2;
+                    const success = hasCliTools;
+                    const color = active ? (success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                    const isAnimating = isAnalyzing && analysisStep === 1;
+                    return (
+                      <div className="hidden md:flex items-center justify-center w-10 shrink-0">
+                        <svg className="w-full h-2" viewBox="0 0 40 10" preserveAspectRatio="none">
+                          <line 
+                            x1="0" 
+                            y1="5" 
+                            x2="40" 
+                            y2="5" 
+                            stroke={color} 
+                            strokeWidth="2" 
+                            strokeDasharray="6,4" 
+                            className={`transition-all duration-500 ${isAnimating || (active && success) ? 'animate-dash' : ''}`}
+                          />
+                        </svg>
+                      </div>
+                    );
+                  })()}
 
                   {/* 3. Skim PDF Reader */}
-                  <div className={`p-4 rounded-xl border transition-all ${hasSkim ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
-                    <div className="flex items-start justify-between mb-3">
-                      <span className="text-xs font-bold text-white/80">3. Lecteur PDF Skim</span>
-                      <div className={`w-2.5 h-2.5 rounded-full ${hasSkim ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
-                    </div>
-                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
-                      Recommandé pour l'aperçu PDF automatique et synchronisé en temps réel sans blocage.
-                    </p>
-                    {hasSkim ? (
-                      <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block">
-                        Lecteur Skim détecté
+                  {(() => {
+                    const checking = isAnalyzing && analysisStep === 2;
+                    const active = !isAnalyzing || analysisStep >= 3;
+                    const success = hasSkim;
+                    
+                    const cardBgBorder = checking 
+                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500/[0.02] border-green-500/10' 
+                          : 'bg-amber-500/[0.02] border-amber-500/10'
+                        : 'bg-white/[0.01] border-white/5 opacity-30';
+                    
+                    const ledColor = checking 
+                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
+                      : active 
+                        ? success 
+                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
+                          : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
+                        : 'bg-white/10';
+
+                    return (
+                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-xs font-bold text-white/80">3. Lecteur PDF Skim</span>
+                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
+                          </div>
+                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
+                            Recommandé pour l'aperçu PDF automatique et synchronisé en temps réel sans blocage.
+                          </p>
+                        </div>
+                        <div>
+                          {checking ? (
+                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Détection de Skim.app...</span>
+                          ) : active ? (
+                            success ? (
+                              <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block">
+                                {health.find(h => h.binary === "skim")?.version || "Détecté"}
+                              </div>
+                            ) : (
+                              <div className="text-[9px] font-bold text-amber-400 bg-amber-500/5 px-2 py-1 rounded inline-block">
+                                Non détecté (Optionnel)
+                              </div>
+                            )
+                          ) : (
+                            <span className="text-[9px] text-white/20">En attente...</span>
+                          )}
+                        </div>
                       </div>
-                    ) : (
-                      <div className="text-[9px] font-bold text-amber-400 bg-amber-500/5 px-2 py-1 rounded inline-block">
-                        Non détecté (Skim recommandé)
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()}
+
                 </div>
               </section>
 

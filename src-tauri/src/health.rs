@@ -68,10 +68,33 @@ pub fn check_latex_health() -> Vec<HealthStatus> {
         output.is_ok() && output.unwrap().status.success()
     };
 
+    let skim_version = if has_skim {
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg("version of application \"Skim\"")
+            .output();
+        if let Ok(o) = output {
+            if o.status.success() {
+                let ver = String::from_utf8_lossy(&o.stdout).trim().to_string();
+                if !ver.is_empty() {
+                    Some(format!("Version {}", ver))
+                } else {
+                    Some("Installé".to_string())
+                }
+            } else {
+                Some("Installé".to_string())
+            }
+        } else {
+            Some("Installé".to_string())
+        }
+    } else {
+        None
+    };
+
     statuses.push(HealthStatus {
         binary: "skim".to_string(),
         installed: has_skim,
-        version: if has_skim { Some("Lecteur Skim détecté".to_string()) } else { None },
+        version: skim_version,
     });
 
     statuses
