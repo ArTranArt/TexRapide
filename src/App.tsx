@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Box, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Trash2, Search, Check } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -18,6 +18,11 @@ interface Project {
 function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project">("dashboard");
   const [health, setHealth] = useState<HealthStatus[]>([]);
+  const hasDistribution = health.find(h => h.binary === "distribution")?.installed ?? false;
+  const hasCliTools = health.filter(h => ["pdflatex", "latexmk", "bibtex"].includes(h.binary.toString())).every(h => h.installed);
+  const hasSkim = health.find(h => h.binary === "skim")?.installed ?? false;
+  const isSystemReady = hasDistribution && hasCliTools && hasSkim;
+
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
@@ -681,12 +686,96 @@ function App() {
                   <h1 className="text-2xl font-bold text-white mb-1">Paramètres</h1>
                   <p className="text-white/30 text-xs">Configuration de l'environnement.</p>
                 </div>
-                <div className="flex items-center gap-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500"></div>
-                  <span className="text-[10px] font-bold text-white/50 uppercase tracking-tight">Système Prêt</span>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
+                    {isSystemReady ? "Système Prêt" : "Configuration Requise"}
+                  </span>
                 </div>
               </header>
-              
+
+              {/* Diagnostic de l'Environnement */}
+              <section className="bg-[#121216] border border-white/5 rounded-xl p-6 shadow-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-2">
+                    <Activity size={16} className="text-blue-500" />
+                    <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Diagnostic Système</h2>
+                  </div>
+                  <button 
+                    onClick={checkHealth}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-[10px] font-bold border border-white/5"
+                    title="Relancer le diagnostic"
+                  >
+                    <RefreshCw size={10} className="hover:rotate-180 transition-transform duration-500" />
+                    Re-analyser
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* 1. LaTeX Distribution */}
+                  <div className={`p-4 rounded-xl border transition-all ${hasDistribution ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-xs font-bold text-white/80">1. Distribution LaTeX</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${hasDistribution ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
+                    </div>
+                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
+                      MacTeX, BasicTeX ou TeX Live requis pour la structure et la compilation des documents.
+                    </p>
+                    {hasDistribution ? (
+                      <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block truncate max-w-full">
+                        {health.find(h => h.binary === "distribution")?.version || "Détectée"}
+                      </div>
+                    ) : (
+                      <div className="text-[9px] font-bold text-red-400 bg-red-500/5 px-2 py-1 rounded inline-block">
+                        Non détectée (MacTeX requis)
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. CLI Tools */}
+                  <div className={`p-4 rounded-xl border transition-all ${hasCliTools ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-xs font-bold text-white/80">2. Outils en Ligne de Commande</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${hasCliTools ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
+                    </div>
+                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
+                      Les exécutables requis pour l'automatisation : pdflatex, latexmk et bibtex.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {["pdflatex", "latexmk", "bibtex"].map(bin => {
+                        const isBinInstalled = health.find(h => h.binary === bin)?.installed ?? false;
+                        return (
+                          <div key={bin} className={`text-[9px] font-mono px-2 py-0.5 rounded border flex items-center gap-1 ${isBinInstalled ? 'bg-green-500/5 border-green-500/10 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
+                            <div className={`w-1 h-1 rounded-full ${isBinInstalled ? 'bg-green-400' : 'bg-red-400'}`}></div>
+                            {bin}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* 3. Skim PDF Reader */}
+                  <div className={`p-4 rounded-xl border transition-all ${hasSkim ? 'bg-green-500/[0.02] border-green-500/10' : 'bg-red-500/[0.02] border-red-500/10'}`}>
+                    <div className="flex items-start justify-between mb-3">
+                      <span className="text-xs font-bold text-white/80">3. Lecteur PDF Skim</span>
+                      <div className={`w-2.5 h-2.5 rounded-full ${hasSkim ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`}></div>
+                    </div>
+                    <p className="text-[11px] text-white/40 mb-2 leading-relaxed">
+                      Recommandé pour l'aperçu PDF automatique et synchronisé en temps réel sans blocage.
+                    </p>
+                    {hasSkim ? (
+                      <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block">
+                        Lecteur Skim détecté
+                      </div>
+                    ) : (
+                      <div className="text-[9px] font-bold text-amber-400 bg-amber-500/5 px-2 py-1 rounded inline-block">
+                        Non détecté (Skim recommandé)
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </section>
+
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* System Folders - Column Left */}
                 <div className="lg:col-span-7 space-y-6">
@@ -821,21 +910,6 @@ function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: {
          <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-500 shadow-lg shadow-green-500/50' : 'bg-blue-500 shadow-lg shadow-blue-500/50'}`}></div>
       </div>
     </button>
-  );
-}
-
-function InputGroup({ label, value, onChange, placeholder }: { label: string, value: string, onChange: (v: string) => void, placeholder?: string }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest px-1">{label}</label>
-      <input 
-        type="text" 
-        className="bg-black/40 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors truncate"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-      />
-    </div>
   );
 }
 
