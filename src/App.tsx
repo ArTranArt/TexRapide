@@ -25,6 +25,8 @@ function App() {
 
   const [analysisStep, setAnalysisStep] = useState<number>(3);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [hoveredNode, setHoveredNode] = useState<"distribution" | "cli" | "skim" | null>(null);
+  const [selectedNode, setSelectedNode] = useState<"distribution" | "cli" | "skim" | null>(null);
 
   const pdflatexInfo = health.find(h => h.binary === "pdflatex");
   const latexmkInfo = health.find(h => h.binary === "latexmk");
@@ -94,6 +96,8 @@ function App() {
 
   const checkHealth = async () => {
     try {
+      setSelectedNode(null);
+      setHoveredNode(null);
       setIsAnalyzing(true);
       setAnalysisStep(0);
       
@@ -753,7 +757,10 @@ function App() {
               </header>
 
               {/* Diagnostic de l'Environnement */}
-              <section className="bg-[#121216] border border-white/5 rounded-xl p-5 md:p-6 shadow-xl">
+              <section 
+                className="bg-[#121216] border border-white/5 rounded-xl p-5 md:p-6 shadow-xl"
+                onClick={() => setSelectedNode(null)}
+              >
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Activity size={16} className="text-blue-500" />
@@ -772,7 +779,15 @@ function App() {
 
                 {/* Pipeline visual container */}
                 {(() => {
-                  // Card 1 state
+                  const isNode1Hovered = hoveredNode === "distribution";
+                  const isNode2Hovered = hoveredNode === "cli";
+                  const isNode3Hovered = hoveredNode === "skim";
+
+                  const isNode1Active = isNode1Hovered || selectedNode === "distribution";
+                  const isNode2Active = isNode2Hovered || selectedNode === "cli";
+                  const isNode3Active = isNode3Hovered || selectedNode === "skim";
+
+                  // Node 1 state
                   const checking1 = isAnalyzing && analysisStep === 0;
                   const active1 = !isAnalyzing || analysisStep >= 1;
                   const success1 = hasDistribution;
@@ -780,11 +795,11 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active1
                       ? success1
-                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
-                        : 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
+                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 cursor-pointer ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
-                  // Card 2 state
+                  // Node 2 state
                   const checking2 = isAnalyzing && analysisStep === 1;
                   const active2 = !isAnalyzing || analysisStep >= 2;
                   const success2 = hasCliTools;
@@ -792,11 +807,11 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active2
                       ? success2
-                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
-                        : 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
+                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 cursor-pointer ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
-                  // Card 3 state
+                  // Node 3 state
                   const checking3 = isAnalyzing && analysisStep === 2;
                   const active3 = !isAnalyzing || analysisStep >= 3;
                   const success3 = hasSkim;
@@ -804,8 +819,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active3
                       ? success3
-                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
-                        : 'border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-amber-500 bg-amber-500/10 text-amber-400 cursor-pointer ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
                   // Line 1 status
@@ -825,6 +840,8 @@ function App() {
                   let statusText = "Système non analysé";
                   let statusSubtext = "Lisez les paramètres ou lancez un diagnostic.";
 
+                  const activeDisplayNode = hoveredNode || selectedNode;
+
                   if (isAnalyzing) {
                     if (analysisStep === 0) {
                       statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
@@ -836,31 +853,40 @@ function App() {
                       statusSubtext = "Exécution de pdflatex, latexmk et bibtex...";
                     } else if (analysisStep === 2) {
                       statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
-                      statusText = "Détection du lecteur PDF Skim...";
+                      statusText = "Détecter le lecteur PDF Skim...";
                       statusSubtext = "Vérification de la présence de Skim.app sur votre Mac...";
+                    }
+                  } else if (activeDisplayNode) {
+                    if (activeDisplayNode === "distribution") {
+                      statusIcon = <Layers size={16} className={hasDistribution ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
+                      statusText = "Distribution LaTeX";
+                      statusSubtext = hasDistribution
+                        ? `${distributionInfo?.version || "Détectée et configurée."}`
+                        : "Aucune distribution détectée (MacTeX/BasicTeX requis).";
+                    } else if (activeDisplayNode === "cli") {
+                      statusIcon = <Terminal size={16} className={hasCliTools ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
+                      statusText = "Outils en Ligne de Commande";
+                      statusSubtext = hasCliTools
+                        ? `pdflatex (${pdflatexVer}), latexmk (${latexmkVer}), bibtex (${bibtexVer}) opérationnels.`
+                        : `Outils manquants ou incomplets. pdflatex : ${pdflatexVer}, latexmk : ${latexmkVer}, bibtex : ${bibtexVer}.`;
+                    } else if (activeDisplayNode === "skim") {
+                      statusIcon = <BookOpen size={16} className={hasSkim ? "text-green-400 shrink-0" : "text-amber-400 shrink-0"} />;
+                      statusText = "Lecteur PDF Skim";
+                      statusSubtext = hasSkim
+                        ? `Lecteur Skim (${skimVer}) détecté et configuré.`
+                        : "Skim non détecté. Recommandé pour l'aperçu automatique sans blocage du PDF.";
                     }
                   } else if (health.length > 0) {
                     if (isSystemReady) {
                       statusIcon = <Check size={16} className="text-green-500 shrink-0" />;
-                      statusText = "Système prêt et entièrement opérationnel !";
-                      statusSubtext = `${distributionInfo?.version || "Distribution LaTeX détectée"}`;
+                      statusText = "Système prêt et opérationnel";
+                      statusSubtext = "Survolez ou cliquez sur les cercles pour inspecter les composants.";
                     } else {
-                      const missing = [];
-                      if (!hasDistribution) missing.push("distribution LaTeX");
-                      if (!hasCliTools) {
-                        const missingCli = [];
-                        if (!pdflatexInfo?.installed) missingCli.push("pdflatex");
-                        if (!latexmkInfo?.installed) missingCli.push("latexmk");
-                        if (!bibtexInfo?.installed) missingCli.push("bibtex");
-                        missing.push(`outils CLI (${missingCli.join(', ')})`);
-                      }
-                      if (!hasSkim) missing.push("lecteur Skim");
-
                       statusIcon = <Info size={16} className={hasDistribution && hasCliTools ? "text-amber-500 shrink-0" : "text-red-500 shrink-0"} />;
                       statusText = hasDistribution && hasCliTools 
-                        ? "Configuration valide (Skim recommandé mais facultatif)" 
+                        ? "Configuration fonctionnelle (Skim recommandé)" 
                         : "Configuration requise incomplète";
-                      statusSubtext = `Manquant : ${missing.join(', ')}.`;
+                      statusSubtext = "Certains composants requis sont manquants. Survolez ou cliquez sur les cercles pour plus de détails.";
                     }
                   }
 
@@ -870,9 +896,17 @@ function App() {
                       <div className="flex items-start justify-between max-w-lg mx-auto w-full px-4 pt-3 pb-8 select-none relative">
                         
                         {/* Step 1 Node */}
-                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                        <div 
+                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          onMouseEnter={() => setHoveredNode("distribution")}
+                          onMouseLeave={() => setHoveredNode(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNode(selectedNode === "distribution" ? null : "distribution");
+                          }}
+                        >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node1Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node1Style}`}
                             title="Distribution LaTeX (MacTeX/BasicTeX)"
                           >
                             <Layers size={14} />
@@ -896,9 +930,17 @@ function App() {
                         </div>
 
                         {/* Step 2 Node */}
-                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                        <div 
+                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          onMouseEnter={() => setHoveredNode("cli")}
+                          onMouseLeave={() => setHoveredNode(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNode(selectedNode === "cli" ? null : "cli");
+                          }}
+                        >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node2Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node2Style}`}
                             title="Outils CLI (pdflatex, latexmk, bibtex)"
                           >
                             <Terminal size={14} />
@@ -922,9 +964,17 @@ function App() {
                         </div>
 
                         {/* Step 3 Node */}
-                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                        <div 
+                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          onMouseEnter={() => setHoveredNode("skim")}
+                          onMouseLeave={() => setHoveredNode(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedNode(selectedNode === "skim" ? null : "skim");
+                          }}
+                        >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node3Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node3Style}`}
                             title="Lecteur PDF Skim"
                           >
                             <BookOpen size={14} />
@@ -937,37 +987,16 @@ function App() {
                       </div>
 
                       {/* Status Message Area */}
-                      <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 shrink-0">
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[90px] transition-all duration-300 select-none">
+                        <div className="flex flex-col items-center gap-2.5 max-w-md w-full animate-fade-in">
+                          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 shrink-0 flex items-center justify-center">
                             {statusIcon}
                           </div>
-                          <div className="flex flex-col gap-0.5 min-w-0">
-                            <span className="text-xs font-bold text-white/90 truncate">{statusText}</span>
-                            <span className="text-[10px] text-white/30 truncate">{statusSubtext}</span>
+                          <div className="flex flex-col gap-0.5 text-center items-center">
+                            <span className="text-xs font-bold text-white/90 text-center">{statusText}</span>
+                            <span className="text-[10px] text-white/30 leading-relaxed text-center">{statusSubtext}</span>
                           </div>
                         </div>
-
-                        {/* Versions list */}
-                        {!isAnalyzing && health.length > 0 && (
-                          <div className="flex flex-wrap items-center gap-1.5 text-[8px] font-mono text-white/40 border-t border-white/5 sm:border-t-0 pt-2.5 sm:pt-0 shrink-0">
-                            {hasDistribution && (
-                              <span className="bg-white/5 border border-white/5 px-2 py-0.5 rounded text-green-400/80">dist: ok</span>
-                            )}
-                            <span className={`px-2 py-0.5 rounded border ${pdflatexInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
-                              pdflatex: {pdflatexVer}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded border ${latexmkInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
-                              latexmk: {latexmkVer}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded border ${bibtexInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
-                              bibtex: {bibtexVer}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded border ${skimInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-amber-500/5 border-amber-500/10 text-amber-400/80'}`}>
-                              skim: {skimVer}
-                            </span>
-                          </div>
-                        )}
                       </div>
                     </div>
                   );
