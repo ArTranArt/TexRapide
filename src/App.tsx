@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -25,6 +25,39 @@ function App() {
 
   const [analysisStep, setAnalysisStep] = useState<number>(3);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+
+  const pdflatexInfo = health.find(h => h.binary === "pdflatex");
+  const latexmkInfo = health.find(h => h.binary === "latexmk");
+  const bibtexInfo = health.find(h => h.binary === "bibtex");
+  const skimInfo = health.find(h => h.binary === "skim");
+  const distributionInfo = health.find(h => h.binary === "distribution");
+
+  const formatBinaryVersion = (bin: string, rawVersion: string | null | undefined) => {
+    if (!rawVersion) return "non détecté";
+    if (bin === "pdflatex") {
+      const match = rawVersion.match(/3\.14\S*/);
+      return match ? `v${match[0]}` : "détecté";
+    }
+    if (bin === "latexmk") {
+      const match = rawVersion.match(/v\d+\.\d+\S*/);
+      return match ? match[0] : "détecté";
+    }
+    if (bin === "bibtex") {
+      const match = rawVersion.match(/0\.99\S*/);
+      return match ? `v${match[0]}` : "détecté";
+    }
+    if (bin === "skim") {
+      // Skim versions could look like "Version 1.7.5"
+      const match = rawVersion.match(/Version\s+(\S*)/i) || rawVersion.match(/(\d+\.\d+\S*)/);
+      return match ? `v${match[1] || match[0]}` : "détecté";
+    }
+    return rawVersion;
+  };
+
+  const pdflatexVer = formatBinaryVersion("pdflatex", pdflatexInfo?.version);
+  const latexmkVer = formatBinaryVersion("latexmk", latexmkInfo?.version);
+  const bibtexVer = formatBinaryVersion("bibtex", bibtexInfo?.version);
+  const skimVer = formatBinaryVersion("skim", skimInfo?.version);
 
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
@@ -720,7 +753,7 @@ function App() {
               </header>
 
               {/* Diagnostic de l'Environnement */}
-              <section className="bg-[#121216] border border-white/5 rounded-xl p-6 shadow-xl">
+              <section className="bg-[#121216] border border-white/5 rounded-xl p-5 md:p-6 shadow-xl">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Activity size={16} className="text-blue-500" />
@@ -737,242 +770,208 @@ function App() {
                   </button>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-stretch md:items-stretch gap-4 md:gap-0">
-                  
-                  {/* 1. LaTeX Distribution */}
-                  {(() => {
-                    const checking = isAnalyzing && analysisStep === 0;
-                    const active = !isAnalyzing || analysisStep >= 1;
-                    const success = hasDistribution;
-                    
-                    const cardBgBorder = checking 
-                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500/[0.02] border-green-500/10' 
-                          : 'bg-red-500/[0.02] border-red-500/10'
-                        : 'bg-white/[0.01] border-white/5 opacity-30';
-                    
-                    const ledColor = checking 
-                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
-                          : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                        : 'bg-white/10';
+                {/* Pipeline visual container */}
+                {(() => {
+                  // Card 1 state
+                  const checking1 = isAnalyzing && analysisStep === 0;
+                  const active1 = !isAnalyzing || analysisStep >= 1;
+                  const success1 = hasDistribution;
+                  const node1Style = checking1
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
+                    : active1
+                      ? success1
+                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
+                        : 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
+                      : 'border-white/10 bg-white/5 text-white/20';
 
-                    return (
-                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-white/80">1. Distribution LaTeX</span>
-                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
+                  // Card 2 state
+                  const checking2 = isAnalyzing && analysisStep === 1;
+                  const active2 = !isAnalyzing || analysisStep >= 2;
+                  const success2 = hasCliTools;
+                  const node2Style = checking2
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
+                    : active2
+                      ? success2
+                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
+                        : 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.3)]'
+                      : 'border-white/10 bg-white/5 text-white/20';
+
+                  // Card 3 state
+                  const checking3 = isAnalyzing && analysisStep === 2;
+                  const active3 = !isAnalyzing || analysisStep >= 3;
+                  const success3 = hasSkim;
+                  const node3Style = checking3
+                    ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
+                    : active3
+                      ? success3
+                        ? 'border-green-500 bg-green-500/10 text-green-400 shadow-[0_0_8px_rgba(34,197,94,0.3)]'
+                        : 'border-amber-500 bg-amber-500/10 text-amber-400 shadow-[0_0_8px_rgba(245,158,11,0.3)]'
+                      : 'border-white/10 bg-white/5 text-white/20';
+
+                  // Line 1 status
+                  const line1Active = !isAnalyzing || analysisStep >= 1;
+                  const line1Success = hasDistribution;
+                  const line1Color = line1Active ? (line1Success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                  const line1Class = (isAnalyzing && analysisStep === 0) || (line1Active && line1Success) ? 'animate-dash' : '';
+
+                  // Line 2 status
+                  const line2Active = !isAnalyzing || analysisStep >= 2;
+                  const line2Success = hasCliTools;
+                  const line2Color = line2Active ? (line2Success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                  const line2Class = (isAnalyzing && analysisStep === 1) || (line2Active && line2Success) ? 'animate-dash' : '';
+
+                  // Dynamic Message
+                  let statusIcon = <Info size={16} className="text-blue-500 shrink-0" />;
+                  let statusText = "Système non analysé";
+                  let statusSubtext = "Lisez les paramètres ou lancez un diagnostic.";
+
+                  if (isAnalyzing) {
+                    if (analysisStep === 0) {
+                      statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
+                      statusText = "Recherche de la distribution LaTeX...";
+                      statusSubtext = "Validation de TeX Live / MacTeX (/Library/TeX/texbin)...";
+                    } else if (analysisStep === 1) {
+                      statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
+                      statusText = "Vérification des outils en ligne de commande...";
+                      statusSubtext = "Exécution de pdflatex, latexmk et bibtex...";
+                    } else if (analysisStep === 2) {
+                      statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
+                      statusText = "Détection du lecteur PDF Skim...";
+                      statusSubtext = "Vérification de la présence de Skim.app sur votre Mac...";
+                    }
+                  } else if (health.length > 0) {
+                    if (isSystemReady) {
+                      statusIcon = <Check size={16} className="text-green-500 shrink-0" />;
+                      statusText = "Système prêt et entièrement opérationnel !";
+                      statusSubtext = `${distributionInfo?.version || "Distribution LaTeX détectée"}`;
+                    } else {
+                      const missing = [];
+                      if (!hasDistribution) missing.push("distribution LaTeX");
+                      if (!hasCliTools) {
+                        const missingCli = [];
+                        if (!pdflatexInfo?.installed) missingCli.push("pdflatex");
+                        if (!latexmkInfo?.installed) missingCli.push("latexmk");
+                        if (!bibtexInfo?.installed) missingCli.push("bibtex");
+                        missing.push(`outils CLI (${missingCli.join(', ')})`);
+                      }
+                      if (!hasSkim) missing.push("lecteur Skim");
+
+                      statusIcon = <Info size={16} className={hasDistribution && hasCliTools ? "text-amber-500 shrink-0" : "text-red-500 shrink-0"} />;
+                      statusText = hasDistribution && hasCliTools 
+                        ? "Configuration valide (Skim recommandé mais facultatif)" 
+                        : "Configuration requise incomplète";
+                      statusSubtext = `Manquant : ${missing.join(', ')}.`;
+                    }
+                  }
+
+                  return (
+                    <div className="flex flex-col gap-5 w-full">
+                      {/* Responsive Pipeline Stepper */}
+                      <div className="flex items-start justify-between max-w-lg mx-auto w-full px-4 pt-3 pb-8 select-none relative">
+                        
+                        {/* Step 1 Node */}
+                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                          <div 
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node1Style}`}
+                            title="Distribution LaTeX (MacTeX/BasicTeX)"
+                          >
+                            <Layers size={14} />
                           </div>
-                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
-                            MacTeX, BasicTeX ou TeX Live requis pour la structure et la compilation des documents.
-                          </p>
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                            Distribution
+                          </span>
                         </div>
-                        <div>
-                          {checking ? (
-                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Recherche...</span>
-                          ) : active ? (
-                            success ? (
-                              <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block truncate max-w-full">
-                                {health.find(h => h.binary === "distribution")?.version || "Détectée"}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] font-bold text-red-400 bg-red-500/5 px-2 py-1 rounded inline-block">
-                                Non détectée (MacTeX requis)
-                              </div>
-                            )
-                          ) : (
-                            <span className="text-[9px] text-white/20">En attente...</span>
-                          )}
+
+                        {/* Step 1 Connector */}
+                        <div className="flex-1 min-w-[10px] h-9 flex items-center">
+                          <svg className="w-full h-1" viewBox="0 0 100 10" preserveAspectRatio="none">
+                            <line 
+                              x1="0" y1="5" x2="100" y2="5" 
+                              stroke={line1Color} 
+                              strokeWidth="3" 
+                              strokeDasharray="6,4" 
+                              className={`transition-all duration-500 ${line1Class}`}
+                            />
+                          </svg>
                         </div>
-                      </div>
-                    );
-                  })()}
 
-                  {/* Connector 1 */}
-                  {(() => {
-                    const active = !isAnalyzing || analysisStep >= 1;
-                    const success = hasDistribution;
-                    const color = active ? (success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
-                    const isAnimating = isAnalyzing && analysisStep === 0;
-                    return (
-                      <div className="hidden md:flex items-center justify-center w-10 shrink-0">
-                        <svg className="w-full h-2" viewBox="0 0 40 10" preserveAspectRatio="none">
-                          <line 
-                            x1="0" 
-                            y1="5" 
-                            x2="40" 
-                            y2="5" 
-                            stroke={color} 
-                            strokeWidth="2" 
-                            strokeDasharray="6,4" 
-                            className={`transition-all duration-500 ${isAnimating || (active && success) ? 'animate-dash' : ''}`}
-                          />
-                        </svg>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 2. CLI Tools */}
-                  {(() => {
-                    const checking = isAnalyzing && analysisStep === 1;
-                    const active = !isAnalyzing || analysisStep >= 2;
-                    const success = hasCliTools;
-                    
-                    const cardBgBorder = checking 
-                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500/[0.02] border-green-500/10' 
-                          : 'bg-red-500/[0.02] border-red-500/10'
-                        : 'bg-white/[0.01] border-white/5 opacity-30';
-                    
-                    const ledColor = checking 
-                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
-                          : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'
-                        : 'bg-white/10';
-
-                    return (
-                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-white/80">2. Outils CLI</span>
-                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
+                        {/* Step 2 Node */}
+                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                          <div 
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node2Style}`}
+                            title="Outils CLI (pdflatex, latexmk, bibtex)"
+                          >
+                            <Terminal size={14} />
                           </div>
-                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
-                            Les exécutables requis pour l'automatisation : pdflatex, latexmk et bibtex.
-                          </p>
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                            Outils CLI
+                          </span>
                         </div>
-                        <div className="flex flex-col gap-1.5 w-full">
-                          {checking ? (
-                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Vérification des binaires...</span>
-                          ) : active ? (
-                            <div className="grid grid-cols-1 gap-1 w-full animate-fade-in">
-                              {["pdflatex", "latexmk", "bibtex"].map(bin => {
-                                const isBinInstalled = health.find(h => h.binary === bin)?.installed ?? false;
-                                const rawVersion = health.find(h => h.binary === bin)?.version ?? "";
-                                
-                                let displayVer = "Détecté";
-                                if (isBinInstalled && rawVersion) {
-                                  if (bin === "pdflatex") {
-                                    const match = rawVersion.match(/3\.14\S*/);
-                                    displayVer = match ? `v${match[0]}` : "Détecté";
-                                  } else if (bin === "latexmk") {
-                                    const match = rawVersion.match(/v\d+\.\d+\S*/);
-                                    displayVer = match ? match[0] : "Détecté";
-                                  } else if (bin === "bibtex") {
-                                    const match = rawVersion.match(/0\.99\S*/);
-                                    displayVer = match ? `v${match[0]}` : "Détecté";
-                                  } else {
-                                    displayVer = rawVersion.substring(0, 10);
-                                  }
-                                }
 
-                                return (
-                                  <div key={bin} className={`text-[9px] font-mono px-2 py-1 rounded border flex items-center justify-between ${isBinInstalled ? 'bg-green-500/5 border-green-500/10 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
-                                    <div className="flex items-center gap-1">
-                                      <div className={`w-1 h-1 rounded-full ${isBinInstalled ? 'bg-green-400' : 'bg-red-400'}`}></div>
-                                      <span className="font-bold">{bin}</span>
-                                    </div>
-                                    {isBinInstalled && <span className="text-[8px] text-white/30 font-semibold">{displayVer}</span>}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <span className="text-[9px] text-white/20">En attente...</span>
-                          )}
+                        {/* Step 2 Connector */}
+                        <div className="flex-1 min-w-[10px] h-9 flex items-center">
+                          <svg className="w-full h-1" viewBox="0 0 100 10" preserveAspectRatio="none">
+                            <line 
+                              x1="0" y1="5" x2="100" y2="5" 
+                              stroke={line2Color} 
+                              strokeWidth="3" 
+                              strokeDasharray="6,4" 
+                              className={`transition-all duration-500 ${line2Class}`}
+                            />
+                          </svg>
                         </div>
-                      </div>
-                    );
-                  })()}
 
-                  {/* Connector 2 */}
-                  {(() => {
-                    const active = !isAnalyzing || analysisStep >= 2;
-                    const success = hasCliTools;
-                    const color = active ? (success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
-                    const isAnimating = isAnalyzing && analysisStep === 1;
-                    return (
-                      <div className="hidden md:flex items-center justify-center w-10 shrink-0">
-                        <svg className="w-full h-2" viewBox="0 0 40 10" preserveAspectRatio="none">
-                          <line 
-                            x1="0" 
-                            y1="5" 
-                            x2="40" 
-                            y2="5" 
-                            stroke={color} 
-                            strokeWidth="2" 
-                            strokeDasharray="6,4" 
-                            className={`transition-all duration-500 ${isAnimating || (active && success) ? 'animate-dash' : ''}`}
-                          />
-                        </svg>
-                      </div>
-                    );
-                  })()}
-
-                  {/* 3. Skim PDF Reader */}
-                  {(() => {
-                    const checking = isAnalyzing && analysisStep === 2;
-                    const active = !isAnalyzing || analysisStep >= 3;
-                    const success = hasSkim;
-                    
-                    const cardBgBorder = checking 
-                      ? 'bg-blue-500/[0.02] border-blue-500/20 shadow-[0_0_12px_rgba(0,122,255,0.03)] scale-[1.01]' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500/[0.02] border-green-500/10' 
-                          : 'bg-amber-500/[0.02] border-amber-500/10'
-                        : 'bg-white/[0.01] border-white/5 opacity-30';
-                    
-                    const ledColor = checking 
-                      ? 'bg-blue-500 shadow-[0_0_8px_rgba(0,122,255,0.6)] animate-pulse' 
-                      : active 
-                        ? success 
-                          ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' 
-                          : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)]'
-                        : 'bg-white/10';
-
-                    return (
-                      <div className={`flex-1 p-4 rounded-xl border transition-all duration-500 min-h-[170px] flex flex-col justify-between ${cardBgBorder}`}>
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <span className="text-xs font-bold text-white/80">3. Lecteur PDF Skim</span>
-                            <div className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${ledColor}`}></div>
+                        {/* Step 3 Node */}
+                        <div className="relative flex flex-col items-center shrink-0 w-9 h-9">
+                          <div 
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-500 ${node3Style}`}
+                            title="Lecteur PDF Skim"
+                          >
+                            <BookOpen size={14} />
                           </div>
-                          <p className="text-[11px] text-white/40 leading-relaxed mb-4">
-                            Recommandé pour l'aperçu PDF automatique et synchronisé en temps réel sans blocage.
-                          </p>
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                            Lecteur PDF
+                          </span>
                         </div>
-                        <div>
-                          {checking ? (
-                            <span className="text-[9px] font-bold text-blue-400 animate-pulse">Détection de Skim.app...</span>
-                          ) : active ? (
-                            success ? (
-                              <div className="text-[9px] font-mono text-green-400 bg-green-500/5 px-2 py-1 rounded inline-block">
-                                {health.find(h => h.binary === "skim")?.version || "Détecté"}
-                              </div>
-                            ) : (
-                              <div className="text-[9px] font-bold text-amber-400 bg-amber-500/5 px-2 py-1 rounded inline-block">
-                                Non détecté (Optionnel)
-                              </div>
-                            )
-                          ) : (
-                            <span className="text-[9px] text-white/20">En attente...</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })()}
 
-                </div>
+                      </div>
+
+                      {/* Status Message Area */}
+                      <div className="bg-black/40 border border-white/5 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all duration-300">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 shrink-0">
+                            {statusIcon}
+                          </div>
+                          <div className="flex flex-col gap-0.5 min-w-0">
+                            <span className="text-xs font-bold text-white/90 truncate">{statusText}</span>
+                            <span className="text-[10px] text-white/30 truncate">{statusSubtext}</span>
+                          </div>
+                        </div>
+
+                        {/* Versions list */}
+                        {!isAnalyzing && health.length > 0 && (
+                          <div className="flex flex-wrap items-center gap-1.5 text-[8px] font-mono text-white/40 border-t border-white/5 sm:border-t-0 pt-2.5 sm:pt-0 shrink-0">
+                            {hasDistribution && (
+                              <span className="bg-white/5 border border-white/5 px-2 py-0.5 rounded text-green-400/80">dist: ok</span>
+                            )}
+                            <span className={`px-2 py-0.5 rounded border ${pdflatexInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
+                              pdflatex: {pdflatexVer}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${latexmkInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
+                              latexmk: {latexmkVer}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${bibtexInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-red-500/5 border-red-500/10 text-red-400/80'}`}>
+                              bibtex: {bibtexVer}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded border ${skimInfo?.installed ? 'bg-white/5 border-white/5 text-green-400/80' : 'bg-amber-500/5 border-amber-500/10 text-amber-400/80'}`}>
+                              skim: {skimVer}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </section>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
