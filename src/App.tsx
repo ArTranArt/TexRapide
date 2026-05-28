@@ -35,23 +35,23 @@ function App() {
   const distributionInfo = health.find(h => h.binary === "distribution");
 
   const formatBinaryVersion = (bin: string, rawVersion: string | null | undefined) => {
-    if (!rawVersion) return "non détecté";
+    if (!rawVersion) return "";
     if (bin === "pdflatex") {
       const match = rawVersion.match(/3\.14\S*/);
-      return match ? `v${match[0]}` : "détecté";
+      return match ? `v${match[0]}` : "";
     }
     if (bin === "latexmk") {
-      const match = rawVersion.match(/v\d+\.\d+\S*/);
-      return match ? match[0] : "détecté";
+      const match = rawVersion.match(/(?:version|v)?\s*(\d+\.\d+\S*)/i);
+      return match ? `v${match[1]}` : "";
     }
     if (bin === "bibtex") {
       const match = rawVersion.match(/0\.99\S*/);
-      return match ? `v${match[0]}` : "détecté";
+      return match ? `v${match[0]}` : "";
     }
     if (bin === "skim") {
       // Skim versions could look like "Version 1.7.5"
       const match = rawVersion.match(/Version\s+(\S*)/i) || rawVersion.match(/(\d+\.\d+\S*)/);
-      return match ? `v${match[1] || match[0]}` : "détecté";
+      return match ? `v${match[1] || match[0]}` : "";
     }
     return rawVersion;
   };
@@ -60,6 +60,34 @@ function App() {
   const latexmkVer = formatBinaryVersion("latexmk", latexmkInfo?.version);
   const bibtexVer = formatBinaryVersion("bibtex", bibtexInfo?.version);
   const skimVer = formatBinaryVersion("skim", skimInfo?.version);
+
+  const distributionTooltip = hasDistribution 
+    ? `Distribution LaTeX : ${distributionInfo?.version || "détectée"}`
+    : "Distribution LaTeX : non détectée";
+
+  const cliTooltip = (() => {
+    const tools = [];
+    if (pdflatexInfo?.installed) {
+      tools.push(`pdflatex${pdflatexVer ? ` (${pdflatexVer})` : ''}`);
+    } else {
+      tools.push("pdflatex (manquant)");
+    }
+    if (latexmkInfo?.installed) {
+      tools.push(`latexmk${latexmkVer ? ` (${latexmkVer})` : ''}`);
+    } else {
+      tools.push("latexmk (manquant)");
+    }
+    if (bibtexInfo?.installed) {
+      tools.push(`bibtex${bibtexVer ? ` (${bibtexVer})` : ''}`);
+    } else {
+      tools.push("bibtex (manquant)");
+    }
+    return tools.join('\n');
+  })();
+
+  const skimTooltip = hasSkim
+    ? `Lecteur PDF Skim${skimVer ? ` (${skimVer})` : ''}`
+    : "Lecteur PDF Skim : non détecté";
 
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
@@ -861,20 +889,20 @@ function App() {
                       statusIcon = <Layers size={16} className={hasDistribution ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
                       statusText = "Distribution LaTeX";
                       statusSubtext = hasDistribution
-                        ? `${distributionInfo?.version || "Détectée et configurée."}`
-                        : "Aucune distribution détectée (MacTeX/BasicTeX requis).";
+                        ? "Moteur TeX Live ou MacTeX opérationnel en arrière-plan."
+                        : "Aucune distribution LaTeX détectée (MacTeX ou TeX Live requis).";
                     } else if (activeDisplayNode === "cli") {
                       statusIcon = <Terminal size={16} className={hasCliTools ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
                       statusText = "Outils en Ligne de Commande";
                       statusSubtext = hasCliTools
-                        ? `pdflatex (${pdflatexVer}), latexmk (${latexmkVer}), bibtex (${bibtexVer}) opérationnels.`
-                        : `Outils manquants ou incomplets. pdflatex : ${pdflatexVer}, latexmk : ${latexmkVer}, bibtex : ${bibtexVer}.`;
+                        ? "Les utilitaires pdflatex, latexmk et bibtex sont prêts pour la compilation automatique."
+                        : "Certains compilateurs requis (pdflatex, latexmk ou bibtex) sont absents ou inaccessibles.";
                     } else if (activeDisplayNode === "skim") {
                       statusIcon = <BookOpen size={16} className={hasSkim ? "text-green-400 shrink-0" : "text-amber-400 shrink-0"} />;
                       statusText = "Lecteur PDF Skim";
                       statusSubtext = hasSkim
-                        ? `Lecteur Skim (${skimVer}) détecté et configuré.`
-                        : "Skim non détecté. Recommandé pour l'aperçu automatique sans blocage du PDF.";
+                        ? "Le visualiseur externe Skim est prêt pour l'aperçu dynamique du PDF."
+                        : "Skim n'est pas détecté. Recommandé pour l'aperçu PDF automatique sans blocage de fichier.";
                     }
                   } else if (health.length > 0) {
                     if (isSystemReady) {
@@ -907,7 +935,7 @@ function App() {
                         >
                           <div 
                             className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node1Style}`}
-                            title="Distribution LaTeX (MacTeX/BasicTeX)"
+                            title={distributionTooltip}
                           >
                             <Layers size={14} />
                           </div>
@@ -941,7 +969,7 @@ function App() {
                         >
                           <div 
                             className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node2Style}`}
-                            title="Outils CLI (pdflatex, latexmk, bibtex)"
+                            title={cliTooltip}
                           >
                             <Terminal size={14} />
                           </div>
@@ -975,7 +1003,7 @@ function App() {
                         >
                           <div 
                             className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node3Style}`}
-                            title="Lecteur PDF Skim"
+                            title={skimTooltip}
                           >
                             <BookOpen size={14} />
                           </div>
