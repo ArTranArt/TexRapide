@@ -783,9 +783,9 @@ function App() {
                   const isNode2Hovered = hoveredNode === "cli";
                   const isNode3Hovered = hoveredNode === "skim";
 
-                  const isNode1Active = isNode1Hovered || selectedNode === "distribution";
-                  const isNode2Active = isNode2Hovered || selectedNode === "cli";
-                  const isNode3Active = isNode3Hovered || selectedNode === "skim";
+                  const isNode1Active = !isAnalyzing && (isNode1Hovered || selectedNode === "distribution");
+                  const isNode2Active = !isAnalyzing && (isNode2Hovered || selectedNode === "cli");
+                  const isNode3Active = !isAnalyzing && (isNode3Hovered || selectedNode === "skim");
 
                   // Node 1 state
                   const checking1 = isAnalyzing && analysisStep === 0;
@@ -795,8 +795,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active1
                       ? success1
-                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-red-500 bg-red-500/10 text-red-400 cursor-pointer ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
                   // Node 2 state
@@ -807,8 +807,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active2
                       ? success2
-                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-red-500 bg-red-500/10 text-red-400 cursor-pointer ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
                   // Node 3 state
@@ -819,8 +819,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active3
                       ? success3
-                        ? `border-green-500 bg-green-500/10 text-green-400 cursor-pointer ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-amber-500 bg-amber-500/10 text-amber-400 cursor-pointer ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-amber-500 bg-amber-500/10 text-amber-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
                       : 'border-white/10 bg-white/5 text-white/20';
 
                   // Line 1 status
@@ -897,7 +897,7 @@ function App() {
                         
                         {/* Step 1 Node */}
                         <div 
-                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          className={`relative flex flex-col items-center shrink-0 w-9 h-9 ${isAnalyzing ? 'pointer-events-none' : ''}`}
                           onMouseEnter={() => setHoveredNode("distribution")}
                           onMouseLeave={() => setHoveredNode(null)}
                           onClick={(e) => {
@@ -931,7 +931,7 @@ function App() {
 
                         {/* Step 2 Node */}
                         <div 
-                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          className={`relative flex flex-col items-center shrink-0 w-9 h-9 ${isAnalyzing ? 'pointer-events-none' : ''}`}
                           onMouseEnter={() => setHoveredNode("cli")}
                           onMouseLeave={() => setHoveredNode(null)}
                           onClick={(e) => {
@@ -965,7 +965,7 @@ function App() {
 
                         {/* Step 3 Node */}
                         <div 
-                          className="relative flex flex-col items-center shrink-0 w-9 h-9"
+                          className={`relative flex flex-col items-center shrink-0 w-9 h-9 ${isAnalyzing ? 'pointer-events-none' : ''}`}
                           onMouseEnter={() => setHoveredNode("skim")}
                           onMouseLeave={() => setHoveredNode(null)}
                           onClick={(e) => {
