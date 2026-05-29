@@ -472,16 +472,16 @@ function App() {
                     <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500/10 border border-red-500/20 p-1.5 rounded-lg fade-in z-20">
                       <span className="text-[10px] font-bold text-red-400 px-2 uppercase tracking-tighter">Sûr ?</span>
                       <button onClick={handleDeselectProject} className="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-black hover:bg-red-600 transition-colors">OUI</button>
-                      <button onClick={() => setConfirmRemoval(false)} className="text-text-subtle hover:text-white px-2 py-0.5 text-[10px] font-bold">NON</button>
+                      <button onClick={() => setConfirmRemoval(false)} className="text-text-subtle hover:text-text-main px-2 py-0.5 text-[10px] font-bold">NON</button>
                     </div>
                   )}
 
                   <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
+                      <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-text-extra-subtle'}`}></div>
                       <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400/60' : 'text-text-subtle'}`}>Projet Actuel</span>
                     </div>
-                    <h2 className="text-3xl font-bold truncate text-white">{projectName}</h2>
+                    <h2 className="text-3xl font-bold truncate text-text-main">{projectName}</h2>
                   </div>
 
                   <div className="flex items-end justify-between gap-4 mt-4">
@@ -602,7 +602,7 @@ function App() {
                   {searchQuery && (
                     <button 
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-7 top-1/2 -translate-y-1/2 text-text-extra-subtle hover:text-white transition-colors pr-4"
+                      className="absolute right-7 top-1/2 -translate-y-1/2 text-text-extra-subtle hover:text-text-main transition-colors pr-4"
                     >
                       <X size={12} />
                     </button>
@@ -633,7 +633,7 @@ function App() {
                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Initialisation</span>
                         </div>
-                        <button onClick={() => setIsCreatingInline(false)} className="text-text-extra-subtle hover:text-white transition-colors"><X size={14} /></button>
+                        <button onClick={() => setIsCreatingInline(false)} className="text-text-extra-subtle hover:text-text-main transition-colors"><X size={14} /></button>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -667,7 +667,7 @@ function App() {
                       <div className="flex justify-end gap-2 mt-2">
                         <button 
                           onClick={() => setIsCreatingInline(false)}
-                          className="px-4 py-2 rounded-lg text-xs font-bold text-text-subtle hover:text-white transition-colors"
+                          className="px-4 py-2 rounded-lg text-xs font-bold text-text-subtle hover:text-text-main transition-colors"
                         >
                           Annuler
                         </button>
@@ -806,7 +806,7 @@ function App() {
                   <button 
                     onClick={checkHealth}
                     disabled={isAnalyzing}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-bg-input hover:bg-bg-input text-text-muted hover:text-white transition-all text-[10px] font-bold border border-border-subtle disabled:opacity-35 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-bg-input hover:bg-bg-input text-text-muted hover:text-text-main transition-all text-[10px] font-bold border border-border-subtle disabled:opacity-35 disabled:cursor-not-allowed"
                     title="Relancer le diagnostic"
                   >
                     <RefreshCw size={10} className={`transition-transform duration-500 ${isAnalyzing ? 'animate-spin' : 'hover:rotate-180'}`} />
