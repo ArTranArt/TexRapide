@@ -431,7 +431,7 @@ function App() {
               {!isSidebarCollapsed && (
                 <button 
                   onClick={handleOpenVSCode}
-                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-white/10 transition-all"
+                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-border-input transition-all"
                   title="VSCode"
                 >
                   <VSCodeIcon size={20} />
@@ -457,13 +457,13 @@ function App() {
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-white/5'}`}>
+                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-border-subtle'}`}>
                   {/* Close button */}
                   {!confirmRemoval ? (
                     <button 
                       onClick={() => setConfirmRemoval(true)}
                       disabled={isWatching}
-                      className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-white/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'}`}
+                      className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-text-extra-subtle/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'}`}
                       title={isWatching ? "Arrêtez le watch mode d'abord" : "Retirer ce projet"}
                     >
                       <X size={16} />
@@ -472,7 +472,7 @@ function App() {
                     <div className="absolute top-4 right-4 flex items-center gap-2 bg-red-500/10 border border-red-500/20 p-1.5 rounded-lg fade-in z-20">
                       <span className="text-[10px] font-bold text-red-400 px-2 uppercase tracking-tighter">Sûr ?</span>
                       <button onClick={handleDeselectProject} className="bg-red-500 text-white px-2 py-0.5 rounded text-[10px] font-black hover:bg-red-600 transition-colors">OUI</button>
-                      <button onClick={() => setConfirmRemoval(false)} className="text-white/40 hover:text-white px-2 py-0.5 text-[10px] font-bold">NON</button>
+                      <button onClick={() => setConfirmRemoval(false)} className="text-text-subtle hover:text-white px-2 py-0.5 text-[10px] font-bold">NON</button>
                     </div>
                   )}
 
@@ -500,10 +500,10 @@ function App() {
                             >
                               {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                             </select>
-                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' : 'text-white/40 bg-white/5 border-white/5 hover:border-white/20 hover:text-text-muted'}`}>
+                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' : 'text-text-subtle bg-bg-input border-border-subtle hover:border-white/20 hover:text-text-muted'}`}>
                               <Code size={12} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
                               <span className="truncate max-w-[150px]">{mainFile}</span>
-                              {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-white/10" />}
+                              {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-text-extra-subtle" />}
                             </div>
                           </>
                         ) : (
@@ -521,7 +521,7 @@ function App() {
                         disabled={projectTexFiles.length === 0}
                         className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${
                           projectTexFiles.length === 0 
-                            ? 'bg-white/5 text-white/10 border border-white/5 cursor-not-allowed' 
+                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed' 
                             : isWatching 
                               ? 'bg-green-500/10 text-green-400 border border-green-500/30 shadow-lg shadow-green-500/5' 
                               : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
@@ -532,7 +532,7 @@ function App() {
                       </button>
                       <button 
                         onClick={handleOpenVSCode}
-                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-border-input transition-all"
                         title="VSCode"
                       >
                         <VSCodeIcon size={20} />
@@ -541,13 +541,13 @@ function App() {
                   </div>
                 </section>
               ) : (
-                <section className="border-2 border-dashed border-white/5 rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[210px]">
-                   <FolderOpen size={32} className="text-white/10 mb-4" />
-                   <p className="text-white/30 text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
+                <section className="border-2 border-dashed border-border-subtle rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[210px]">
+                   <FolderOpen size={32} className="text-text-extra-subtle mb-4" />
+                   <p className="text-text-subtle text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
                 </section>
               )}
 
-              <section className="bg-bg-card/50 border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col">
+              <section className="bg-bg-card/50 border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col">
                 {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
@@ -556,53 +556,53 @@ function App() {
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex bg-bg-input p-1 rounded-lg border border-white/5">
+                    <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle">
                       <button 
                         onClick={() => setSortBy("recent")}
                         disabled={isWatching}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40 disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-bg-input text-text-main shadow-sm' : 'text-text-extra-subtle hover:text-text-subtle disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <Clock size={12} /> Récents
                       </button>
                       <button 
                         onClick={() => setSortBy("alphabetical")}
                         disabled={isWatching}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-white/5 text-white shadow-sm' : 'text-white/20 hover:text-white/40 disabled:opacity-30 disabled:cursor-not-allowed'}`}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-bg-input text-text-main shadow-sm' : 'text-text-extra-subtle hover:text-text-subtle disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <SortAsc size={12} /> A-Z
                       </button>
                     </div>
 
-                    <div className="h-6 w-px bg-white/5"></div>
+                    <div className="h-6 w-px bg-bg-input"></div>
 
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handleSelectDashboardDir}
                         disabled={isWatching}
-                        className={`p-2 rounded-lg border transition-all ${isWatching ? 'bg-white/5 border-white/5 text-white/5 cursor-not-allowed' : 'bg-white/5 hover:bg-white/10 border-white/5 text-white/40 hover:text-blue-500'}`}
+                        className={`p-2 rounded-lg border transition-all ${isWatching ? 'bg-bg-input border-border-subtle text-text-extra-subtle/5 cursor-not-allowed' : 'bg-bg-input hover:bg-bg-input border-border-subtle text-text-subtle hover:text-blue-500'}`}
                         title={isWatching ? "Verrouillé pendant le watch mode" : "Explorer un autre dossier"}
                       >
                         <FolderPlus size={16} />
                       </button>
-                      <span className="text-[10px] font-bold bg-white/5 px-2 py-1 rounded text-white/30">{existingProjects.length}</span>
+                      <span className="text-[10px] font-bold bg-bg-input px-2 py-1 rounded text-text-subtle">{existingProjects.length}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Search Bar */}
                 <div className="mb-8 px-4 relative group">
-                  <Search size={14} className="absolute left-7.5 top-1/2 -translate-y-1/2 text-white/10 group-focus-within:text-blue-500 transition-colors pl-4" />
+                  <Search size={14} className="absolute left-7.5 top-1/2 -translate-y-1/2 text-text-extra-subtle group-focus-within:text-blue-500 transition-colors pl-4" />
                   <input 
                     type="text" 
                     placeholder="Rechercher un projet..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-bg-input border border-white/5 hover:border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none transition-all placeholder:text-white/10"
+                    className="w-full bg-bg-input border border-border-subtle hover:border-border-input focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none transition-all placeholder:text-text-extra-subtle"
                   />
                   {searchQuery && (
                     <button 
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-7 top-1/2 -translate-y-1/2 text-white/10 hover:text-white transition-colors pr-4"
+                      className="absolute right-7 top-1/2 -translate-y-1/2 text-text-extra-subtle hover:text-white transition-colors pr-4"
                     >
                       <X size={12} />
                     </button>
@@ -617,9 +617,9 @@ function App() {
                     <button 
                       onClick={() => setIsCreatingInline(true)}
                       disabled={isWatching}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all group ${isWatching ? 'border-white/5 text-white/5 opacity-50 cursor-not-allowed' : 'border-white/5 text-white/20 hover:border-blue-500/30 hover:bg-blue-500/[0.02] hover:scale-[1.01]'}`}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all group ${isWatching ? 'border-border-subtle text-text-extra-subtle/5 opacity-50 cursor-not-allowed' : 'border-border-subtle text-text-extra-subtle hover:border-blue-500/30 hover:bg-blue-500/[0.02] hover:scale-[1.01]'}`}
                     >
-                      <div className="p-2.5 rounded-xl bg-white/5 text-white/10 group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
+                      <div className="p-2.5 rounded-xl bg-bg-input text-text-extra-subtle group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
                         <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
                       </div>
                       <div className="flex-1 text-left">
@@ -633,16 +633,16 @@ function App() {
                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Initialisation</span>
                         </div>
-                        <button onClick={() => setIsCreatingInline(false)} className="text-white/20 hover:text-white transition-colors"><X size={14} /></button>
+                        <button onClick={() => setIsCreatingInline(false)} className="text-text-extra-subtle hover:text-white transition-colors"><X size={14} /></button>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-1">Nom du projet</label>
+                          <label className="text-[9px] font-bold text-text-subtle uppercase tracking-widest px-1">Nom du projet</label>
                           <input 
                             ref={inlineInputRef}
                             type="text" 
-                            className="bg-black/60 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors"
+                            className="bg-bg-input border border-border-input rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors"
                             placeholder="ex: rapport-stage"
                             value={newProjectName}
                             onChange={(e) => setNewProjectName(e.target.value)}
@@ -650,16 +650,16 @@ function App() {
                           />
                         </div>
                         <div className="flex flex-col gap-1.5">
-                          <label className="text-[9px] font-bold text-white/30 uppercase tracking-widest px-1">Template</label>
+                          <label className="text-[9px] font-bold text-text-subtle uppercase tracking-widest px-1">Template</label>
                           <div className="relative">
                             <select 
-                              className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors appearance-none pr-10"
+                              className="w-full bg-bg-input border border-border-input rounded-xl p-3 text-sm focus:border-blue-500 outline-none transition-colors appearance-none pr-10"
                               value={selectedTemplate}
                               onChange={(e) => setSelectedTemplate(e.target.value)}
                             >
                               {availableTemplates.length > 0 ? availableTemplates.map(t => <option key={t} value={t}>{t}</option>) : <option disabled>Aucun template</option>}
                             </select>
-                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 pointer-events-none" />
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
                           </div>
                         </div>
                       </div>
@@ -667,14 +667,14 @@ function App() {
                       <div className="flex justify-end gap-2 mt-2">
                         <button 
                           onClick={() => setIsCreatingInline(false)}
-                          className="px-4 py-2 rounded-lg text-xs font-bold text-white/40 hover:text-white transition-colors"
+                          className="px-4 py-2 rounded-lg text-xs font-bold text-text-subtle hover:text-white transition-colors"
                         >
                           Annuler
                         </button>
                         <button 
                           onClick={handleCreateProject}
                           disabled={!newProjectName.trim()}
-                          className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-white/5 disabled:text-white/10 text-white px-6 py-2 rounded-lg text-xs font-bold transition-all ${newProjectName.trim() ? 'shadow-lg shadow-blue-600/20' : 'shadow-none'}`}
+                          className={`flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-bg-input disabled:text-text-extra-subtle text-white px-6 py-2 rounded-lg text-xs font-bold transition-all ${newProjectName.trim() ? 'shadow-lg shadow-blue-600/20' : 'shadow-none'}`}
                         >
                           <Check size={14} /> Créer
                         </button>
@@ -696,10 +696,10 @@ function App() {
                     ))
                   ) : (
                     !isCreatingInline && (
-                      <div className="text-center py-24 bg-bg-input/10 rounded-3xl border border-dashed border-white/5 mx-2">
+                      <div className="text-center py-24 bg-bg-input/10 rounded-3xl border border-dashed border-border-subtle mx-2">
                         <div className="flex flex-col items-center gap-4">
-                          <FolderOpen size={48} className="text-white/5" />
-                          <p className="text-white/20 italic text-sm">
+                          <FolderOpen size={48} className="text-text-extra-subtle/5" />
+                          <p className="text-text-extra-subtle italic text-sm">
                             {searchQuery ? `Aucun résultat pour "${searchQuery}"` : "Aucun projet trouvé dans ce répertoire."}
                           </p>
                           {searchQuery && <button onClick={() => setSearchQuery("")} className="text-xs text-blue-500 hover:underline font-bold">Effacer la recherche</button>}
@@ -720,12 +720,12 @@ function App() {
                     <ChevronLeft size={14} /> Dashboard
                   </button>
                   <h1 className="text-4xl font-bold mb-2 truncate text-text-main">{projectName}</h1>
-                  <p className="text-white/30 font-mono text-[10px] truncate">{activeProject}</p>
+                  <p className="text-text-subtle font-mono text-[10px] truncate">{activeProject}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   <button 
                     onClick={handleOpenVSCode} 
-                    className="w-12 h-12 shrink-0 flex items-center justify-center bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition-all"
+                    className="w-12 h-12 shrink-0 flex items-center justify-center bg-bg-input hover:bg-bg-input border border-border-input rounded-xl transition-all"
                     title="Ouvrir VSCode"
                   >
                     <VSCodeIcon size={24} />
@@ -742,12 +742,12 @@ function App() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div className="md:col-span-2 space-y-8">
-                  <section className={`border rounded-3xl p-10 flex flex-col items-center text-center transition-colors duration-500 ${isWatching ? 'bg-green-500/5 border-green-500/20' : 'bg-[#121216] border-white/5'}`}>
+                  <section className={`border rounded-3xl p-10 flex flex-col items-center text-center transition-colors duration-500 ${isWatching ? 'bg-green-500/5 border-green-500/20' : 'bg-bg-card border-border-subtle'}`}>
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-8 ${isWatching ? 'bg-green-500/10 text-green-400' : 'bg-blue-600 text-white'}`}>
                       {isWatching ? <Activity size={32} className="animate-pulse" /> : <Play size={32} fill="currentColor" />}
                     </div>
                     <h2 className="text-2xl font-bold mb-4 text-text-main">{isWatching ? "TexRapide en action" : "Prêt pour la compilation"}</h2>
-                    <p className="text-white/40 max-w-sm mb-8 text-sm">
+                    <p className="text-text-subtle max-w-sm mb-8 text-sm">
                       {isWatching ? "Le système surveille vos fichiers. Sauvegardez pour compiler." : "Activez le mode surveillance pour automatiser vos builds LaTeX."}
                     </p>
                     <button onClick={handleToggleWatch} className={`px-10 py-4 rounded-xl font-bold text-lg transition-all ${isWatching ? 'bg-green-600 hover:bg-green-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}>
@@ -757,18 +757,18 @@ function App() {
                 </div>
 
                 <div className="space-y-6">
-                  <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6">
-                    <h3 className="text-[10px] font-bold text-white/20 uppercase tracking-widest mb-6">Détails</h3>
+                  <section className="bg-bg-card/50 border border-border-subtle rounded-2xl p-6">
+                    <h3 className="text-[10px] font-bold text-text-extra-subtle uppercase tracking-widest mb-6">Détails</h3>
                     <div className="space-y-4">
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-white/30 uppercase">Main File</label>
-                        <div className="text-xs font-mono text-white/70 truncate">{mainFile}</div>
+                        <label className="text-[9px] font-bold text-text-subtle uppercase">Main File</label>
+                        <div className="text-xs font-mono text-text-muted truncate">{mainFile}</div>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <label className="text-[9px] font-bold text-white/30 uppercase">Status</label>
+                        <label className="text-[9px] font-bold text-text-subtle uppercase">Status</label>
                         <div className="flex items-center gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-400' : 'bg-white/10'}`}></div>
-                          <span className="text-xs font-bold text-white/70">{isWatching ? "Compiling..." : "Idle"}</span>
+                          <div className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-400' : 'bg-bg-input'}`}></div>
+                          <span className="text-xs font-bold text-text-muted">{isWatching ? "Compiling..." : "Idle"}</span>
                         </div>
                       </div>
                     </div>
@@ -783,7 +783,7 @@ function App() {
               <header className="flex items-center justify-between">
                 <div>
                   <h1 className="text-2xl font-bold text-text-main mb-1">Configuration</h1>
-                  <p className="text-white/30 text-xs">Configuration de l'environnement.</p>
+                  <p className="text-text-subtle text-xs">Configuration de l'environnement.</p>
                 </div>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
@@ -795,18 +795,18 @@ function App() {
 
               {/* Diagnostic de l'Environnement */}
               <section 
-                className="bg-[#121216] border border-white/5 rounded-xl p-5 md:p-6 shadow-xl"
+                className="bg-bg-card border border-border-subtle rounded-xl p-5 md:p-6 shadow-xl"
                 onClick={() => setSelectedNode(null)}
               >
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2">
                     <Activity size={16} className="text-blue-500" />
-                    <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Diagnostic Système</h2>
+                    <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Diagnostic Système</h2>
                   </div>
                   <button 
                     onClick={checkHealth}
                     disabled={isAnalyzing}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-muted hover:text-white transition-all text-[10px] font-bold border border-white/5 disabled:opacity-35 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-bg-input hover:bg-bg-input text-text-muted hover:text-white transition-all text-[10px] font-bold border border-border-subtle disabled:opacity-35 disabled:cursor-not-allowed"
                     title="Relancer le diagnostic"
                   >
                     <RefreshCw size={10} className={`transition-transform duration-500 ${isAnalyzing ? 'animate-spin' : 'hover:rotate-180'}`} />
@@ -834,7 +834,7 @@ function App() {
                       ? success1
                         ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
                         : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
-                      : 'border-white/10 bg-white/5 text-white/20';
+                      : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Node 2 state
                   const checking2 = isAnalyzing && analysisStep === 1;
@@ -846,7 +846,7 @@ function App() {
                       ? success2
                         ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
                         : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
-                      : 'border-white/10 bg-white/5 text-white/20';
+                      : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Node 3 state
                   const checking3 = isAnalyzing && analysisStep === 2;
@@ -858,7 +858,7 @@ function App() {
                       ? success3
                         ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
                         : `border-amber-500 bg-amber-500/10 text-amber-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
-                      : 'border-white/10 bg-white/5 text-white/20';
+                      : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Line 1 status
                   const line1Active = !isAnalyzing || analysisStep >= 1;
@@ -948,7 +948,7 @@ function App() {
                           >
                             <Layers size={14} />
                           </div>
-                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
                             Distribution
                           </span>
                         </div>
@@ -982,7 +982,7 @@ function App() {
                           >
                             <Terminal size={14} />
                           </div>
-                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
                             Outils CLI
                           </span>
                         </div>
@@ -1016,7 +1016,7 @@ function App() {
                           >
                             <BookOpen size={14} />
                           </div>
-                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-white/40 whitespace-nowrap">
+                          <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
                             Lecteur PDF
                           </span>
                         </div>
@@ -1024,14 +1024,14 @@ function App() {
                       </div>
 
                       {/* Status Message Area */}
-                      <div className="bg-black/40 border border-white/5 rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[90px] transition-all duration-300 select-none">
+                      <div className="bg-bg-input border border-border-subtle rounded-xl p-4 flex flex-col items-center justify-center text-center min-h-[90px] transition-all duration-300 select-none">
                         <div className="flex flex-col items-center gap-2.5 max-w-md w-full animate-fade-in">
-                          <div className="p-2 rounded-lg bg-white/[0.02] border border-white/5 shrink-0 flex items-center justify-center">
+                          <div className="p-2 rounded-lg bg-bg-card/40 border border-border-subtle shrink-0 flex items-center justify-center">
                             {statusIcon}
                           </div>
                           <div className="flex flex-col gap-0.5 text-center items-center">
-                            <span className="text-xs font-bold text-white/90 text-center">{statusText}</span>
-                            <span className="text-[10px] text-white/30 leading-relaxed text-center">{statusSubtext}</span>
+                            <span className="text-xs font-bold text-text-main/90 text-center">{statusText}</span>
+                            <span className="text-[10px] text-text-subtle leading-relaxed text-center">{statusSubtext}</span>
                           </div>
                         </div>
                       </div>
@@ -1043,29 +1043,29 @@ function App() {
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 {/* System Folders - Column Left */}
                 <div className="lg:col-span-7 space-y-6">
-                  <section className="bg-[#121216] border border-white/5 rounded-xl p-6">
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6">
                     <div className="flex items-center gap-2 mb-8">
                       <FolderOpen size={16} className="text-blue-500" />
-                      <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Chemins Système</h2>
+                      <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Chemins Système</h2>
                     </div>
                     
                     <div className="space-y-6">
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center px-1">
-                          <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Dossier Projets</label>
+                          <label className="text-[10px] font-bold text-text-subtle uppercase tracking-widest">Dossier Projets</label>
                           <button onClick={handleSelectDir} disabled={isWatching} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-30">Modifier</button>
                         </div>
-                        <div className="bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs font-mono text-white/50 truncate">
+                        <div className="bg-bg-input border border-border-input rounded-lg p-2.5 text-xs font-mono text-text-muted truncate">
                           {targetDir}
                         </div>
                       </div>
 
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center px-1">
-                          <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Dossier Templates</label>
+                          <label className="text-[10px] font-bold text-text-subtle uppercase tracking-widest">Dossier Templates</label>
                           <button onClick={handleSelectTemplateDir} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors">Modifier</button>
                         </div>
-                        <div className="bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs font-mono text-white/50 truncate">
+                        <div className="bg-bg-input border border-border-input rounded-lg p-2.5 text-xs font-mono text-text-muted truncate">
                           {templateDir}
                         </div>
                       </div>
@@ -1100,13 +1100,13 @@ function App() {
 
                 {/* Filters - Column Right */}
                 <div className="lg:col-span-5 space-y-6">
-                  <section className="bg-[#121216] border border-white/5 rounded-xl p-6 h-full flex flex-col">
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 h-full flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                       <div className="flex items-center gap-2">
                         <EyeOff size={16} className="text-amber-500" />
-                        <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">Filtres .tex</h2>
+                        <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Filtres .tex</h2>
                       </div>
-                      <span className="text-[10px] font-bold text-white/20 bg-white/5 px-2 py-0.5 rounded-full">{ignoredPatterns.length}</span>
+                      <span className="text-[10px] font-bold text-text-extra-subtle bg-bg-input px-2 py-0.5 rounded-full">{ignoredPatterns.length}</span>
                     </div>
                     
                     <div className="space-y-4 flex-1">
@@ -1114,7 +1114,7 @@ function App() {
                         <input 
                           type="text" 
                           placeholder="Mot-clé..."
-                          className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-xs focus:border-amber-500/50 outline-none transition-colors"
+                          className="flex-1 bg-bg-input border border-border-input rounded-lg px-3 py-2 text-xs focus:border-amber-500/50 outline-none transition-colors"
                           value={newPattern}
                           onChange={(e) => setNewPattern(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && addIgnoredPattern()}
@@ -1129,11 +1129,11 @@ function App() {
 
                       <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto pr-1 custom-scrollbar">
                         {ignoredPatterns.map(pattern => (
-                          <div key={pattern} className="flex items-center gap-1.5 bg-white/5 border border-white/5 pl-2.5 pr-1 py-1 rounded-md group hover:border-amber-500/20 transition-all">
-                            <span className="text-[10px] font-bold text-white/40">{pattern}</span>
+                          <div key={pattern} className="flex items-center gap-1.5 bg-bg-input border border-border-subtle pl-2.5 pr-1 py-1 rounded-md group hover:border-amber-500/20 transition-all">
+                            <span className="text-[10px] font-bold text-text-subtle">{pattern}</span>
                             <button 
                               onClick={() => removeIgnoredPattern(pattern)}
-                              className="p-1 text-white/10 hover:text-red-400 transition-colors"
+                              className="p-1 text-text-extra-subtle hover:text-red-400 transition-colors"
                             >
                               <X size={12} />
                             </button>
@@ -1142,8 +1142,8 @@ function App() {
                       </div>
                     </div>
                     
-                    <div className="mt-6 pt-4 border-t border-white/5">
-                       <p className="text-[9px] text-white/20 leading-relaxed italic">
+                    <div className="mt-6 pt-4 border-t border-border-subtle">
+                       <p className="text-[9px] text-text-extra-subtle leading-relaxed italic">
                         Les noms contenant ces mots seront exclus du sélecteur racine.
                       </p>
                     </div>
@@ -1166,7 +1166,7 @@ function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active
       className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-text-subtle hover:bg-bg-input-hover hover:text-text-main'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
       title={collapsed ? label : ""}
     >
-      <div className={`${active ? 'text-blue-500' : 'group-hover:text-white/70'} transition-colors shrink-0`}>{icon}</div>
+      <div className={`${active ? 'text-blue-500' : 'group-hover:text-text-muted'} transition-colors shrink-0`}>{icon}</div>
       {!collapsed && <span className="text-sm font-semibold">{label}</span>}
     </button>
   );
@@ -1184,14 +1184,14 @@ function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: {
       className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? activeBgClass : 'bg-bg-card border-border-subtle hover:bg-bg-input-hover hover:border-border-input'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
     >
       <div className={`p-2.5 rounded-xl transition-colors ${iconBgClass} group-hover/row:text-text-subtle`}>
-        {disabled && active ? <Lock size={18} className="text-white/20" /> : <FolderOpen size={18} />}
+        {disabled && active ? <Lock size={18} className="text-text-extra-subtle" /> : <FolderOpen size={18} />}
       </div>
       
       <div className="flex-1 min-w-0 text-left">
         <span className={`block text-sm font-bold truncate ${active ? activeColorClass : 'text-text-muted'}`}>{name}</span>
         <div className="flex items-center gap-2 mt-0.5">
-           <Calendar size={10} className="text-white/10" />
-           <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">{date}</span>
+           <Calendar size={10} className="text-text-extra-subtle" />
+           <span className="text-[10px] font-medium text-text-extra-subtle uppercase tracking-wider">{date}</span>
         </div>
       </div>
 
