@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -17,6 +17,15 @@ interface Project {
 
 function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project">("dashboard");
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const saved = localStorage.getItem("texrapide_theme");
+    return saved === "light" || saved === "dark" ? saved : "dark";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_theme", theme);
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
   const [health, setHealth] = useState<HealthStatus[]>([]);
   const hasDistribution = health.find(h => h.binary === "distribution")?.installed ?? false;
   const hasCliTools = health.filter(h => ["pdflatex", "latexmk", "bibtex"].includes(h.binary.toString())).every(h => h.installed);
@@ -371,12 +380,12 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-[#0a0a0c] text-white font-sans selection:bg-blue-500/30 overflow-hidden">
+    <div className="flex h-screen bg-bg-deep text-text-main font-sans selection:bg-blue-500/30 overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-[#0f0f12] border-r border-white/5 flex flex-col p-6 transition-all duration-300 z-10 shrink-0 relative group`}>
+      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-bg-sidebar border-r border-border-subtle flex flex-col p-6 transition-all duration-300 z-10 shrink-0 relative group`}>
         <button 
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-20 bg-[#1e1e24] border border-white/10 rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-blue-500 hover:border-blue-500"
+          className="absolute -right-3 top-20 bg-bg-sidebar-button border border-border-input rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-blue-500 hover:border-blue-500"
         >
           {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -397,7 +406,7 @@ function App() {
               <Activity size={20} className="text-white" />
             </div>
             {!isSidebarCollapsed && (
-              <span className="font-display text-xl font-bold tracking-tight text-white/90">
+              <span className="font-display text-xl font-bold tracking-tight text-text-main/90">
                 TexRapide
               </span>
             )}
@@ -422,7 +431,7 @@ function App() {
               {!isSidebarCollapsed && (
                 <button 
                   onClick={handleOpenVSCode}
-                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all"
+                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-white/10 transition-all"
                   title="VSCode"
                 >
                   <VSCodeIcon size={20} />
@@ -441,20 +450,20 @@ function App() {
             <div className="fade-in flex flex-col gap-10">
               <header className="flex justify-between items-end px-4">
                 <div>
-                  <h1 className="text-3xl font-bold text-white mb-2">Tableau de bord</h1>
-                  <p className="text-white/40 text-sm">Gérez vos projets et votre environnement LaTeX.</p>
+                  <h1 className="text-3xl font-bold text-text-main mb-2">Tableau de bord</h1>
+                  <p className="text-text-subtle text-sm">Gérez vos projets et votre environnement LaTeX.</p>
                 </div>
               </header>
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className={`bg-[#121216] border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-white/5'}`}>
+                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-white/5'}`}>
                   {/* Close button */}
                   {!confirmRemoval ? (
                     <button 
                       onClick={() => setConfirmRemoval(true)}
                       disabled={isWatching}
-                      className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-white/5' : 'text-white/10 hover:text-red-400 hover:bg-red-500/10'}`}
+                      className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-white/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'}`}
                       title={isWatching ? "Arrêtez le watch mode d'abord" : "Retirer ce projet"}
                     >
                       <X size={16} />
@@ -470,14 +479,14 @@ function App() {
                   <div className="min-w-0">
                     <div className="flex items-center gap-3 mb-2">
                       <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`}></div>
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400/60' : 'text-white/30'}`}>Projet Actuel</span>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400/60' : 'text-text-subtle'}`}>Projet Actuel</span>
                     </div>
                     <h2 className="text-3xl font-bold truncate text-white">{projectName}</h2>
                   </div>
 
                   <div className="flex items-end justify-between gap-4 mt-4">
                     <div className="flex flex-col gap-1.5 group/file relative">
-                      <span className={`text-[9px] font-bold uppercase tracking-widest px-0.5 ${isWatching ? 'text-green-400/30' : 'text-white/20'}`}>Fichier Racine</span>
+                      <span className={`text-[9px] font-bold uppercase tracking-widest px-0.5 ${isWatching ? 'text-green-400/30' : 'text-text-extra-subtle'}`}>Fichier Racine</span>
                       <div className="relative">
                         {projectTexFiles.length > 0 ? (
                           <>
@@ -491,7 +500,7 @@ function App() {
                             >
                               {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                             </select>
-                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-white/[0.02] border-green-500/20 text-green-400/70' : 'text-white/40 bg-white/5 border-white/5 hover:border-white/20 hover:text-white/70'}`}>
+                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' : 'text-white/40 bg-white/5 border-white/5 hover:border-white/20 hover:text-text-muted'}`}>
                               <Code size={12} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
                               <span className="truncate max-w-[150px]">{mainFile}</span>
                               {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-white/10" />}
@@ -538,16 +547,16 @@ function App() {
                 </section>
               )}
 
-              <section className="bg-[#121216]/50 border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col">
+              <section className="bg-bg-card/50 border border-white/5 rounded-2xl p-6 md:p-8 flex flex-col">
                 {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
                     <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
-                    <h2 className="text-xl font-bold uppercase tracking-tight">Projets</h2>
+                    <h2 className="text-xl font-bold uppercase tracking-tight text-text-main">Projets</h2>
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex bg-black/40 p-1 rounded-lg border border-white/5">
+                    <div className="flex bg-bg-input p-1 rounded-lg border border-white/5">
                       <button 
                         onClick={() => setSortBy("recent")}
                         disabled={isWatching}
@@ -588,7 +597,7 @@ function App() {
                     placeholder="Rechercher un projet..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-black/60 border border-white/5 hover:border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none transition-all placeholder:text-white/10"
+                    className="w-full bg-bg-input border border-white/5 hover:border-white/10 focus:border-blue-500/50 rounded-xl py-2.5 pl-10 pr-4 text-xs outline-none transition-all placeholder:text-white/10"
                   />
                   {searchQuery && (
                     <button 
@@ -687,7 +696,7 @@ function App() {
                     ))
                   ) : (
                     !isCreatingInline && (
-                      <div className="text-center py-24 bg-black/10 rounded-3xl border border-dashed border-white/5 mx-2">
+                      <div className="text-center py-24 bg-bg-input/10 rounded-3xl border border-dashed border-white/5 mx-2">
                         <div className="flex flex-col items-center gap-4">
                           <FolderOpen size={48} className="text-white/5" />
                           <p className="text-white/20 italic text-sm">
@@ -710,7 +719,7 @@ function App() {
                   <button onClick={() => setView("dashboard")} className={`text-xs font-bold mb-4 flex items-center gap-1 hover:underline ${isWatching ? 'text-green-500' : 'text-blue-500'}`}>
                     <ChevronLeft size={14} /> Dashboard
                   </button>
-                  <h1 className="text-4xl font-bold mb-2 truncate">{projectName}</h1>
+                  <h1 className="text-4xl font-bold mb-2 truncate text-text-main">{projectName}</h1>
                   <p className="text-white/30 font-mono text-[10px] truncate">{activeProject}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -737,7 +746,7 @@ function App() {
                     <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-8 ${isWatching ? 'bg-green-500/10 text-green-400' : 'bg-blue-600 text-white'}`}>
                       {isWatching ? <Activity size={32} className="animate-pulse" /> : <Play size={32} fill="currentColor" />}
                     </div>
-                    <h2 className="text-2xl font-bold mb-4">{isWatching ? "TexRapide en action" : "Prêt pour la compilation"}</h2>
+                    <h2 className="text-2xl font-bold mb-4 text-text-main">{isWatching ? "TexRapide en action" : "Prêt pour la compilation"}</h2>
                     <p className="text-white/40 max-w-sm mb-8 text-sm">
                       {isWatching ? "Le système surveille vos fichiers. Sauvegardez pour compiler." : "Activez le mode surveillance pour automatiser vos builds LaTeX."}
                     </p>
@@ -773,7 +782,7 @@ function App() {
             <div className="fade-in flex flex-col gap-6">
               <header className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-white mb-1">Configuration</h1>
+                  <h1 className="text-2xl font-bold text-text-main mb-1">Configuration</h1>
                   <p className="text-white/30 text-xs">Configuration de l'environnement.</p>
                 </div>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
@@ -797,7 +806,7 @@ function App() {
                   <button 
                     onClick={checkHealth}
                     disabled={isAnalyzing}
-                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-all text-[10px] font-bold border border-white/5 disabled:opacity-35 disabled:cursor-not-allowed"
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-muted hover:text-white transition-all text-[10px] font-bold border border-white/5 disabled:opacity-35 disabled:cursor-not-allowed"
                     title="Relancer le diagnostic"
                   >
                     <RefreshCw size={10} className={`transition-transform duration-500 ${isAnalyzing ? 'animate-spin' : 'hover:rotate-180'}`} />
@@ -854,13 +863,13 @@ function App() {
                   // Line 1 status
                   const line1Active = !isAnalyzing || analysisStep >= 1;
                   const line1Success = hasDistribution;
-                  const line1Color = line1Active ? (line1Success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                  const line1Color = line1Active ? (line1Success ? '#22c55e' : '#ef4444') : 'var(--color-border-subtle)';
                   const line1Class = (isAnalyzing && analysisStep === 0) || (line1Active && line1Success) ? 'animate-dash' : '';
 
                   // Line 2 status
                   const line2Active = !isAnalyzing || analysisStep >= 2;
                   const line2Success = hasCliTools;
-                  const line2Color = line2Active ? (line2Success ? '#22c55e' : '#ef4444') : 'rgba(255,255,255,0.05)';
+                  const line2Color = line2Active ? (line2Success ? '#22c55e' : '#ef4444') : 'var(--color-border-subtle)';
                   const line2Class = (isAnalyzing && analysisStep === 1) || (line2Active && line2Success) ? 'animate-dash' : '';
 
                   // Dynamic Message
@@ -934,7 +943,7 @@ function App() {
                           }}
                         >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node1Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node1Style} cursor-pointer`}
                             title={distributionTooltip}
                           >
                             <Layers size={14} />
@@ -968,7 +977,7 @@ function App() {
                           }}
                         >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node2Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node2Style} cursor-pointer`}
                             title={cliTooltip}
                           >
                             <Terminal size={14} />
@@ -1002,7 +1011,7 @@ function App() {
                           }}
                         >
                           <div 
-                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node3Style}`}
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-all duration-300 ${node3Style} cursor-pointer`}
                             title={skimTooltip}
                           >
                             <BookOpen size={14} />
@@ -1059,6 +1068,31 @@ function App() {
                         <div className="bg-black/40 border border-white/10 rounded-lg p-2.5 text-xs font-mono text-white/50 truncate">
                           {templateDir}
                         </div>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Apparence Card */}
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {theme === "dark" ? <Moon size={16} className="text-blue-500" /> : <Sun size={16} className="text-amber-500" />}
+                        <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Apparence</h2>
+                      </div>
+                      
+                      <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle transition-colors duration-300">
+                        <button 
+                          onClick={() => setTheme("light")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${theme === "light" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          <Sun size={12} /> Clair
+                        </button>
+                        <button 
+                          onClick={() => setTheme("dark")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${theme === "dark" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          <Moon size={12} /> Sombre
+                        </button>
                       </div>
                     </div>
                   </section>
@@ -1129,7 +1163,7 @@ function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active
     <button 
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-white/30 hover:bg-white/5 hover:text-white/70'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
+      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-text-subtle hover:bg-bg-input-hover hover:text-text-main'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
       title={collapsed ? label : ""}
     >
       <div className={`${active ? 'text-blue-500' : 'group-hover:text-white/70'} transition-colors shrink-0`}>{icon}</div>
@@ -1141,20 +1175,20 @@ function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active
 function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: { name: string, date: string, active: boolean, isWatching: boolean, disabled: boolean, onClick: () => void }) {
   const activeColorClass = isWatching ? 'text-green-400' : 'text-blue-400';
   const activeBgClass = isWatching ? 'bg-green-600/5 border-green-500/20 shadow-green-500/5' : 'bg-blue-600/5 border-blue-600/20 shadow-sm';
-  const iconBgClass = isWatching ? (active ? 'bg-green-500/20 text-green-400' : 'bg-white/5 text-white/5') : (active ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-white/10');
+  const iconBgClass = isWatching ? (active ? 'bg-green-500/20 text-green-400' : 'bg-bg-input text-text-extra-subtle') : (active ? 'bg-blue-500/20 text-blue-400' : 'bg-bg-input text-text-extra-subtle');
 
   return (
     <button 
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? activeBgClass : 'bg-white/[0.02] border-white/5 hover:bg-white/5 hover:border-white/10'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? activeBgClass : 'bg-bg-card border-border-subtle hover:bg-bg-input-hover hover:border-border-input'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
     >
-      <div className={`p-2.5 rounded-xl transition-colors ${iconBgClass} group-hover/row:text-white/30`}>
+      <div className={`p-2.5 rounded-xl transition-colors ${iconBgClass} group-hover/row:text-text-subtle`}>
         {disabled && active ? <Lock size={18} className="text-white/20" /> : <FolderOpen size={18} />}
       </div>
       
       <div className="flex-1 min-w-0 text-left">
-        <span className={`block text-sm font-bold truncate ${active ? activeColorClass : 'text-white/80'}`}>{name}</span>
+        <span className={`block text-sm font-bold truncate ${active ? activeColorClass : 'text-text-muted'}`}>{name}</span>
         <div className="flex items-center gap-2 mt-0.5">
            <Calendar size={10} className="text-white/10" />
            <span className="text-[10px] font-medium text-white/20 uppercase tracking-wider">{date}</span>
