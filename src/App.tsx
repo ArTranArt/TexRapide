@@ -832,8 +832,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active1
                       ? success1
-                        ? `border-green-500 bg-green-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-red-500 bg-red-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode1Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Node 2 state
@@ -844,8 +844,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active2
                       ? success2
-                        ? `border-green-500 bg-green-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-red-500 bg-red-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-red-500 bg-red-500/10 text-red-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode2Active ? 'scale-110 shadow-[0_0_15px_rgba(239,68,68,0.6)] border-red-400' : 'shadow-[0_0_8px_rgba(239,68,68,0.3)]'}`
                       : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Node 3 state
@@ -856,8 +856,8 @@ function App() {
                     ? 'border-blue-500 bg-blue-500/10 text-blue-400 shadow-[0_0_8px_rgba(0,122,255,0.3)] animate-pulse'
                     : active3
                       ? success3
-                        ? `border-green-500 bg-green-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
-                        : `border-amber-500 bg-amber-500 text-white ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
+                        ? `border-green-500 bg-green-500/10 text-green-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(34,197,94,0.6)] border-green-400' : 'shadow-[0_0_8px_rgba(34,197,94,0.3)]'}`
+                        : `border-amber-500 bg-amber-500/10 text-amber-400 ${isAnalyzing ? 'cursor-default' : 'cursor-pointer'} ${isNode3Active ? 'scale-110 shadow-[0_0_15px_rgba(245,158,11,0.6)] border-amber-400' : 'shadow-[0_0_8px_rgba(245,158,11,0.3)]'}`
                       : 'border-border-input bg-bg-input text-text-extra-subtle';
 
                   // Line 1 status
