@@ -406,7 +406,7 @@ function App() {
         
         <nav className="flex flex-col gap-1.5">
           <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} icon={<Layers size={18} />} label="Dashboard" />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => { setView("settings"); setIsCreatingInline(false); }} icon={<Settings size={18} />} label="Paramètres" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => { setView("settings"); setIsCreatingInline(false); }} icon={<Settings size={18} />} label="Configuration" />
         </nav>
 
         {activeProject && (
@@ -773,7 +773,7 @@ function App() {
             <div className="fade-in flex flex-col gap-6">
               <header className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-white mb-1">Paramètres</h1>
+                  <h1 className="text-2xl font-bold text-white mb-1">Configuration</h1>
                   <p className="text-white/30 text-xs">Configuration de l'environnement.</p>
                 </div>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
@@ -866,7 +866,7 @@ function App() {
                   // Dynamic Message
                   let statusIcon = <Info size={16} className="text-blue-500 shrink-0" />;
                   let statusText = "Système non analysé";
-                  let statusSubtext = "Lisez les paramètres ou lancez un diagnostic.";
+                  let statusSubtext = "Consultez la configuration ou lancez un diagnostic.";
 
                   const activeDisplayNode = hoveredNode || selectedNode;
 
