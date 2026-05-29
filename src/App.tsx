@@ -1163,7 +1163,7 @@ function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active
     <button 
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 group ${active ? 'bg-blue-600/10 text-blue-500 border border-blue-600/20' : 'text-text-subtle hover:bg-bg-input-hover hover:text-text-main'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
+      className={`flex items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'} py-2.5 rounded-xl transition-all duration-200 border group ${active ? 'bg-blue-600/10 text-blue-500 border-blue-600/20' : 'border-transparent text-text-subtle hover:bg-bg-input-hover hover:text-text-main'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
       title={collapsed ? label : ""}
     >
       <div className={`${active ? 'text-blue-500' : 'group-hover:text-text-muted'} transition-colors shrink-0`}>{icon}</div>
