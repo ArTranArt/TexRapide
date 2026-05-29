@@ -448,7 +448,7 @@ function App() {
           
           {view === "dashboard" && (
             <div className="fade-in flex flex-col gap-10">
-              <header className="flex justify-between items-end px-4">
+              <header className="flex justify-between items-end">
                 <div>
                   <h1 className="text-3xl font-bold text-text-main mb-2">Tableau de bord</h1>
                   <p className="text-text-subtle text-sm">Gérez vos projets et votre environnement LaTeX.</p>
@@ -779,11 +779,11 @@ function App() {
           )}
 
           {view === "settings" && (
-            <div className="fade-in flex flex-col gap-6">
+            <div className="fade-in flex flex-col gap-10">
               <header className="flex items-center justify-between">
                 <div>
-                  <h1 className="text-2xl font-bold text-text-main mb-1">Configuration</h1>
-                  <p className="text-text-subtle text-xs">Configuration de l'environnement.</p>
+                  <h1 className="text-3xl font-bold text-text-main mb-2">Configuration</h1>
+                  <p className="text-text-subtle text-sm">Configuration de l'environnement.</p>
                 </div>
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
                   <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
