@@ -147,6 +147,7 @@ function App() {
 
   useEffect(() => {
     autoOpenRef.current = autoOpenOnError;
+    console.log("[AutoOpen] state changed:", autoOpenOnError, "ref:", autoOpenRef.current);
     localStorage.setItem("texrapide_auto_open", autoOpenOnError ? "true" : "false");
   }, [autoOpenOnError]);
 
@@ -310,7 +311,9 @@ function App() {
             setCompileLogs("");
           } else {
             setCompileLogs(event.payload.logs);
+            console.log("[CompileStatusListener] Event status:", event.payload.status, "autoOpenRef.current:", autoOpenRef.current);
             if (event.payload.status === "error" && autoOpenRef.current) {
+              console.log("[CompileStatusListener] Auto-opening logs console drawer!");
               setIsLogsOpen(true);
             }
           }
