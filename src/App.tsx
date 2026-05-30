@@ -1685,7 +1685,7 @@ x_{n}         % Indice (x indice n)
 
       <div 
         style={{ height: isLogsOpen ? `${drawerHeight}px` : undefined }}
-        className={`fixed bottom-0 right-0 left-0 bg-bg-card/95 border-t border-border-input z-50 transition-all duration-300 ease-out transform ${
+        className={`fixed bottom-0 right-0 left-0 bg-bg-card/95 border-t border-border-input z-50 transition-[transform,opacity] duration-300 ease-out transform ${
           isLogsOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
         } glass-panel shadow-2xl flex flex-col`}
       >
