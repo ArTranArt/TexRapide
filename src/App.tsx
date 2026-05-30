@@ -565,49 +565,52 @@ function App() {
         {activeProject && (
           <div className="mt-auto pt-8">
             <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'justify-start'} gap-2`}>
+              {/* 1. VSCode Button */}
+              <button 
+                onClick={handleOpenVSCode}
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
+                title="VSCode"
+              >
+                <VSCodeIcon size={20} />
+              </button>
+
+              {/* 2. Terminal Button */}
+              <button 
+                onClick={() => {
+                  if (compileStatus !== "idle") setIsLogsOpen(true);
+                }}
+                disabled={compileStatus === "idle"}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
+                  compileStatus === "idle"
+                    ? 'bg-bg-input text-text-extra-subtle border-border-subtle cursor-not-allowed opacity-50'
+                    : compileStatus === "error"
+                      ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red cursor-pointer shadow-lg shadow-red-500/20'
+                      : 'bg-bg-input text-green-400 border-border-subtle hover:bg-bg-input-hover shadow-md shadow-black/10 cursor-pointer'
+                }`}
+                title={compileStatus === "idle" ? "Logs non disponibles" : "Logs de compilation"}
+              >
+                <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin text-blue-400" : ""} />
+                {compileStatus === "error" && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                )}
+                {compileStatus === "success" && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                )}
+              </button>
+
+              {/* 3. Run Button */}
               <button 
                 onClick={handleToggleWatch}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all ${isWatching ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all cursor-pointer ${isWatching ? 'bg-green-500/10 text-green-400 border border-green-500/20 shadow-lg shadow-green-500/5' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
                 title={isWatching ? "Arrêter" : "Démarrer"}
               >
                 {isWatching ? <div className="w-2.5 h-2.5 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
               </button>
-              {compileStatus !== "idle" && (
-                <button 
-                  onClick={() => setIsLogsOpen(true)}
-                  className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
-                    compileStatus === "compiling"
-                      ? 'bg-blue-600/10 text-blue-400 border-blue-500/30'
-                      : compileStatus === "error"
-                        ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red'
-                        : 'bg-green-600/10 text-green-400 border-green-500/20 hover:bg-green-600/20'
-                  }`}
-                  title="Logs de compilation"
-                >
-                  <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin" : ""} />
-                  {compileStatus === "error" && (
-                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                    </span>
-                  )}
-                  {compileStatus === "success" && (
-                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                    </span>
-                  )}
-                </button>
-              )}
-
-              {(!isSidebarCollapsed || !isWatching) && (
-                <button 
-                  onClick={handleOpenVSCode}
-                  className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
-                  title="VSCode"
-                >
-                  <VSCodeIcon size={20} />
-                </button>
-              )}
             </div>
           </div>
         )}
@@ -924,7 +927,7 @@ function App() {
                     {/* Return button */}
                     <div>
                       <button 
-                        onClick={handleDeselectProject}
+                        onClick={() => setView("dashboard")}
                         className="inline-flex items-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-lg border border-border-subtle bg-bg-input hover:text-text-main hover:border-border-input hover:bg-bg-input-hover cursor-pointer"
                       >
                         <ChevronLeft size={14} /> Retour au Dashboard
@@ -1884,9 +1887,9 @@ x_{n}         % Indice (x indice n)
 
       <div 
         style={{ height: isLogsOpen ? `${drawerHeight}px` : undefined }}
-        className={`fixed bottom-0 right-0 left-0 bg-bg-card/95 border-t border-border-input z-50 transition-[transform,opacity] duration-300 ease-out transform ${
+        className={`fixed bottom-0 right-0 left-0 bg-[#121216]/95 border-t border-white/10 z-50 transition-[transform,opacity] duration-300 ease-out transform ${
           isLogsOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
-        } glass-panel shadow-2xl flex flex-col`}
+        } shadow-2xl flex flex-col`}
       >
         {/* Bordure de redimensionnement (poignée invisible pour drag) */}
         <div 
@@ -1896,14 +1899,14 @@ x_{n}         % Indice (x indice n)
 
         {/* Poignée de tiroir pour fermer */}
         <div className="w-full flex justify-center py-2 cursor-pointer select-none shrink-0" onClick={() => setIsLogsOpen(false)}>
-          <div className="w-12 h-1 bg-text-extra-subtle/30 rounded-full" />
+          <div className="w-12 h-1 bg-white/30 rounded-full" />
         </div>
 
         {/* En-tête */}
-        <div className="flex items-center justify-between px-6 pb-3 border-b border-border-subtle shrink-0">
+        <div className="flex items-center justify-between px-6 pb-3 border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3">
             <Terminal size={16} className={compileStatus === "compiling" ? "text-blue-400 animate-spin" : compileStatus === "error" ? "text-red-400" : "text-green-400"} />
-            <span className="font-display font-bold text-sm tracking-wide">
+            <span className="font-display font-bold text-sm tracking-wide text-white">
               Console de compilation — {projectName}
             </span>
             {compileStatus === "compiling" && (
@@ -1928,7 +1931,7 @@ x_{n}         % Indice (x indice n)
             {compileLogs && (
               <button 
                 onClick={() => handleCopy(compileLogs, "console-logs")}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-input hover:bg-bg-input-hover text-text-muted hover:text-text-main border border-border-subtle transition-all text-[10px] font-bold"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 transition-all text-[10px] font-bold"
               >
                 {copiedId === "console-logs" ? <Check size={10} className="text-green-400" /> : <Copy size={10} />}
                 {copiedId === "console-logs" ? "Copié !" : "Copier les logs"}
@@ -1936,7 +1939,7 @@ x_{n}         % Indice (x indice n)
             )}
             <button 
               onClick={() => setIsLogsOpen(false)}
-              className="p-1.5 text-text-subtle hover:text-text-main rounded-lg hover:bg-bg-input transition-all"
+              className="p-1.5 text-white/40 hover:text-white rounded-lg hover:bg-white/10 transition-all"
             >
               <X size={14} />
             </button>
@@ -1944,14 +1947,14 @@ x_{n}         % Indice (x indice n)
         </div>
 
         {/* Zone des logs de console */}
-        <div className="flex-1 min-h-0 bg-black/35 p-6 font-mono text-[11px] overflow-y-auto selection:bg-blue-500/20 select-text custom-scrollbar">
+        <div className="flex-1 min-h-0 bg-black/50 p-6 font-mono text-[11px] overflow-y-auto selection:bg-blue-500/20 select-text custom-scrollbar text-white">
           {compileLogs ? (
             (() => {
               const lines = compileLogs.split('\n');
               const hasCriticalError = lines.some(line => line.trim().startsWith("!"));
               let idAssigned = false;
               return (
-                <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
+                <pre className="whitespace-pre-wrap break-all text-white/70 leading-relaxed font-mono">
                   {lines.map((line, idx) => {
                     const lowerLine = line.toLowerCase();
                     const trimLine = line.trim();
@@ -1962,7 +1965,7 @@ x_{n}         % Indice (x indice n)
                     const isGeneralError = lowerLine.includes("error") || lowerLine.includes("l.");
                     const isWarning = lowerLine.includes("warning");
                     
-                    let lineClass = "text-text-muted";
+                    let lineClass = "text-white/70";
                     let idProp: string | undefined = undefined;
 
                     if (isCritical) {
