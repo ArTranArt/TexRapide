@@ -139,7 +139,9 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
 
   useEffect(() => {
     pdf.getPage(pageNumber).then((page: any) => {
-      const vp = page.getViewport({ scale });
+      // Use devicePixelRatio for Retina/High-DPI sharp rendering
+      const dpr = window.devicePixelRatio || 1;
+      const vp = page.getViewport({ scale: scale * dpr });
       setViewport(vp);
 
       const canvas = canvasRef.current;
@@ -148,8 +150,13 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
       const context = canvas.getContext("2d");
       if (!context) return;
 
-      canvas.height = vp.height;
+      // Set internal drawing canvas dimensions to scaled up values
       canvas.width = vp.width;
+      canvas.height = vp.height;
+      
+      // Constraint CSS layout display dimensions to standard scale values
+      canvas.style.width = `${vp.width / dpr}px`;
+      canvas.style.height = `${vp.height / dpr}px`;
 
       // Cancel previous render task if active
       if (renderTaskRef.current) {
@@ -194,8 +201,8 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
     const viewportY = y * (viewport.height / rect.height);
 
     // Convert viewport coordinates to PDF 72 dpi big points relative to top-left corner
-    const pdfX = viewportX / scale;
-    const pdfY = viewportY / scale;
+    const pdfX = viewportX / viewport.scale;
+    const pdfY = viewportY / viewport.scale;
 
     try {
       // Invoke Tauri command to perform inverse search
