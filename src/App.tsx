@@ -996,62 +996,72 @@ function App() {
                 <div className="w-[40%] min-w-[320px] max-w-[500px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden">
                   
                   {/* Ultra-compact Header (Single Row) */}
-                  <div className="h-14 border-b border-border-subtle bg-bg-sidebar px-3 flex items-center justify-between gap-3 shrink-0 select-none">
+                  <div className="h-12 border-b border-border-subtle bg-bg-sidebar flex items-center justify-between pr-3 shrink-0 select-none">
                     
-                    {/* Compact Square Back Button */}
+                    {/* Compact Square Back Button - Stuck to top-left */}
                     <button 
                       onClick={() => setView("dashboard")}
-                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-border-subtle bg-bg-input hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer shrink-0"
+                      className="w-12 h-12 flex items-center justify-center border-r border-border-subtle hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer shrink-0"
                       title="Retour au Dashboard"
                     >
-                      <ChevronLeft size={16} />
+                      <ChevronLeft size={20} />
                     </button>
 
-                    {/* Project Title and Muted Path */}
-                    <div className="flex flex-col min-w-0 flex-1">
+                    {/* Project Title and Muted Path (with Copy on click) */}
+                    <div className="flex flex-col min-w-0 flex-1 ml-3">
                       <span className="text-xs font-bold text-text-main truncate leading-tight" title={projectName}>
                         {projectName}
                       </span>
-                      <span className="text-[9px] text-text-extra-subtle font-mono truncate leading-none mt-0.5" title={activeProject}>
-                        {activeProject}
+                      <span 
+                        onClick={() => handleCopy(activeProject, "project-path")}
+                        className="text-[9px] text-text-extra-subtle font-mono truncate leading-none mt-1 hover:text-blue-400 hover:underline transition-colors cursor-pointer flex items-center gap-1" 
+                        title="Cliquer pour copier le chemin absolu"
+                      >
+                        {copiedId === "project-path" ? (
+                          <span className="text-green-500 flex items-center gap-1 font-bold">
+                            <Check size={8} /> Copié !
+                          </span>
+                        ) : (
+                          activeProject
+                        )}
                       </span>
                     </div>
 
                     {/* Inline Selectors */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0">
                       
                       {/* Select File to Edit */}
-                      <div className="relative shrink-0">
-                        <label className="absolute -top-1.5 left-2 px-1 text-[7px] font-black uppercase bg-bg-sidebar text-text-extra-subtle tracking-wider z-10">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-extra-subtle">
                           Éditer
-                        </label>
+                        </span>
                         <div className="relative">
                           <select
                             value={editingFile}
                             onChange={(e) => setEditingFile(e.target.value)}
-                            className="bg-bg-input border border-border-subtle rounded-lg pl-2 pr-6 py-1 text-[10px] font-mono text-text-muted outline-none focus:border-blue-500/50 cursor-pointer min-w-[90px] max-w-[120px] appearance-none h-7"
+                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[80px] max-w-[120px] appearance-none h-6 transition-all"
                           >
                             {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                           </select>
-                          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
+                          <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
                         </div>
                       </div>
 
                       {/* Select Main File to Compile */}
-                      <div className="relative shrink-0">
-                        <label className="absolute -top-1.5 left-2 px-1 text-[7px] font-black uppercase bg-bg-sidebar text-text-extra-subtle tracking-wider z-10">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-extra-subtle">
                           Lancer
-                        </label>
+                        </span>
                         <div className="relative">
                           <select
                             value={mainFile}
                             disabled={isWatching}
                             onChange={(e) => setMainFile(e.target.value)}
-                            className="bg-bg-input border border-border-subtle rounded-lg pl-2 pr-6 py-1 text-[10px] font-mono text-text-muted outline-none focus:border-blue-500/50 cursor-pointer min-w-[90px] max-w-[120px] appearance-none h-7 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[80px] max-w-[120px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
                           >
                             {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                           </select>
-                          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
+                          <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
                         </div>
                       </div>
                     </div>

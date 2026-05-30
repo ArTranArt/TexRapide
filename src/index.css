@@ -133,3 +133,17 @@
 .animate-blink-red {
   animation: blink-red 1.5s infinite ease-in-out;
 }
+
+/* CodeMirror custom overrides for a premium, edge-to-edge borderless feel */
+.cm-editor {
+  height: 100% !important;
+  outline: none !important;
+}
+.cm-editor .cm-scroller {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+}
+.cm-editor .cm-gutters {
+  background-color: transparent !important;
+  border-right: 1px solid var(--color-border-subtle) !important;
+}
+
