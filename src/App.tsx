@@ -269,19 +269,23 @@ function App() {
 
   useEffect(() => {
     if (isLogsOpen) {
-      if (compileStatus === "error") {
-        // Essayer de défiler jusqu'à la première erreur pour la centrer
-        const firstErrorEl = document.getElementById("first-error-line");
-        if (firstErrorEl) {
-          firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
-          return;
+      const timer = setTimeout(() => {
+        if (compileStatus === "error") {
+          // Essayer de défiler jusqu'à la première erreur pour la centrer
+          const firstErrorEl = document.getElementById("first-error-line");
+          if (firstErrorEl) {
+            firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+          }
         }
-      }
+        
+        // Fallback ou si pas d'erreur : défilement vers le bas
+        if (logsEndRef.current) {
+          logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+        }
+      }, 150);
       
-      // Fallback ou si pas d'erreur : défilement vers le bas
-      if (logsEndRef.current) {
-        logsEndRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+      return () => clearTimeout(timer);
     }
   }, [compileLogs, isLogsOpen, compileStatus]);
 
@@ -1681,21 +1685,31 @@ x_{n}         % Indice (x indice n)
         <div className="flex-1 min-h-0 bg-black/35 p-6 font-mono text-[11px] overflow-y-auto selection:bg-blue-500/20 select-text custom-scrollbar">
           {compileLogs ? (
             (() => {
-              let hasFoundFirstError = false;
+              const lines = compileLogs.split('\n');
+              const hasCriticalError = lines.some(line => line.trim().startsWith("!"));
+              let idAssigned = false;
               return (
                 <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
-                  {compileLogs.split('\n').map((line, idx) => {
+                  {lines.map((line, idx) => {
                     const lowerLine = line.toLowerCase();
-                    const isError = lowerLine.includes("error") || line.startsWith("! ") || lowerLine.includes("l.");
+                    const isCritical = line.trim().startsWith("!");
+                    const isGeneralError = lowerLine.includes("error") || lowerLine.includes("l.");
                     const isWarning = lowerLine.includes("warning");
+                    
                     let lineClass = "text-text-muted";
                     let idProp: string | undefined = undefined;
 
-                    if (isError) {
-                      lineClass = "text-red-400 font-bold";
-                      if (!hasFoundFirstError) {
+                    if (isCritical) {
+                      lineClass = "text-red-400 font-bold bg-red-500/10 px-1 rounded";
+                      if (hasCriticalError && !idAssigned) {
                         idProp = "first-error-line";
-                        hasFoundFirstError = true;
+                        idAssigned = true;
+                      }
+                    } else if (isGeneralError) {
+                      lineClass = "text-red-400 font-semibold";
+                      if (!hasCriticalError && !idAssigned) {
+                        idProp = "first-error-line";
+                        idAssigned = true;
                       }
                     } else if (isWarning) {
                       lineClass = "text-amber-400";
