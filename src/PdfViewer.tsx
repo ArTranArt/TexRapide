@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight } from "lucide-react";
 
 interface PdfViewerProps {
   pdfSrc: string; // The URL/converted file path of the PDF
@@ -21,6 +21,10 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [isFitWidth, setIsFitWidth] = useState<boolean>(true);
   const [pageOriginalWidth, setPageOriginalWidth] = useState<number>(595);
+
+  // Page navigation states
+  const [showPageNav, setShowPageNav] = useState<boolean>(false);
+  const [activePage, setActivePage] = useState<number>(1);
 
   // Load PDF when pdfSrc or compileStatus changes (compilation success triggers reload)
   useEffect(() => {
@@ -91,8 +95,39 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
     }
   }, [isFitWidth, containerWidth, pageOriginalWidth]);
 
+  // Listen to scroll to track the active page closest to the top
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !pdf || numPages === 0) return;
+
+    const handleScroll = () => {
+      const children = container.children;
+      let closestPage = 1;
+      let minDistance = Infinity;
+
+      for (let i = 0; i < children.length; i++) {
+        const child = children[i] as HTMLElement;
+        if (child.id && child.id.startsWith("pdf-page-")) {
+          const rect = child.getBoundingClientRect();
+          const containerRect = container.getBoundingClientRect();
+          const distance = Math.abs(rect.top - containerRect.top);
+          if (distance < minDistance) {
+            minDistance = distance;
+            closestPage = parseInt(child.id.replace("pdf-page-", ""), 10);
+          }
+        }
+      }
+      setActivePage(closestPage);
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [pdf, numPages]);
+
   return (
-    <div className="flex flex-col h-full w-full bg-bg-deep select-none">
+    <div className="flex flex-col h-full w-full bg-bg-deep select-none relative">
       {/* PDF Controls */}
       <div className="h-10 border-b border-border-subtle bg-bg-sidebar px-4 flex items-center justify-between shrink-0 select-none z-10">
         <span className="text-[10px] font-bold text-text-subtle font-display uppercase tracking-wider flex items-center gap-2">
@@ -143,6 +178,20 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
           >
             <ZoomIn size={14} />
           </button>
+
+          <div className="w-[1px] h-4 bg-border-subtle mx-1" />
+
+          <button
+            onClick={() => setShowPageNav(prev => !prev)}
+            className={`p-1 rounded transition-colors cursor-pointer ${
+              showPageNav 
+                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm" 
+                : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent"
+            }`}
+            title="Afficher la navigation par pages"
+          >
+            <PanelRight size={14} />
+          </button>
         </div>
       </div>
 
@@ -165,16 +214,48 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
         )}
 
         {!loading && !error && pdf && Array.from({ length: numPages }, (_, i) => i + 1).map(pageNumber => (
-          <PdfPage
-            key={pageNumber}
-            pdf={pdf}
-            pageNumber={pageNumber}
-            scale={scale}
-            pdfPath={pdfPath}
-            onLineSelect={onLineSelect}
-          />
+          <div key={pageNumber} id={`pdf-page-${pageNumber}`} className="mx-auto shrink-0">
+            <PdfPage
+              pdf={pdf}
+              pageNumber={pageNumber}
+              scale={scale}
+              pdfPath={pdfPath}
+              onLineSelect={onLineSelect}
+            />
+          </div>
         ))}
       </div>
+
+      {/* Floating Page Navigation Panel */}
+      {showPageNav && numPages > 0 && (
+        <div className="absolute top-12 right-3 bottom-3 w-28 bg-bg-sidebar/80 backdrop-blur-md border border-border-subtle rounded-md shadow-2xl flex flex-col p-2 z-30 overflow-y-auto animate-fade-in gap-1">
+          <span className="text-[9px] font-bold text-text-subtle uppercase tracking-wider mb-1 block px-1 text-center border-b border-border-subtle/50 pb-1">
+            Pages
+          </span>
+          {Array.from({ length: numPages }, (_, i) => i + 1).map(pageNumber => (
+            <button
+              key={pageNumber}
+              onClick={() => {
+                setActivePage(pageNumber);
+                const element = document.getElementById(`pdf-page-${pageNumber}`);
+                if (element) {
+                  element.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+              }}
+              className={`w-full py-1 px-2 rounded text-[11px] font-mono transition-all cursor-pointer flex items-center justify-between ${
+                activePage === pageNumber
+                  ? "bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30"
+                  : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent"
+              }`}
+            >
+              <span>Page {pageNumber}</span>
+              {activePage === pageNumber && (
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
