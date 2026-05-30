@@ -1296,7 +1296,24 @@ function App() {
                 {/* Right Panel */}
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
-                    pdfExists ? (
+                    !isWatching ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
+                        <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
+                          <Play size={28} fill="currentColor" className="ml-1 text-blue-400" />
+                        </div>
+                        <h3 className="text-lg font-bold text-text-main mb-2">Compilation inactive</h3>
+                        <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
+                          Démarrez la compilation automatique pour éditer et visualiser le document PDF en temps réel.
+                        </p>
+                        <button
+                          onClick={handleToggleWatch}
+                          disabled={projectTexFiles.length === 0}
+                          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer"
+                        >
+                          Lancer la compilation
+                        </button>
+                      </div>
+                    ) : pdfExists ? (
                       <div className="flex-1 w-full h-full relative overflow-hidden">
                         <PdfViewer 
                           pdfSrc={pdfSrc}
@@ -1310,17 +1327,11 @@ function App() {
                         <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
                           <BookOpen size={28} />
                         </div>
-                        <h3 className="text-lg font-bold text-text-main mb-2">PDF non encore généré</h3>
+                        <h3 className="text-lg font-bold text-text-main mb-2">Compilation en cours...</h3>
                         <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
-                          Veuillez lancer la compilation pour générer l'aperçu PDF du document.
+                          Veuillez patienter pendant la génération du premier aperçu PDF.
                         </p>
-                        <button
-                          onClick={handleToggleWatch}
-                          disabled={projectTexFiles.length === 0}
-                          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer"
-                        >
-                          Lancer la compilation
-                        </button>
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                       </div>
                     )
                   ) : (
