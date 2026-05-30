@@ -318,7 +318,7 @@ function App() {
           // Essayer de défiler jusqu'à la première erreur pour la centrer
           const firstErrorEl = document.getElementById("first-error-line");
           if (firstErrorEl) {
-            firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+            firstErrorEl.scrollIntoView({ behavior: "smooth", block: "start" });
             return;
           }
         }
