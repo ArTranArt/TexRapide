@@ -173,6 +173,7 @@ function App() {
         file: mainFile, 
         line: lineNum 
       });
+      setIsLogsOpen(false); // Refermer la console vers le bas
     } catch (error) {
       console.error("Failed to open file in editor:", error);
     }
