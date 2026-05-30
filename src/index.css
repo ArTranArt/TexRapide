@@ -147,3 +147,25 @@
   border-right: 1px solid var(--color-border-subtle) !important;
 }
 
+/* SyncTeX click ripple animation */
+@keyframes ripple-out {
+  0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+}
+.animate-ripple-blue {
+  animation: ripple-out 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  border-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.15);
+}
+.animate-ripple-green {
+  animation: ripple-out 0.6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  border-color: #10b981;
+  background-color: rgba(16, 185, 129, 0.15);
+}
+.animate-ripple-red {
+  animation: ripple-out 0.8s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  border-color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.15);
+}
+
+

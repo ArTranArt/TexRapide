@@ -91,6 +91,19 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
     let target = Path::new(project_path).join(main_file);
     if !target.exists() { return; }
 
+    // Si le fichier SyncTeX n'existe pas, on force la recompilation en supprimant le PDF et la DB latexmk
+    let synctex_path = target.with_extension("synctex.gz");
+    if !synctex_path.exists() {
+        let fdb_path = target.with_extension("fdb_latexmk");
+        if fdb_path.exists() {
+            let _ = std::fs::remove_file(fdb_path);
+        }
+        let pdf_path = target.with_extension("pdf");
+        if pdf_path.exists() {
+            let _ = std::fs::remove_file(pdf_path);
+        }
+    }
+
     // Émettre le statut de début de compilation
     let _ = handle.emit("compile-status", CompilePayload {
         status: "compiling".to_string(),

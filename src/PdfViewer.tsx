@@ -124,10 +124,18 @@ interface PdfPageProps {
   onLineSelect: (file: string, line: number) => void;
 }
 
+interface Ripple {
+  id: number;
+  x: number;
+  y: number;
+  status: "searching" | "success" | "error";
+}
+
 function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewport, setViewport] = useState<any>(null);
   const renderTaskRef = useRef<any>(null);
+  const [ripples, setRipples] = useState<Ripple[]>([]);
 
   useEffect(() => {
     pdf.getPage(pageNumber).then((page: any) => {
@@ -176,6 +184,11 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
+    // Create a new ripple
+    const rippleId = Date.now();
+    const newRipple: Ripple = { id: rippleId, x, y, status: "searching" };
+    setRipples(prev => [...prev, newRipple]);
+
     // Convert mouse click relative coordinates to internal canvas/viewport coordinate space
     const viewportX = x * (viewport.width / rect.width);
     const viewportY = y * (viewport.height / rect.height);
@@ -193,9 +206,19 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
         y: pdfY,
       });
 
+      // Update ripple to success
+      setRipples(prev => prev.map(r => r.id === rippleId ? { ...r, status: "success" } : r));
+
       onLineSelect(result.file, result.line);
     } catch (err) {
       console.warn("SyncTeX inverse search failed:", err);
+      // Update ripple to error
+      setRipples(prev => prev.map(r => r.id === rippleId ? { ...r, status: "error" } : r));
+    } finally {
+      // Clean up ripple after its animation is done
+      setTimeout(() => {
+        setRipples(prev => prev.filter(r => r.id !== rippleId));
+      }, 1000);
     }
   };
 
@@ -207,6 +230,22 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
         className="cursor-crosshair block hover:brightness-[0.98] transition-all" 
         title="Double-cliquez pour aller à la ligne correspondante dans le code"
       />
+      
+      {/* Click ripples for visual feedback */}
+      {ripples.map(r => (
+        <div
+          key={r.id}
+          style={{ left: r.x, top: r.y }}
+          className={`absolute pointer-events-none z-20 w-8 h-8 rounded-full border-2 ${
+            r.status === "searching" 
+              ? "animate-ripple-blue" 
+              : r.status === "success" 
+                ? "animate-ripple-green" 
+                : "animate-ripple-red"
+          }`}
+        />
+      ))}
+
       <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/40 text-white text-[9px] font-mono select-none opacity-0 group-hover:opacity-100 transition-opacity">
         Page {pageNumber}
       </div>
