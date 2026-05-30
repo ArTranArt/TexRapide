@@ -28,6 +28,8 @@ pub fn run() {
             project::open_in_vscode,
             project::open_in_vscode_at_line,
             project::file_exists,
+            project::read_file,
+            project::write_file,
             watcher::start_watch,
             watcher::stop_watch
         ])
