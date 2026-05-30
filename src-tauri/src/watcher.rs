@@ -14,7 +14,8 @@ pub fn start_watch(
     handle: AppHandle, 
     state: State<'_, WatcherState>,
     project_path: String, 
-    main_file: String
+    main_file: String,
+    pdf_viewer_mode: String
 ) -> std::result::Result<(), String> {
     // Arrêter un watcher existant s'il y en a un
     stop_watch(state.clone())?;
@@ -30,6 +31,7 @@ pub fn start_watch(
     let path = project_path.clone();
     let file = main_file.clone();
     let handle_clone = handle.clone();
+    let mode = pdf_viewer_mode.clone();
     
     std::thread::spawn(move || {
         let (tx, rx) = channel();
@@ -41,7 +43,7 @@ pub fn start_watch(
         }
 
         println!("Watching: {} (main: {})", path, file);
-        run_build(&handle_clone, &path, &file);
+        run_build(&handle_clone, &path, &file, &mode);
 
         let debounce_duration = Duration::from_millis(500);
 
@@ -52,7 +54,7 @@ pub fn start_watch(
                     if is_relevant_event(event) {
                         while let Ok(_) = rx.try_recv() {}
                         std::thread::sleep(debounce_duration);
-                        run_build(&handle_clone, &path, &file);
+                        run_build(&handle_clone, &path, &file, &mode);
                     }
                 }
             }
@@ -85,7 +87,7 @@ struct CompilePayload {
     logs: String,
 }
 
-fn run_build(handle: &AppHandle, project_path: &str, main_file: &str) {
+fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer_mode: &str) {
     let target = Path::new(project_path).join(main_file);
     if !target.exists() { return; }
 
@@ -149,11 +151,45 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str) {
     std::thread::sleep(Duration::from_millis(500));
 
     let pdf_path = target.with_extension("pdf");
-    if pdf_path.exists() {
-        let _ = Command::new("open")
-            .arg("-g")
-            .arg("-a")
-            .arg("Skim")
+    if pdf_path.exists() && pdf_viewer_mode == "system" {
+        open_system_pdf(&pdf_path);
+    }
+}
+
+fn open_system_pdf(pdf_path: &Path) {
+    #[cfg(target_os = "macos")]
+    {
+        let has_skim = Path::new("/Applications/Skim.app").exists() || {
+            let output = Command::new("osascript")
+                .arg("-e")
+                .arg("id of application \"Skim\"")
+                .output();
+            output.is_ok() && output.unwrap().status.success()
+        };
+        if has_skim {
+            let _ = Command::new("open")
+                .arg("-g")
+                .arg("-a")
+                .arg("Skim")
+                .arg(pdf_path)
+                .spawn();
+        } else {
+            let _ = Command::new("open")
+                .arg(pdf_path)
+                .spawn();
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = Command::new("cmd")
+            .args(&["/C", "start", "", &pdf_path.to_string_lossy()])
+            .spawn();
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        let _ = Command::new("xdg-open")
             .arg(pdf_path)
             .spawn();
     }

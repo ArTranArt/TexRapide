@@ -27,6 +27,7 @@ pub fn run() {
             project::list_tex_files,
             project::open_in_vscode,
             project::open_in_vscode_at_line,
+            project::file_exists,
             watcher::start_watch,
             watcher::stop_watch
         ])
