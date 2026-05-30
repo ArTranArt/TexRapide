@@ -318,7 +318,7 @@ function App() {
     }
   };
 
-  const handleLineSelect = (rawPath: string, line: number) => {
+  const handleLineSelect = async (rawPath: string, line: number) => {
     if (!activeProject) return;
 
     let normalizedPath = rawPath.replace(/\\/g, "/");
@@ -338,6 +338,49 @@ function App() {
     const matchedFile = projectTexFiles.find(f => f.toLowerCase() === baseName.toLowerCase());
     if (matchedFile) {
       relativeFile = matchedFile;
+    }
+
+    // 3. Prevent opening LaTeX auxiliary files (like .toc, .aux, etc.)
+    const extMatch = relativeFile.match(/\.([a-zA-Z0-9]+)$/);
+    const ext = extMatch ? extMatch[1].toLowerCase() : "";
+    const isAuxFile = ["toc", "lof", "lot", "bbl", "blg", "aux", "out", "log", "ind", "idx", "gls", "glo"].includes(ext);
+
+    if (isAuxFile) {
+      const texRelativeFile = relativeFile.replace(/\.[a-zA-Z0-9]+$/, ".tex");
+      let targetLine = 1;
+      let keyword = "";
+
+      if (ext === "toc") keyword = "\\tableofcontents";
+      else if (ext === "lof") keyword = "\\listoffigures";
+      else if (ext === "lot") keyword = "\\listoftables";
+
+      try {
+        const filePath = `${activeProject}/${texRelativeFile}`;
+        const content = await invoke<string>("read_file", { path: filePath });
+        if (content) {
+          const lines = content.split("\n");
+          let foundLine = -1;
+
+          if (keyword) {
+            foundLine = lines.findIndex(l => l.includes(keyword));
+          } else if (ext === "bbl" || ext === "blg") {
+            foundLine = lines.findIndex(l => 
+              l.includes("\\bibliography") || 
+              l.includes("\\printbibliography") || 
+              l.includes("thebibliography")
+            );
+          }
+
+          if (foundLine !== -1) {
+            targetLine = foundLine + 1; // 1-indexed
+          }
+        }
+      } catch (err) {
+        console.error("Failed to read tex file for aux redirect:", err);
+      }
+
+      relativeFile = texRelativeFile;
+      line = targetLine;
     }
 
     console.log("SyncTeX selected file:", relativeFile, "line:", line);
