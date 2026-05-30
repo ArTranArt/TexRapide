@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -53,6 +53,7 @@ function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
   const [helpTab, setHelpTab] = useState<"basics" | "text" | "math" | "media">("basics");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [lineWrapping, setLineWrapping] = useState<boolean>(false);
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -395,7 +396,6 @@ function App() {
   };
 
   const [editorContent, setEditorContent] = useState<string>( "");
-  const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
@@ -423,14 +423,11 @@ function App() {
   const saveFileContent = async (fileName: string, content: string) => {
     if (!activeProject) return;
     const filePath = `${activeProject}/${fileName}`;
-    setIsSaving(true);
     try {
       await invoke("write_file", { path: filePath, content });
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Failed to write file:", error);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -1230,41 +1227,38 @@ function App() {
                     </div>
 
                     {/* Inline Selectors */}
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
                       
                       {/* Single File Selector */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-extra-subtle">
-                          Fichier
-                        </span>
-                        <div className="relative">
-                          <select
-                            value={editingFile}
-                            disabled={isWatching}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setEditingFile(val);
-                              setMainFile(val);
-                            }}
-                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[100px] max-w-[160px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
-                            title={isWatching ? "Impossible de changer de fichier en mode exécution" : "Choisir le fichier actif"}
-                          >
-                            {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
-                          </select>
-                          <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
-                        </div>
+                      <div className="relative">
+                        <select
+                          value={editingFile}
+                          disabled={isWatching}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setEditingFile(val);
+                            setMainFile(val);
+                          }}
+                          className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[100px] max-w-[160px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                          title={isWatching ? "Impossible de changer de fichier en mode exécution" : "Choisir le fichier actif"}
+                        >
+                          {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                        <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
                       </div>
-                    </div>
 
-                    {/* Saving status dot */}
-                    <div className="shrink-0 pl-1">
-                      {isSaving ? (
-                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" title="Enregistrement..." />
-                      ) : hasUnsavedChanges ? (
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Modifié (non sauvegardé)" />
-                      ) : (
-                        <div className="w-2 h-2 rounded-full bg-green-500" title="Enregistré" />
-                      )}
+                      {/* Line wrapping toggle button */}
+                      <button
+                        onClick={() => setLineWrapping(prev => !prev)}
+                        className={`w-6 h-6 flex items-center justify-center rounded-md border transition-all cursor-pointer ${
+                          lineWrapping 
+                            ? "bg-blue-500/15 border-blue-500/30 text-blue-400" 
+                            : "bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input"
+                        }`}
+                        title={lineWrapping ? "Désactiver le retour à la ligne automatique" : "Activer le retour à la ligne automatique"}
+                      >
+                        <WrapText size={12} />
+                      </button>
                     </div>
                   </div>
 
@@ -1275,7 +1269,7 @@ function App() {
                       value={editorContent}
                       height="100%"
                       theme={theme}
-                      extensions={[latex(), lineHighlightField]}
+                      extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
                       onChange={(value) => {
                         setEditorContent(value);
                         setHasUnsavedChanges(true);
