@@ -373,7 +373,7 @@ function App() {
     setCompileStatus("idle");
     setCompileLogs("");
     setIsLogsOpen(false);
-    setView("project");
+    setView("dashboard");
 
     // Smooth scroll to top when activating a project
     mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -623,8 +623,126 @@ function App() {
                 </div>
               </header>
 
+              {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
+              {activeProject ? (
+                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-border-subtle'}`}>
+                  {/* Close button */}
+                  <button 
+                    onClick={handleDeselectProject}
+                    disabled={isWatching}
+                    className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-text-extra-subtle/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'} cursor-pointer`}
+                    title={isWatching ? "Arrêtez le watch mode d'abord" : "Désélectionner ce projet"}
+                  >
+                    <X size={16} />
+                  </button>
 
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-2 h-2 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-text-extra-subtle'}`}></div>
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400/60' : 'text-text-subtle'}`}>Projet Actuel</span>
+                    </div>
+                    <h2 className="text-3xl font-bold truncate text-text-main">{projectName}</h2>
+                  </div>
 
+                  <div className="flex items-end justify-between gap-4 mt-4">
+                    <div className="flex flex-col gap-1.5 group/file relative">
+                      <span className={`text-[9px] font-bold uppercase tracking-widest px-0.5 ${isWatching ? 'text-green-400/30' : 'text-text-extra-subtle'}`}>Fichier Racine</span>
+                      <div className="relative">
+                        {projectTexFiles.length > 0 ? (
+                          <>
+                            <select 
+                              value={mainFile}
+                              disabled={isWatching}
+                              onChange={(e) => {
+                                setMainFile(e.target.value);
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
+                            >
+                              {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' : 'text-text-subtle bg-bg-input border-border-subtle hover:border-white/20 hover:text-text-muted'}`}>
+                              <Code size={12} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
+                              <span className="truncate max-w-[150px]">{mainFile}</span>
+                              {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-text-extra-subtle" />}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2 text-[10px] font-bold text-amber-500/60 bg-amber-500/5 px-2.5 py-1.5 rounded-md border border-amber-500/10">
+                            <Info size={12} />
+                            {unfilteredTexCount > 0 ? 'Fichiers ignorés' : 'Aucun .tex détecté'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {/* Details & Preview Button */}
+                      <button
+                        onClick={() => setView("project")}
+                        className="h-11 px-4 text-xs font-bold rounded-xl bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-1.5 shadow-lg shadow-blue-600/20 transition-all cursor-pointer"
+                        title="Ouvrir le visualiseur PDF double panneau"
+                      >
+                        <BookOpen size={16} />
+                        Détails
+                      </button>
+
+                      {compileStatus !== "idle" && (
+                        <button 
+                          onClick={() => setIsLogsOpen(true)}
+                          className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
+                            compileStatus === "compiling"
+                              ? 'bg-blue-600/10 text-blue-400 border-blue-500/30'
+                              : compileStatus === "error"
+                                ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red shadow-lg shadow-red-500/20'
+                                : 'bg-green-600/10 text-green-400 border-green-500/20 hover:bg-green-600/20'
+                          }`}
+                          title="Logs de compilation"
+                        >
+                          <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin" : ""} />
+                          {compileStatus === "error" && (
+                            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                          )}
+                          {compileStatus === "success" && (
+                            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      <button 
+                        onClick={handleToggleWatch}
+                        disabled={projectTexFiles.length === 0}
+                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${
+                          projectTexFiles.length === 0 
+                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed' 
+                            : isWatching 
+                              ? 'bg-green-500/10 text-green-400 border border-green-500/30 shadow-lg shadow-green-500/5' 
+                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
+                        }`}
+                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter" : "Démarrer"}
+                      >
+                        {isWatching ? <div className="w-3 h-3 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                      </button>
+
+                      <button 
+                        onClick={handleOpenVSCode}
+                        className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-border-input transition-all"
+                        title="VSCode"
+                      >
+                        <VSCodeIcon size={20} />
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <section className="border-2 border-dashed border-border-subtle rounded-2xl p-12 flex flex-col items-center justify-center text-center min-h-[210px]">
+                   <FolderOpen size={32} className="text-text-extra-subtle mb-4" />
+                   <p className="text-text-subtle text-sm font-medium">Sélectionnez un projet pour commencer à travailler</p>
+                </section>
+              )}
               <section className="bg-bg-card/50 border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col">
                 {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
