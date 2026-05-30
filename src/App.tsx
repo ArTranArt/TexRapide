@@ -116,7 +116,7 @@ function App() {
   const [mainFile, setMainFile] = useState("main.tex");
   const [targetDir, setTargetDir] = useState("/Users/arthur/Documents/LaTeX/LaTeX_Projects");
   const [dashboardProjectsDir, setDashboardProjectsDir] = useState(targetDir);
-  const [templateDir, setTemplateDir] = useState("/Users/arthur/Documents/LaTeX/templates/my_latex_templates");
+  const [templateDir, setTemplateDir] = useState("/Users/arthur/Documents/LaTeX/templates");
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [existingProjects, setExistingProjects] = useState<Project[]>([]);
@@ -214,7 +214,6 @@ function App() {
   const [editorContent, setEditorContent] = useState<string>("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [showFileList, setShowFileList] = useState(false);
 
   const loadFileContent = async (fileName: string) => {
     if (!activeProject) return;
@@ -446,7 +445,6 @@ function App() {
     setEditingFile("");
     setEditorContent("");
     setHasUnsavedChanges(false);
-    setShowFileList(false);
     setView("dashboard");
 
     // Smooth scroll to top when activating a project
@@ -463,7 +461,6 @@ function App() {
     setEditingFile("");
     setEditorContent("");
     setHasUnsavedChanges(false);
-    setShowFileList(false);
     setView("dashboard");
   };
 
@@ -996,229 +993,94 @@ function App() {
             return (
               <div className="flex h-full w-full bg-bg-deep overflow-hidden fade-in">
                 {/* Left Panel - 40% width */}
-                <div className="w-[40%] min-w-[320px] max-w-[500px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col justify-between shrink-0">
-                  {/* Selector Header (Always visible) */}
-                  <div className="px-6 pt-6 pb-2 shrink-0 flex flex-col gap-3">
-                    {/* Return button */}
-                    <div className="flex items-center justify-between">
-                      <button 
-                        onClick={() => setView("dashboard")}
-                        className="inline-flex items-center gap-1.5 text-xs font-bold transition-all px-3 py-1.5 rounded-lg border border-border-subtle bg-bg-input hover:text-text-main hover:border-border-input hover:bg-bg-input-hover cursor-pointer"
-                      >
-                        <ChevronLeft size={14} /> Retour au Dashboard
-                      </button>
+                <div className="w-[40%] min-w-[320px] max-w-[500px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden">
+                  
+                  {/* Ultra-compact Header (Single Row) */}
+                  <div className="h-14 border-b border-border-subtle bg-bg-sidebar px-3 flex items-center justify-between gap-3 shrink-0 select-none">
+                    
+                    {/* Compact Square Back Button */}
+                    <button 
+                      onClick={() => setView("dashboard")}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg border border-border-subtle bg-bg-input hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer shrink-0"
+                      title="Retour au Dashboard"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {/* Project Title and Muted Path */}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <span className="text-xs font-bold text-text-main truncate leading-tight" title={projectName}>
+                        {projectName}
+                      </span>
+                      <span className="text-[9px] text-text-extra-subtle font-mono truncate leading-none mt-0.5" title={activeProject}>
+                        {activeProject}
+                      </span>
                     </div>
 
-                    {/* View Switcher Tabs */}
-                    <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle w-full">
-                      <button 
-                        onClick={() => setShowFileList(false)}
-                        className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer text-center ${!showFileList ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
-                      >
-                        Éditeur
-                      </button>
-                      <button 
-                        onClick={() => setShowFileList(true)}
-                        className={`flex-1 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer text-center ${showFileList ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
-                      >
-                        Fichiers & Options
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Left Panel Content */}
-                  <div className={`flex-1 flex flex-col min-h-0 ${showFileList ? 'overflow-y-auto px-6 pb-6 pt-2 flex flex-col gap-6 custom-scrollbar' : 'px-6 pb-6 pt-2'}`}>
-                    {showFileList ? (
-                      <>
-                        {/* Project Title and Watch Status */}
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-text-subtle">
-                              Projet Actuel
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full ${isWatching ? 'bg-green-400 animate-pulse' : 'bg-text-extra-subtle'}`} />
-                              <span className={`text-[10px] font-black uppercase tracking-widest ${isWatching ? 'text-green-400' : 'text-text-subtle'}`}>
-                                {isWatching ? 'Surveillance active' : 'Inactif'}
-                              </span>
-                            </div>
-                          </div>
-                          <h1 className="text-2xl font-bold truncate text-text-main" title={projectName}>
-                            {projectName}
-                          </h1>
-                          <p className="text-[10px] text-text-extra-subtle font-mono truncate mt-1" title={activeProject}>
-                            {activeProject}
-                          </p>
-                        </div>
-
-                        {/* Compiler and VS Code Actions */}
-                        <div className="flex gap-2">
-                          <button
-                            onClick={handleToggleWatch}
-                            disabled={projectTexFiles.length === 0}
-                            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                              projectTexFiles.length === 0 
-                                ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed' 
-                                : isWatching 
-                                  ? 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 shadow-lg shadow-green-500/5' 
-                                  : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
-                            }`}
+                    {/* Inline Selectors */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      
+                      {/* Select File to Edit */}
+                      <div className="relative shrink-0">
+                        <label className="absolute -top-1.5 left-2 px-1 text-[7px] font-black uppercase bg-bg-sidebar text-text-extra-subtle tracking-wider z-10">
+                          Éditer
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={editingFile}
+                            onChange={(e) => setEditingFile(e.target.value)}
+                            className="bg-bg-input border border-border-subtle rounded-lg pl-2 pr-6 py-1 text-[10px] font-mono text-text-muted outline-none focus:border-blue-500/50 cursor-pointer min-w-[90px] max-w-[120px] appearance-none h-7"
                           >
-                            {isWatching ? (
-                              <>
-                                <div className="w-2.5 h-2.5 bg-green-400 rounded-sm" />
-                                Arrêter la surveillance
-                              </>
-                            ) : (
-                              <>
-                                <Play size={14} fill="currentColor" />
-                                Lancer la surveillance
-                              </>
-                            )}
-                          </button>
-
-                          <button
-                            onClick={handleOpenVSCode}
-                            className="px-4 py-3 rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all flex items-center justify-center shrink-0 cursor-pointer text-text-main"
-                            title="Ouvrir dans VS Code"
-                          >
-                            <VSCodeIcon size={16} />
-                          </button>
-                        </div>
-
-                        {/* Root File Configuration */}
-                        <div className="flex flex-col gap-1.5">
-                          <label className="text-[9px] font-bold text-text-subtle uppercase tracking-widest px-0.5">
-                            Fichier Racine Principal
-                          </label>
-                          {projectTexFiles.length > 0 ? (
-                            <div className="relative">
-                              <select
-                                value={mainFile}
-                                disabled={isWatching}
-                                onChange={(e) => setMainFile(e.target.value)}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
-                              >
-                                {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
-                              </select>
-                              <div className={`flex items-center justify-between text-xs font-mono px-3 py-2.5 rounded-xl border transition-all ${
-                                isWatching 
-                                  ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' 
-                                  : 'text-text-subtle bg-bg-input border-border-subtle hover:border-white/20 hover:text-text-muted'
-                              }`}>
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <Code size={14} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
-                                  <span className="truncate">{mainFile}</span>
-                                </div>
-                                {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={14} className="text-text-extra-subtle" />}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-amber-500/60 bg-amber-500/5 px-3 py-2.5 rounded-xl border border-amber-500/10">
-                              <Info size={14} />
-                              {unfilteredTexCount > 0 ? 'Tous les fichiers sont ignorés' : 'Aucun fichier .tex détecté'}
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Local Files Explorer */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center justify-between px-0.5">
-                            <label className="text-[9px] font-bold text-text-subtle uppercase tracking-widest">
-                              Fichiers du projet
-                            </label>
-                            <span className="text-[10px] font-bold text-text-extra-subtle bg-bg-input px-2 py-0.5 rounded-full">
-                              {projectTexFiles.length}
-                            </span>
-                          </div>
-                          <div className="flex flex-col gap-1.5 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
-                            {projectTexFiles.map((file) => {
-                              const isMain = file === mainFile;
-                              const isEditing = file === editingFile;
-                              return (
-                                <button
-                                  key={file}
-                                  onClick={() => {
-                                    setEditingFile(file);
-                                    setShowFileList(false);
-                                  }}
-                                  className={`flex items-center justify-between p-2.5 rounded-xl border text-left text-xs transition-all group cursor-pointer ${
-                                    isEditing 
-                                      ? 'bg-blue-500/10 border-blue-500/30 text-text-main shadow-sm' 
-                                      : isMain
-                                        ? 'bg-blue-500/5 border-blue-500/20 text-text-main/80'
-                                        : 'bg-bg-input/30 border-border-subtle hover:border-border-input text-text-muted hover:text-text-main'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                                    <Code size={12} className={isEditing ? 'text-blue-500' : isMain ? 'text-blue-400' : 'text-text-extra-subtle group-hover:text-text-subtle'} />
-                                    <span className="truncate font-mono">{file}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2 shrink-0">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleLineClick(1, file);
-                                      }}
-                                      className="p-1 rounded text-text-extra-subtle hover:text-blue-500 hover:bg-blue-500/10 opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
-                                      title="Ouvrir dans VS Code"
-                                    >
-                                      <ExternalLink size={12} />
-                                    </button>
-                                  </div>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </>
-                    ) : (
-                      /* Editor View */
-                      <div className="flex-1 flex flex-col min-h-0 w-full">
-                        {/* Editor File Header */}
-                        <div className="flex items-center justify-between pb-3 border-b border-border-subtle mb-3 shrink-0">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Code size={14} className="text-blue-500 shrink-0" />
-                            <span className="text-xs font-mono font-bold truncate text-text-main" title={editingFile}>{editingFile}</span>
-                            {hasUnsavedChanges && (
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" title="Modifications non enregistrées" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5 text-[9px] font-bold text-text-extra-subtle">
-                            {isSaving ? "Enregistrement..." : hasUnsavedChanges ? "Modifié" : "Enregistré"}
-                          </div>
-                        </div>
-                        
-                        {/* CodeMirror component */}
-                        <div className="flex-1 min-h-0 w-full rounded-xl border border-border-subtle overflow-hidden bg-bg-input/10">
-                          <CodeMirror
-                            value={editorContent}
-                            height="100%"
-                            theme={theme}
-                            extensions={[latex()]}
-                            onChange={(value) => {
-                              setEditorContent(value);
-                              setHasUnsavedChanges(true);
-                            }}
-                            className="h-full text-xs font-mono"
-                          />
+                            {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
                         </div>
                       </div>
-                    )}
+
+                      {/* Select Main File to Compile */}
+                      <div className="relative shrink-0">
+                        <label className="absolute -top-1.5 left-2 px-1 text-[7px] font-black uppercase bg-bg-sidebar text-text-extra-subtle tracking-wider z-10">
+                          Lancer
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={mainFile}
+                            disabled={isWatching}
+                            onChange={(e) => setMainFile(e.target.value)}
+                            className="bg-bg-input border border-border-subtle rounded-lg pl-2 pr-6 py-1 text-[10px] font-mono text-text-muted outline-none focus:border-blue-500/50 cursor-pointer min-w-[90px] max-w-[120px] appearance-none h-7 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
+                          </select>
+                          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Saving status dot */}
+                    <div className="shrink-0 pl-1">
+                      {isSaving ? (
+                        <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" title="Enregistrement..." />
+                      ) : hasUnsavedChanges ? (
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" title="Modifié (non sauvegardé)" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full bg-green-500" title="Enregistré" />
+                      )}
+                    </div>
                   </div>
 
-                  {/* Project Info Footer */}
-                  <div className="p-6 border-t border-border-subtle bg-bg-deep/40 flex items-center justify-between text-[10px] text-text-extra-subtle font-medium shrink-0">
-                    <span>Statut compilation</span>
-                    <span className={`font-mono font-bold ${
-                      compileStatus === 'success' 
-                        ? 'text-green-400' 
-                        : compileStatus === 'error' 
-                          ? 'text-red-400' 
-                          : 'text-text-extra-subtle'
-                    }`}>
-                      {compileStatus === 'success' ? 'Réussie' : compileStatus === 'error' ? 'Échouée' : 'Inactif'}
-                    </span>
+                  {/* Code Editor (Zero margins/padding, fills remaining space) */}
+                  <div className="flex-1 min-h-0 w-full overflow-hidden bg-bg-sidebar">
+                    <CodeMirror
+                      value={editorContent}
+                      height="100%"
+                      theme={theme}
+                      extensions={[latex()]}
+                      onChange={(value) => {
+                        setEditorContent(value);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className="h-full text-xs font-mono"
+                    />
                   </div>
                 </div>
 
