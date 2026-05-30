@@ -218,55 +218,48 @@ function App() {
           
           return nextZoom;
         });
-      } else {
-        if (pdfWrapperRef.current) {
-          pdfWrapperRef.current.scrollTop += e.deltaY;
-          pdfWrapperRef.current.scrollLeft += e.deltaX;
-        }
       }
+      // Si e.ctrlKey est faux (défilement normal au trackpad/souris),
+      // nous ne bloquons pas l'événement et nous laissons le navigateur
+      // scroller le wrapper de manière native et fluide (avec inertie).
     };
 
     const handleMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return; // Clic gauche seulement
       isDown = true;
-      startX = e.pageX - (pdfWrapperRef.current?.offsetLeft || 0);
-      startY = e.pageY - (pdfWrapperRef.current?.offsetTop || 0);
+      overlay.style.cursor = "grabbing";
+      startX = e.clientX;
+      startY = e.clientY;
       scrollLeft = pdfWrapperRef.current?.scrollLeft || 0;
       scrollTop = pdfWrapperRef.current?.scrollTop || 0;
-    };
 
-    const handleMouseLeave = () => {
-      isDown = false;
-    };
+      const handleMouseMove = (moveEvent: MouseEvent) => {
+        if (!isDown) return;
+        const walkX = moveEvent.clientX - startX;
+        const walkY = moveEvent.clientY - startY;
+        if (pdfWrapperRef.current) {
+          pdfWrapperRef.current.scrollLeft = scrollLeft - walkX;
+          pdfWrapperRef.current.scrollTop = scrollTop - walkY;
+        }
+      };
 
-    const handleMouseUp = () => {
-      isDown = false;
-    };
+      const handleMouseUp = () => {
+        isDown = false;
+        overlay.style.cursor = "grab";
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDown) return;
-      e.preventDefault();
-      const x = e.pageX - (pdfWrapperRef.current?.offsetLeft || 0);
-      const y = e.pageY - (pdfWrapperRef.current?.offsetTop || 0);
-      const walkX = x - startX;
-      const walkY = y - startY;
-      if (pdfWrapperRef.current) {
-        pdfWrapperRef.current.scrollLeft = scrollLeft - walkX;
-        pdfWrapperRef.current.scrollTop = scrollTop - walkY;
-      }
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("mouseup", handleMouseUp);
     };
 
     overlay.addEventListener("wheel", handleWheel, { passive: false });
     overlay.addEventListener("mousedown", handleMouseDown);
-    overlay.addEventListener("mouseleave", handleMouseLeave);
-    overlay.addEventListener("mouseup", handleMouseUp);
-    overlay.addEventListener("mousemove", handleMouseMove);
 
     return () => {
       overlay.removeEventListener("wheel", handleWheel);
       overlay.removeEventListener("mousedown", handleMouseDown);
-      overlay.removeEventListener("mouseleave", handleMouseLeave);
-      overlay.removeEventListener("mouseup", handleMouseUp);
-      overlay.removeEventListener("mousemove", handleMouseMove);
     };
   }, [view, pdfViewerMode, pdfExists]);
 
@@ -1175,24 +1168,36 @@ function App() {
                     pdfExists ? (
                       <div className="flex-1 w-full h-full relative overflow-hidden">
                         {/* Zoom Indicator and Toolbar */}
-                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-bg-card/85 backdrop-blur-md border border-border-subtle p-1 rounded-xl shadow-lg">
+                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-bg-card/85 backdrop-blur-md border border-border-subtle p-1.5 rounded-xl shadow-lg">
                           <button
                             onClick={() => setPdfZoom(prev => Math.max(0.5, prev - 0.1))}
-                            className="p-2 w-8 h-8 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-sm font-bold cursor-pointer select-none"
+                            className="p-1 w-6 h-6 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-xs font-bold cursor-pointer select-none"
                             title="Zoom arrière"
                           >
                             -
                           </button>
-                          <span className="text-[10px] font-mono font-bold px-2 text-text-muted select-none min-w-[40px] text-center">
-                            {Math.round(pdfZoom * 100)}%
-                          </span>
+                          
+                          <input
+                            type="range"
+                            min="0.5"
+                            max="4.0"
+                            step="0.05"
+                            value={pdfZoom}
+                            onChange={(e) => setPdfZoom(parseFloat(e.target.value))}
+                            className="w-20 h-1 bg-border-subtle rounded-lg appearance-none cursor-pointer accent-blue-600 mx-2"
+                            title="Curseur de zoom"
+                          />
+
                           <button
                             onClick={() => setPdfZoom(prev => Math.min(4.0, prev + 0.1))}
-                            className="p-2 w-8 h-8 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-sm font-bold cursor-pointer select-none"
+                            className="p-1 w-6 h-6 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-xs font-bold cursor-pointer select-none"
                             title="Zoom avant"
                           >
                             +
                           </button>
+                          <span className="text-[10px] font-mono font-bold px-1.5 text-text-muted select-none min-w-[36px] text-center">
+                            {Math.round(pdfZoom * 100)}%
+                          </span>
                           <div className="w-px h-4 bg-border-subtle mx-1" />
                           <button
                             onClick={() => setPdfZoom(1)}
