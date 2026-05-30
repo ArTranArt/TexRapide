@@ -139,17 +139,7 @@ function App() {
     const saved = localStorage.getItem("texrapide_drawer_height");
     return saved ? parseInt(saved, 10) : 400;
   });
-  const [autoOpenOnError, setAutoOpenOnError] = useState(() => {
-    const saved = localStorage.getItem("texrapide_auto_open");
-    return saved === "true"; // default to false
-  });
-  const autoOpenRef = useRef(autoOpenOnError);
 
-  useEffect(() => {
-    autoOpenRef.current = autoOpenOnError;
-    console.log("[AutoOpen] state changed:", autoOpenOnError, "ref:", autoOpenRef.current);
-    localStorage.setItem("texrapide_auto_open", autoOpenOnError ? "true" : "false");
-  }, [autoOpenOnError]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_drawer_height", drawerHeight.toString());
@@ -311,11 +301,6 @@ function App() {
             setCompileLogs("");
           } else {
             setCompileLogs(event.payload.logs);
-            console.log("[CompileStatusListener] Event status:", event.payload.status, "autoOpenRef.current:", autoOpenRef.current);
-            if (event.payload.status === "error" && autoOpenRef.current) {
-              console.log("[CompileStatusListener] Auto-opening logs console drawer!");
-              setIsLogsOpen(true);
-            }
           }
         }
       );
@@ -1728,15 +1713,6 @@ x_{n}         % Indice (x indice n)
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="flex items-center gap-2 mr-3 cursor-pointer select-none text-[10px] text-text-subtle hover:text-text-main font-semibold">
-              <input 
-                type="checkbox"
-                checked={autoOpenOnError}
-                onChange={(e) => setAutoOpenOnError(e.target.checked)}
-                className="rounded border-border-input bg-bg-input text-blue-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-blue-600"
-              />
-              <span>Ouverture auto. sur erreur</span>
-            </label>
 
             {compileLogs && (
               <button 
