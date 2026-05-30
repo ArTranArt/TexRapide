@@ -73,7 +73,7 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
             {Math.round(scale * 100)}%
           </span>
           <button
-            onClick={() => setScale(s => Math.min(3.0, s + 0.1))}
+            onClick={() => setScale(s => Math.min(5.0, s + 0.1))}
             className="p-1 rounded hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer"
             title="Zoom avant"
           >
@@ -82,10 +82,10 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
         </div>
       </div>
 
-      {/* Pages Container */}
+      {/* Pages Container - overflow-auto allows both vertical and horizontal scroll when zoomed */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-y-auto p-6 flex flex-col items-center gap-6 scroll-smooth bg-bg-deep"
+        className="flex-1 overflow-auto p-6 flex flex-col items-center gap-6 scroll-smooth bg-bg-deep"
       >
         {loading && (
           <div className="flex-1 flex flex-col items-center justify-center text-text-subtle">
@@ -176,9 +176,13 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    // Convert browser coordinates to PDF 72 dpi big points relative to top-left corner
-    const pdfX = x / scale;
-    const pdfY = y / scale;
+    // Convert mouse click relative coordinates to internal canvas/viewport coordinate space
+    const viewportX = x * (viewport.width / rect.width);
+    const viewportY = y * (viewport.height / rect.height);
+
+    // Convert viewport coordinates to PDF 72 dpi big points relative to top-left corner
+    const pdfX = viewportX / scale;
+    const pdfY = viewportY / scale;
 
     try {
       // Invoke Tauri command to perform inverse search
@@ -189,25 +193,18 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
         y: pdfY,
       });
 
-      // Call parent callback with selected file (normalize back to relative format if it's absolute)
-      let relativeFile = result.file;
-      const projectDir = pdfPath.substring(0, pdfPath.lastIndexOf("/"));
-      if (relativeFile.startsWith(projectDir)) {
-        relativeFile = relativeFile.substring(projectDir.length + 1);
-      }
-
-      onLineSelect(relativeFile, result.line);
+      onLineSelect(result.file, result.line);
     } catch (err) {
       console.warn("SyncTeX inverse search failed:", err);
     }
   };
 
   return (
-    <div className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group">
+    <div className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group shrink-0">
       <canvas 
         ref={canvasRef} 
         onDoubleClick={handleDoubleClick}
-        className="cursor-crosshair max-w-full block hover:brightness-[0.98] transition-all" 
+        className="cursor-crosshair block hover:brightness-[0.98] transition-all" 
         title="Double-cliquez pour aller à la ligne correspondante dans le code"
       />
       <div className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/40 text-white text-[9px] font-mono select-none opacity-0 group-hover:opacity-100 transition-opacity">

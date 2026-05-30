@@ -320,10 +320,33 @@ function App() {
     }
   };
 
-  const handleLineSelect = (fileName: string, line: number) => {
-    if (fileName !== editingFile) {
-      setEditingFile(fileName);
-      setMainFile(fileName); // Keep them in sync!
+  const handleLineSelect = (rawPath: string, line: number) => {
+    if (!activeProject) return;
+
+    let normalizedPath = rawPath.replace(/\\/g, "/");
+    const normalizedProjectDir = activeProject.replace(/\\/g, "/");
+    let relativeFile = normalizedPath;
+
+    // 1. Try case-insensitive prefix strip
+    if (relativeFile.toLowerCase().startsWith(normalizedProjectDir.toLowerCase())) {
+      relativeFile = relativeFile.substring(normalizedProjectDir.length + 1);
+    }
+    if (relativeFile.startsWith("./")) {
+      relativeFile = relativeFile.substring(2);
+    }
+
+    // 2. Fallback: match baseName in projectTexFiles list (e.g. main.tex)
+    const baseName = relativeFile.substring(relativeFile.lastIndexOf("/") + 1);
+    const matchedFile = projectTexFiles.find(f => f.toLowerCase() === baseName.toLowerCase());
+    if (matchedFile) {
+      relativeFile = matchedFile;
+    }
+
+    console.log("SyncTeX selected file:", relativeFile, "line:", line);
+
+    if (relativeFile !== editingFile) {
+      setEditingFile(relativeFile);
+      setMainFile(relativeFile); // Keep them in sync
       setPendingHighlightLine(line);
     } else {
       jumpToEditorLine(line);
