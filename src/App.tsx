@@ -268,10 +268,22 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isLogsOpen && logsEndRef.current) {
-      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    if (isLogsOpen) {
+      if (compileStatus === "error") {
+        // Essayer de défiler jusqu'à la première erreur pour la centrer
+        const firstErrorEl = document.getElementById("first-error-line");
+        if (firstErrorEl) {
+          firstErrorEl.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+      }
+      
+      // Fallback ou si pas d'erreur : défilement vers le bas
+      if (logsEndRef.current) {
+        logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+      }
     }
-  }, [compileLogs, isLogsOpen]);
+  }, [compileLogs, isLogsOpen, compileStatus]);
 
 
 
@@ -1668,22 +1680,36 @@ x_{n}         % Indice (x indice n)
         {/* Zone des logs de console */}
         <div className="flex-1 min-h-0 bg-black/35 p-6 font-mono text-[11px] overflow-y-auto selection:bg-blue-500/20 select-text custom-scrollbar">
           {compileLogs ? (
-            <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
-              {compileLogs.split('\n').map((line, idx) => {
-                const lowerLine = line.toLowerCase();
-                const isError = lowerLine.includes("error") || line.startsWith("! ") || lowerLine.includes("l.");
-                const isWarning = lowerLine.includes("warning");
-                let lineClass = "text-text-muted";
-                if (isError) lineClass = "text-red-400 font-bold";
-                else if (isWarning) lineClass = "text-amber-400";
-                
-                return (
-                  <div key={idx} className={`${lineClass} font-mono py-0.5`}>
-                    {line}
-                  </div>
-                );
-              })}
-            </pre>
+            (() => {
+              let hasFoundFirstError = false;
+              return (
+                <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
+                  {compileLogs.split('\n').map((line, idx) => {
+                    const lowerLine = line.toLowerCase();
+                    const isError = lowerLine.includes("error") || line.startsWith("! ") || lowerLine.includes("l.");
+                    const isWarning = lowerLine.includes("warning");
+                    let lineClass = "text-text-muted";
+                    let idProp: string | undefined = undefined;
+
+                    if (isError) {
+                      lineClass = "text-red-400 font-bold";
+                      if (!hasFoundFirstError) {
+                        idProp = "first-error-line";
+                        hasFoundFirstError = true;
+                      }
+                    } else if (isWarning) {
+                      lineClass = "text-amber-400";
+                    }
+
+                    return (
+                      <div key={idx} id={idProp} className={`${lineClass} font-mono py-0.5`}>
+                        {line}
+                      </div>
+                    );
+                  })}
+                </pre>
+              );
+            })()
           ) : (
             <div className="h-full flex flex-col items-center justify-center text-text-extra-subtle gap-2 italic">
               <Terminal size={20} className="opacity-40" />
