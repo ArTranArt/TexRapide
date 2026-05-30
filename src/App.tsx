@@ -173,6 +173,103 @@ function App() {
     checkPdfExists();
   }, [activeProject, mainFile, compileStatus]);
 
+  const [pdfZoom, setPdfZoom] = useState(1);
+  const pdfWrapperRef = useRef<HTMLDivElement>(null);
+  const pdfOverlayRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setPdfZoom(1);
+  }, [activeProject, mainFile]);
+
+  useEffect(() => {
+    const overlay = pdfOverlayRef.current;
+    if (!overlay) return;
+
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let scrollLeft = 0;
+    let scrollTop = 0;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const zoomFactor = -e.deltaY * 0.015;
+        setPdfZoom((prevZoom) => {
+          const nextZoom = Math.max(0.5, Math.min(4.0, prevZoom + zoomFactor));
+          
+          if (pdfWrapperRef.current) {
+            const wrapper = pdfWrapperRef.current;
+            const rect = wrapper.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            const contentX = (wrapper.scrollLeft + mouseX) / prevZoom;
+            const contentY = (wrapper.scrollTop + mouseY) / prevZoom;
+
+            const targetScrollLeft = contentX * nextZoom - mouseX;
+            const targetScrollTop = contentY * nextZoom - mouseY;
+
+            requestAnimationFrame(() => {
+              wrapper.scrollLeft = targetScrollLeft;
+              wrapper.scrollTop = targetScrollTop;
+            });
+          }
+          
+          return nextZoom;
+        });
+      } else {
+        if (pdfWrapperRef.current) {
+          pdfWrapperRef.current.scrollTop += e.deltaY;
+          pdfWrapperRef.current.scrollLeft += e.deltaX;
+        }
+      }
+    };
+
+    const handleMouseDown = (e: MouseEvent) => {
+      isDown = true;
+      startX = e.pageX - (pdfWrapperRef.current?.offsetLeft || 0);
+      startY = e.pageY - (pdfWrapperRef.current?.offsetTop || 0);
+      scrollLeft = pdfWrapperRef.current?.scrollLeft || 0;
+      scrollTop = pdfWrapperRef.current?.scrollTop || 0;
+    };
+
+    const handleMouseLeave = () => {
+      isDown = false;
+    };
+
+    const handleMouseUp = () => {
+      isDown = false;
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - (pdfWrapperRef.current?.offsetLeft || 0);
+      const y = e.pageY - (pdfWrapperRef.current?.offsetTop || 0);
+      const walkX = x - startX;
+      const walkY = y - startY;
+      if (pdfWrapperRef.current) {
+        pdfWrapperRef.current.scrollLeft = scrollLeft - walkX;
+        pdfWrapperRef.current.scrollTop = scrollTop - walkY;
+      }
+    };
+
+    overlay.addEventListener("wheel", handleWheel, { passive: false });
+    overlay.addEventListener("mousedown", handleMouseDown);
+    overlay.addEventListener("mouseleave", handleMouseLeave);
+    overlay.addEventListener("mouseup", handleMouseUp);
+    overlay.addEventListener("mousemove", handleMouseMove);
+
+    return () => {
+      overlay.removeEventListener("wheel", handleWheel);
+      overlay.removeEventListener("mousedown", handleMouseDown);
+      overlay.removeEventListener("mouseleave", handleMouseLeave);
+      overlay.removeEventListener("mouseup", handleMouseUp);
+      overlay.removeEventListener("mousemove", handleMouseMove);
+    };
+  }, [view, pdfViewerMode, pdfExists]);
+
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -1076,11 +1173,70 @@ function App() {
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
                     pdfExists ? (
-                      <iframe 
-                        key={`${pdfPath}-${compileStatus}`}
-                        src={pdfSrc} 
-                        className="w-full h-full border-0 bg-white"
-                      />
+                      <div className="flex-1 w-full h-full relative overflow-hidden">
+                        {/* Zoom Indicator and Toolbar */}
+                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-bg-card/85 backdrop-blur-md border border-border-subtle p-1 rounded-xl shadow-lg">
+                          <button
+                            onClick={() => setPdfZoom(prev => Math.max(0.5, prev - 0.1))}
+                            className="p-2 w-8 h-8 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-sm font-bold cursor-pointer select-none"
+                            title="Zoom arrière"
+                          >
+                            -
+                          </button>
+                          <span className="text-[10px] font-mono font-bold px-2 text-text-muted select-none min-w-[40px] text-center">
+                            {Math.round(pdfZoom * 100)}%
+                          </span>
+                          <button
+                            onClick={() => setPdfZoom(prev => Math.min(4.0, prev + 0.1))}
+                            className="p-2 w-8 h-8 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-sm font-bold cursor-pointer select-none"
+                            title="Zoom avant"
+                          >
+                            +
+                          </button>
+                          <div className="w-px h-4 bg-border-subtle mx-1" />
+                          <button
+                            onClick={() => setPdfZoom(1)}
+                            className="px-2 py-1 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-[9px] font-black uppercase tracking-wider cursor-pointer select-none"
+                            title="Réinitialiser le zoom"
+                          >
+                            100%
+                          </button>
+                        </div>
+
+                        {/* Interactive Zoom Scroll Container */}
+                        <div 
+                          ref={pdfWrapperRef}
+                          className="w-full h-full overflow-auto bg-bg-deep relative select-none"
+                        >
+                          <div 
+                            style={{
+                              width: `${100 * pdfZoom}%`,
+                              height: `${100 * pdfZoom}%`,
+                              position: "relative",
+                            }}
+                          >
+                            <iframe 
+                              key={`${pdfPath}-${compileStatus}`}
+                              src={pdfSrc} 
+                              className="w-full h-full border-0 bg-white"
+                              style={{
+                                position: "absolute",
+                                top: 0,
+                                left: 0,
+                                transform: `scale(${pdfZoom})`,
+                                transformOrigin: "top left",
+                                width: `${100 / pdfZoom}%`,
+                                height: `${100 / pdfZoom}%`,
+                              }}
+                            />
+                            {/* Transparent interaction overlay capturing gestures */}
+                            <div 
+                              ref={pdfOverlayRef}
+                              className="absolute inset-0 z-10 bg-transparent cursor-grab active:cursor-grabbing"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
                         <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
