@@ -175,5 +175,59 @@ pub fn write_file(path: String, content: String) -> Result<(), String> {
     std::fs::write(path, content).map_err(|e| e.to_string())
 }
 
+#[derive(serde::Serialize)]
+pub struct SynctexResult {
+    pub file: String,
+    pub line: u32,
+}
+
+#[tauri::command]
+pub fn synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Result<SynctexResult, String> {
+    let arg_coords = format!("{}:{}:{}:{}", page, x.round(), y.round(), pdf_path);
+    
+    let output = Command::new("synctex")
+        .arg("edit")
+        .arg("-o")
+        .arg(&arg_coords)
+        .output()
+        .or_else(|_| {
+            #[cfg(target_os = "macos")]
+            {
+                Command::new("/Library/TeX/texbin/synctex")
+                    .arg("edit")
+                    .arg("-o")
+                    .arg(&arg_coords)
+                    .output()
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Err(std::io::Error::new(std::io::ErrorKind::NotFound, "synctex not found"))
+            }
+        })
+        .map_err(|e| format!("Erreur lors du lancement de synctex : {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    let mut file = String::new();
+    let mut line = 1;
+
+    for line_str in stdout.lines() {
+        if line_str.starts_with("Input:") {
+            file = line_str["Input:".len()..].trim().to_string();
+        } else if line_str.starts_with("Line:") {
+            if let Ok(l) = line_str["Line:".len()..].trim().parse::<u32>() {
+                line = l;
+            }
+        }
+    }
+
+    if file.is_empty() {
+        return Err("Aucune correspondance trouvée dans le fichier SyncTeX.".to_string());
+    }
+
+    Ok(SynctexResult { file, line })
+}
+
+
 
 

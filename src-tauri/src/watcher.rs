@@ -100,6 +100,7 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
     // Lancer latexmk et capturer stdout et stderr
     let (success, logs) = match Command::new("latexmk")
         .arg("-pdf")
+        .arg("-synctex=1")
         .arg("-interaction=nonstopmode")
         .arg("-cd")
         .arg(main_file)

@@ -30,6 +30,7 @@ pub fn run() {
             project::file_exists,
             project::read_file,
             project::write_file,
+            project::synctex_inverse_search,
             watcher::start_watch,
             watcher::stop_watch
         ])

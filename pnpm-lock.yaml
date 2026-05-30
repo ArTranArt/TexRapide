@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@codemirror/state':
+        specifier: ^6.6.0
+        version: 6.6.0
+      '@codemirror/view':
+        specifier: ^6.43.0
+        version: 6.43.0
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.0

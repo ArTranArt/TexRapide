@@ -2,9 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
+import { StateEffect, StateField } from "@codemirror/state";
+import { EditorView, Decoration } from "@codemirror/view";
+import { PdfViewer } from "./PdfViewer";
 import "./index.css";
 
 interface HealthStatus {
@@ -17,6 +20,34 @@ interface Project {
   name: string;
   last_modified: number;
 }
+
+// CodeMirror decorations and effects for temporary line highlighting (SyncTeX inverse search)
+const addLineHighlight = StateEffect.define<number>();
+const clearLineHighlight = StateEffect.define<null>();
+
+const lineHighlightMark = Decoration.line({
+  attributes: { class: "bg-yellow-500/20 border-l-2 border-yellow-500" }
+});
+
+const lineHighlightField = StateField.define<any>({
+  create() {
+    return Decoration.none;
+  },
+  update(decorations: any, tr: any) {
+    decorations = decorations.map(tr.changes);
+    for (let e of tr.effects) {
+      if (e.is(addLineHighlight)) {
+        decorations = Decoration.none.update({
+          add: [lineHighlightMark.range(e.value)]
+        });
+      } else if (e.is(clearLineHighlight)) {
+        decorations = Decoration.none;
+      }
+    }
+    return decorations;
+  },
+  provide: (f: any) => EditorView.decorations.from(f)
+});
 
 function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
@@ -211,9 +242,107 @@ function App() {
     }
   };
   const [editingFile, setEditingFile] = useState<string>("");
-  const [editorContent, setEditorContent] = useState<string>("");
+  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
+    const saved = localStorage.getItem("texrapide_left_panel_width");
+    return saved ? parseInt(saved, 10) : 450;
+  });
+  const isResizingRef = useRef(false);
+  const editorRef = useRef<any>(null);
+  const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
+  }, [leftPanelWidth]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizingRef.current = true;
+    document.body.style.cursor = "col-resize";
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingRef.current) return;
+      const sidebarWidth = isSidebarCollapsed ? 80 : 288;
+      const calculatedWidth = e.clientX - sidebarWidth;
+      const minWidth = 320;
+      const maxWidth = window.innerWidth - sidebarWidth - 320;
+      if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
+        setLeftPanelWidth(calculatedWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isResizingRef.current) {
+        isResizingRef.current = false;
+        document.body.style.cursor = "";
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isSidebarCollapsed]);
+
+  const jumpToEditorLine = (lineNum: number) => {
+    const view = editorRef.current?.view;
+    if (!view) return;
+
+    try {
+      const doc = view.state.doc;
+      const targetLine = Math.max(1, Math.min(lineNum, doc.lines));
+      const lineObj = doc.line(targetLine);
+      
+      // Move cursor and scroll into view
+      view.dispatch({
+        selection: { anchor: lineObj.from },
+        scrollIntoView: true
+      });
+
+      // Dispatch highlight effect
+      view.dispatch({
+        effects: addLineHighlight.of(lineObj.from)
+      });
+
+      // Clear highlight after 2 seconds
+      setTimeout(() => {
+        if (view && !view.destroyed) {
+          view.dispatch({
+            effects: clearLineHighlight.of(null)
+          });
+        }
+      }, 2000);
+    } catch (err) {
+      console.error("Failed to scroll to editor line:", err);
+    }
+  };
+
+  const handleLineSelect = (fileName: string, line: number) => {
+    if (fileName !== editingFile) {
+      setEditingFile(fileName);
+      setMainFile(fileName); // Keep them in sync!
+      setPendingHighlightLine(line);
+    } else {
+      jumpToEditorLine(line);
+    }
+  };
+
+  const [editorContent, setEditorContent] = useState<string>( "");
   const [isSaving, setIsSaving] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+  useEffect(() => {
+    if (pendingHighlightLine && editorContent) {
+      const timer = setTimeout(() => {
+        jumpToEditorLine(pendingHighlightLine);
+        setPendingHighlightLine(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [editorContent, pendingHighlightLine]);
 
   const loadFileContent = async (fileName: string) => {
     if (!activeProject) return;
@@ -679,10 +808,14 @@ function App() {
               {/* 3. Run Button */}
               <button 
                 onClick={handleToggleWatch}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all cursor-pointer ${isWatching ? 'bg-green-500/10 text-green-400 border border-green-500/20 shadow-lg shadow-green-500/5' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all cursor-pointer ${
+                  isWatching 
+                    ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
+                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
+                }`}
                 title={isWatching ? "Arrêter" : "Démarrer"}
               >
-                {isWatching ? <div className="w-2.5 h-2.5 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                {isWatching ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
               </button>
             </div>
           </div>
@@ -732,7 +865,9 @@ function App() {
                               value={mainFile}
                               disabled={isWatching}
                               onChange={(e) => {
-                                setMainFile(e.target.value);
+                                const val = e.target.value;
+                                setMainFile(val);
+                                setEditingFile(val);
                               }}
                               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                             >
@@ -786,14 +921,14 @@ function App() {
                         disabled={projectTexFiles.length === 0}
                         className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
                           projectTexFiles.length === 0 
-                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed' 
+                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
                             : isWatching 
-                              ? 'bg-green-500/10 text-green-400 border border-green-500/30 shadow-lg shadow-green-500/5' 
+                              ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
                               : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
                         }`}
                         title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter" : "Démarrer"}
                       >
-                        {isWatching ? <div className="w-3 h-3 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
+                        {isWatching ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                       </button>
 
                       <button 
@@ -992,8 +1127,11 @@ function App() {
 
             return (
               <div className="flex h-full w-full bg-bg-deep overflow-hidden fade-in">
-                {/* Left Panel - 40% width */}
-                <div className="w-[40%] min-w-[320px] max-w-[500px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden">
+                {/* Left Panel - Dynamic Width */}
+                <div 
+                  style={{ width: `${leftPanelWidth}px` }}
+                  className="min-w-[320px] max-w-[800px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden"
+                >
                   
                   {/* Ultra-compact Header (Single Row) */}
                   <div className="h-12 border-b border-border-subtle bg-bg-sidebar flex items-center justify-between pr-3 shrink-0 select-none">
@@ -1030,34 +1168,22 @@ function App() {
                     {/* Inline Selectors */}
                     <div className="flex items-center gap-3 shrink-0">
                       
-                      {/* Select File to Edit */}
+                      {/* Single File Selector */}
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="text-[9px] font-bold uppercase tracking-wider text-text-extra-subtle">
-                          Éditer
+                          Fichier
                         </span>
                         <div className="relative">
                           <select
                             value={editingFile}
-                            onChange={(e) => setEditingFile(e.target.value)}
-                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[80px] max-w-[120px] appearance-none h-6 transition-all"
-                          >
-                            {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
-                          </select>
-                          <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
-                        </div>
-                      </div>
-
-                      {/* Select Main File to Compile */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-text-extra-subtle">
-                          Lancer
-                        </span>
-                        <div className="relative">
-                          <select
-                            value={mainFile}
                             disabled={isWatching}
-                            onChange={(e) => setMainFile(e.target.value)}
-                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[80px] max-w-[120px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setEditingFile(val);
+                              setMainFile(val);
+                            }}
+                            className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[100px] max-w-[160px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
+                            title={isWatching ? "Impossible de changer de fichier en mode exécution" : "Choisir le fichier actif"}
                           >
                             {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                           </select>
@@ -1081,10 +1207,11 @@ function App() {
                   {/* Code Editor (Zero margins/padding, fills remaining space) */}
                   <div className="flex-1 min-h-0 w-full overflow-hidden bg-bg-sidebar">
                     <CodeMirror
+                      ref={editorRef}
                       value={editorContent}
                       height="100%"
                       theme={theme}
-                      extensions={[latex()]}
+                      extensions={[latex(), lineHighlightField]}
                       onChange={(value) => {
                         setEditorContent(value);
                         setHasUnsavedChanges(true);
@@ -1094,19 +1221,25 @@ function App() {
                   </div>
                 </div>
 
-                {/* Right Panel - 60% width */}
+                {/* Resizer Handle */}
+                <div 
+                  onMouseDown={handleMouseDown}
+                  className="w-1.5 bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 cursor-col-resize shrink-0 transition-all select-none z-30 relative group/resizer"
+                >
+                  <div className="absolute inset-y-0 left-[2px] w-[1px] bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500" />
+                </div>
+
+                {/* Right Panel */}
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
                     pdfExists ? (
                       <div className="flex-1 w-full h-full relative overflow-hidden">
-                        {/* Native Viewer Container */}
-                        <div className="w-full h-full bg-bg-deep relative">
-                          <iframe 
-                            key={`${pdfPath}-${compileStatus}`}
-                            src={pdfSrc} 
-                            className="w-full h-full border-0 bg-white absolute inset-0"
-                          />
-                        </div>
+                        <PdfViewer 
+                          pdfSrc={pdfSrc}
+                          pdfPath={pdfPath || ""}
+                          compileStatus={compileStatus}
+                          onLineSelect={handleLineSelect}
+                        />
                       </div>
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
