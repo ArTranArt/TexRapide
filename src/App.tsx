@@ -1210,8 +1210,8 @@ function App() {
                         >
                           <div 
                             style={{
-                              width: `${100 * pdfZoom}%`,
-                              height: `${100 * pdfZoom}%`,
+                              width: `${Math.max(100, 100 * pdfZoom)}%`,
+                              height: `${Math.max(100, 100 * pdfZoom)}%`,
                               position: "relative",
                             }}
                           >
