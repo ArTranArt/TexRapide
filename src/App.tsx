@@ -26,7 +26,7 @@ const addLineHighlight = StateEffect.define<number>();
 const clearLineHighlight = StateEffect.define<null>();
 
 const lineHighlightMark = Decoration.line({
-  attributes: { class: "bg-yellow-500/20 border-l-2 border-yellow-500" }
+  attributes: { class: "bg-amber-400/25 border-l-4 border-amber-500 shadow-sm" }
 });
 
 const lineHighlightField = StateField.define<any>({
@@ -265,8 +265,8 @@ function App() {
       if (!isResizingRef.current) return;
       const sidebarWidth = isSidebarCollapsed ? 80 : 288;
       const calculatedWidth = e.clientX - sidebarWidth;
-      const minWidth = 320;
-      const maxWidth = window.innerWidth - sidebarWidth - 320;
+      const minWidth = 200;
+      const maxWidth = window.innerWidth - sidebarWidth - 120;
       if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
         setLeftPanelWidth(calculatedWidth);
       }
@@ -296,15 +296,13 @@ function App() {
       const targetLine = Math.max(1, Math.min(lineNum, doc.lines));
       const lineObj = doc.line(targetLine);
       
-      // Move cursor and scroll into view
+      // Move cursor and scroll to top
       view.dispatch({
         selection: { anchor: lineObj.from },
-        scrollIntoView: true
-      });
-
-      // Dispatch highlight effect
-      view.dispatch({
-        effects: addLineHighlight.of(lineObj.from)
+        effects: [
+          EditorView.scrollIntoView(lineObj.from, { y: "start" }),
+          addLineHighlight.of(lineObj.from)
+        ]
       });
 
       // Clear highlight after 2 seconds
@@ -1153,7 +1151,7 @@ function App() {
                 {/* Left Panel - Dynamic Width */}
                 <div 
                   style={{ width: `${leftPanelWidth}px` }}
-                  className="min-w-[320px] max-w-[800px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden"
+                  className="min-w-[200px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden"
                 >
                   
                   {/* Ultra-compact Header (Single Row) */}

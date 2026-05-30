@@ -17,6 +17,11 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Resize and Fit-to-Width states
+  const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [isFitWidth, setIsFitWidth] = useState<boolean>(true);
+  const [pageOriginalWidth, setPageOriginalWidth] = useState<number>(595);
+
   // Load PDF when pdfSrc or compileStatus changes (compilation success triggers reload)
   useEffect(() => {
     if (!pdfSrc) return;
@@ -41,6 +46,12 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
       (loadedPdf: any) => {
         setPdf(loadedPdf);
         setNumPages(loadedPdf.numPages);
+        if (loadedPdf.numPages > 0) {
+          loadedPdf.getPage(1).then((page: any) => {
+            const vp = page.getViewport({ scale: 1.0 });
+            setPageOriginalWidth(vp.width || 595);
+          });
+        }
         setLoading(false);
       },
       (err: any) => {
@@ -50,6 +61,35 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
       }
     );
   }, [pdfSrc, compileStatus]);
+
+  // Track container width
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    setContainerWidth(container.clientWidth);
+
+    const observer = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Update scale when container width or page original width changes in Fit-to-Width mode
+  useEffect(() => {
+    if (isFitWidth && containerWidth > 20 && pageOriginalWidth > 0) {
+      const calculatedScale = (containerWidth - 20) / pageOriginalWidth;
+      const clampedScale = Math.max(0.1, Math.min(5.0, calculatedScale));
+      // Round scale to avoid rendering jitter
+      setScale(Math.round(clampedScale * 100) / 100);
+    }
+  }, [isFitWidth, containerWidth, pageOriginalWidth]);
 
   return (
     <div className="flex flex-col h-full w-full bg-bg-deep select-none">
@@ -63,17 +103,41 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
         </span>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setScale(s => Math.max(0.5, s - 0.1))}
+            onClick={() => setIsFitWidth(true)}
+            className={`px-2 py-0.5 text-[9px] font-bold rounded uppercase tracking-wider transition-colors cursor-pointer border ${
+              isFitWidth 
+                ? "bg-blue-500/10 border-blue-500/30 text-blue-400" 
+                : "border-border-subtle text-text-muted hover:text-text-main hover:bg-bg-input-hover"
+            }`}
+            title="Ajuster la largeur automatiquement"
+          >
+            Ajuster
+          </button>
+          <button
+            onClick={() => {
+              setIsFitWidth(false);
+              setScale(s => Math.max(0.1, s - 0.1));
+            }}
             className="p-1 rounded hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer"
             title="Zoom arrière"
           >
             <ZoomOut size={14} />
           </button>
-          <span className="text-[10px] font-mono text-text-muted min-w-[36px] text-center">
-            {Math.round(scale * 100)}%
-          </span>
           <button
-            onClick={() => setScale(s => Math.min(5.0, s + 0.1))}
+            onClick={() => {
+              setIsFitWidth(false);
+              setScale(1.0);
+            }}
+            className="text-[10px] font-mono text-text-muted hover:text-text-main min-w-[36px] text-center cursor-pointer hover:bg-bg-input-hover p-1 rounded transition-colors"
+            title="Réinitialiser le zoom à 100%"
+          >
+            {Math.round(scale * 100)}%
+          </button>
+          <button
+            onClick={() => {
+              setIsFitWidth(false);
+              setScale(s => Math.min(5.0, s + 0.1));
+            }}
             className="p-1 rounded hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer"
             title="Zoom avant"
           >
@@ -82,20 +146,19 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
         </div>
       </div>
 
-      {/* Pages Container - overflow-auto allows both vertical and horizontal scroll when zoomed */}
       <div 
         ref={containerRef}
-        className="flex-1 overflow-auto p-6 flex flex-col items-center gap-6 scroll-smooth bg-bg-deep"
+        className="flex-1 overflow-auto p-2 flex flex-col items-start gap-4 scroll-smooth bg-bg-deep"
       >
         {loading && (
-          <div className="flex-1 flex flex-col items-center justify-center text-text-subtle">
+          <div className="flex-1 w-full flex flex-col items-center justify-center text-text-subtle">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-2" />
             <span className="text-xs">Chargement du PDF...</span>
           </div>
         )}
 
         {error && (
-          <div className="flex-1 flex flex-col items-center justify-center text-text-subtle gap-2">
+          <div className="flex-1 w-full flex flex-col items-center justify-center text-text-subtle gap-2">
             <AlertCircle size={24} className="text-text-extra-subtle" />
             <span className="text-xs">{error}</span>
           </div>
@@ -230,7 +293,7 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
   };
 
   return (
-    <div className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group shrink-0">
+    <div className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group shrink-0 mx-auto">
       <canvas 
         ref={canvasRef} 
         onDoubleClick={handleDoubleClick}
