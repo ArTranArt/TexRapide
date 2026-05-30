@@ -135,6 +135,59 @@ function App() {
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
+  const [drawerHeight, setDrawerHeight] = useState(() => {
+    const saved = localStorage.getItem("texrapide_drawer_height");
+    return saved ? parseInt(saved, 10) : 400;
+  });
+  const [autoOpenOnError, setAutoOpenOnError] = useState(() => {
+    const saved = localStorage.getItem("texrapide_auto_open");
+    return saved === "true"; // default to false
+  });
+  const autoOpenRef = useRef(autoOpenOnError);
+
+  useEffect(() => {
+    autoOpenRef.current = autoOpenOnError;
+    localStorage.setItem("texrapide_auto_open", autoOpenOnError ? "true" : "false");
+  }, [autoOpenOnError]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_drawer_height", drawerHeight.toString());
+  }, [drawerHeight]);
+
+  const handleResizeMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startHeight = drawerHeight;
+    
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const deltaY = moveEvent.clientY - startY;
+      const newHeight = Math.max(200, Math.min(window.innerHeight - 100, startHeight - deltaY));
+      setDrawerHeight(newHeight);
+    };
+    
+    const handleMouseUp = () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+    
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleLineClick = async (lineNum: number) => {
+    if (!activeProject) return;
+    try {
+      await invoke("open_in_vscode_at_line", { 
+        projectPath: activeProject, 
+        file: mainFile, 
+        line: lineNum 
+      });
+    } catch (error) {
+      console.error("Failed to open file in editor:", error);
+    }
+  };
+
+
   // Ignore files feature
   const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>(() => {
     const saved = localStorage.getItem("texrapide_ignored");
@@ -257,6 +310,9 @@ function App() {
             setCompileLogs("");
           } else {
             setCompileLogs(event.payload.logs);
+            if (event.payload.status === "error" && autoOpenRef.current) {
+              setIsLogsOpen(true);
+            }
           }
         }
       );
@@ -1628,11 +1684,18 @@ x_{n}         % Indice (x indice n)
       )}
 
       <div 
+        style={{ height: isLogsOpen ? `${drawerHeight}px` : undefined }}
         className={`fixed bottom-0 right-0 left-0 bg-bg-card/95 border-t border-border-input z-50 transition-all duration-300 ease-out transform ${
           isLogsOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
-        } glass-panel shadow-2xl h-[400px] flex flex-col`}
+        } glass-panel shadow-2xl flex flex-col`}
       >
-        {/* Poignée de tiroir */}
+        {/* Bordure de redimensionnement (poignée invisible pour drag) */}
+        <div 
+          onMouseDown={handleResizeMouseDown}
+          className="absolute top-0 left-0 right-0 h-1.5 cursor-ns-resize z-50 hover:bg-blue-500/20 active:bg-blue-500/40 transition-colors"
+        />
+
+        {/* Poignée de tiroir pour fermer */}
         <div className="w-full flex justify-center py-2 cursor-pointer select-none shrink-0" onClick={() => setIsLogsOpen(false)}>
           <div className="w-12 h-1 bg-text-extra-subtle/30 rounded-full" />
         </div>
@@ -1662,6 +1725,15 @@ x_{n}         % Indice (x indice n)
           </div>
 
           <div className="flex items-center gap-2">
+            <label className="flex items-center gap-2 mr-3 cursor-pointer select-none text-[10px] text-text-subtle hover:text-text-main font-semibold">
+              <input 
+                type="checkbox"
+                checked={autoOpenOnError}
+                onChange={(e) => setAutoOpenOnError(e.target.checked)}
+                className="rounded border-border-input bg-bg-input text-blue-500 focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer accent-blue-600"
+              />
+              <span>Ouverture auto. sur erreur</span>
+            </label>
 
             {compileLogs && (
               <button 
@@ -1692,7 +1764,11 @@ x_{n}         % Indice (x indice n)
                 <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
                   {lines.map((line, idx) => {
                     const lowerLine = line.toLowerCase();
-                    const isCritical = line.trim().startsWith("!");
+                    const trimLine = line.trim();
+                    const lineMatch = trimLine.match(/^l\.(\d+)/);
+                    const isLineIndicator = !!lineMatch;
+                    
+                    const isCritical = trimLine.startsWith("!");
                     const isGeneralError = lowerLine.includes("error") || lowerLine.includes("l.");
                     const isWarning = lowerLine.includes("warning");
                     
@@ -1705,6 +1781,12 @@ x_{n}         % Indice (x indice n)
                         idProp = "first-error-line";
                         idAssigned = true;
                       }
+                    } else if (isLineIndicator) {
+                      lineClass = "text-cyan-400 font-semibold cursor-pointer hover:underline hover:bg-cyan-500/5 px-1 rounded flex items-center justify-between group/logline transition-colors";
+                      if (!hasCriticalError && !idAssigned) {
+                        idProp = "first-error-line";
+                        idAssigned = true;
+                      }
                     } else if (isGeneralError) {
                       lineClass = "text-red-400 font-semibold";
                       if (!hasCriticalError && !idAssigned) {
@@ -1713,6 +1795,24 @@ x_{n}         % Indice (x indice n)
                       }
                     } else if (isWarning) {
                       lineClass = "text-amber-400";
+                    }
+
+                    if (isLineIndicator && lineMatch) {
+                      const lineNum = parseInt(lineMatch[1], 10);
+                      return (
+                        <div 
+                          key={idx} 
+                          id={idProp} 
+                          onClick={() => handleLineClick(lineNum)}
+                          className={`${lineClass} font-mono py-0.5`}
+                          title={`Ouvrir la ligne ${lineNum} dans VS Code`}
+                        >
+                          <span className="truncate flex-1">{line}</span>
+                          <span className="opacity-0 group-hover/logline:opacity-100 transition-opacity text-[8px] bg-cyan-950 text-cyan-400 border border-cyan-800 px-1.5 py-0.5 rounded font-sans shrink-0 uppercase tracking-tighter ml-2">
+                            Ouvrir dans VS Code
+                          </span>
+                        </div>
+                      );
                     }
 
                     return (
