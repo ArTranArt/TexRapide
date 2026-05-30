@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Hand, MousePointer } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -174,12 +174,41 @@ function App() {
   }, [activeProject, mainFile, compileStatus]);
 
   const [pdfZoom, setPdfZoom] = useState(1);
+  const [isPanMode, setIsPanMode] = useState(false);
   const pdfWrapperRef = useRef<HTMLDivElement>(null);
   const pdfOverlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPdfZoom(1);
   }, [activeProject, mainFile]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        e.code === "Space" && 
+        !isPanMode && 
+        document.activeElement?.tagName !== "INPUT" && 
+        document.activeElement?.tagName !== "TEXTAREA"
+      ) {
+        e.preventDefault();
+        setIsPanMode(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setIsPanMode(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [isPanMode]);
 
   useEffect(() => {
     const overlay = pdfOverlayRef.current;
@@ -1168,7 +1197,20 @@ function App() {
                     pdfExists ? (
                       <div className="flex-1 w-full h-full relative overflow-hidden">
                         {/* Zoom Indicator and Toolbar */}
-                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-bg-card/85 backdrop-blur-md border border-border-subtle p-1.5 rounded-xl shadow-lg">
+                        <div className="absolute top-4 right-4 z-20 flex items-center gap-1 bg-bg-card/85 backdrop-blur-md border border-border-subtle p-1.5 rounded-xl shadow-lg animate-fade-in">
+                          <button
+                            onClick={() => setIsPanMode(!isPanMode)}
+                            className={`p-1.5 rounded-lg transition-colors cursor-pointer flex items-center justify-center ${
+                              isPanMode 
+                                ? 'bg-blue-600 text-white shadow-sm' 
+                                : 'text-text-subtle hover:text-text-main hover:bg-bg-input'
+                            }`}
+                            title={isPanMode ? "Désactiver le mode panoramique (Main - Espace)" : "Activer le mode panoramique (Main - Espace)"}
+                          >
+                            {isPanMode ? <Hand size={14} /> : <MousePointer size={14} />}
+                          </button>
+                          <div className="w-px h-4 bg-border-subtle mx-1" />
+
                           <button
                             onClick={() => setPdfZoom(prev => Math.max(0.5, prev - 0.1))}
                             className="p-1 w-6 h-6 flex items-center justify-center text-text-subtle hover:text-text-main hover:bg-bg-input rounded-lg transition-colors text-xs font-bold cursor-pointer select-none"
@@ -1234,10 +1276,12 @@ function App() {
                                 height: `${100 / pdfZoom}%`,
                               }}
                             />
-                            {/* Transparent interaction overlay capturing gestures */}
+                            {/* Transparent interaction overlay capturing gestures when isPanMode is true */}
                             <div 
                               ref={pdfOverlayRef}
-                              className="absolute inset-0 z-10 bg-transparent cursor-grab active:cursor-grabbing"
+                              className={`absolute inset-0 z-10 bg-transparent ${
+                                isPanMode ? "pointer-events-auto cursor-grab active:cursor-grabbing" : "pointer-events-none"
+                              }`}
                             />
                           </div>
                         </div>
