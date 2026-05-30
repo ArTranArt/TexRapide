@@ -5,13 +5,13 @@ use std::sync::mpsc::channel;
 use std::time::Duration;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, State, Emitter};
 
 pub struct WatcherState(pub Arc<Mutex<Option<Arc<AtomicBool>>>>);
 
 #[tauri::command]
 pub fn start_watch(
-    _handle: AppHandle, 
+    handle: AppHandle, 
     state: State<'_, WatcherState>,
     project_path: String, 
     main_file: String
@@ -29,6 +29,7 @@ pub fn start_watch(
 
     let path = project_path.clone();
     let file = main_file.clone();
+    let handle_clone = handle.clone();
     
     std::thread::spawn(move || {
         let (tx, rx) = channel();
@@ -40,7 +41,7 @@ pub fn start_watch(
         }
 
         println!("Watching: {} (main: {})", path, file);
-        run_build(&path, &file);
+        run_build(&handle_clone, &path, &file);
 
         let debounce_duration = Duration::from_millis(500);
 
@@ -51,7 +52,7 @@ pub fn start_watch(
                     if is_relevant_event(event) {
                         while let Ok(_) = rx.try_recv() {}
                         std::thread::sleep(debounce_duration);
-                        run_build(&path, &file);
+                        run_build(&handle_clone, &path, &file);
                     }
                 }
             }
@@ -78,17 +79,72 @@ fn is_relevant_event(event: Event) -> bool {
     })
 }
 
-fn run_build(project_path: &str, main_file: &str) {
+#[derive(Clone, serde::Serialize)]
+struct CompilePayload {
+    status: String,
+    logs: String,
+}
+
+fn run_build(handle: &AppHandle, project_path: &str, main_file: &str) {
     let target = Path::new(project_path).join(main_file);
     if !target.exists() { return; }
 
-    let _ = Command::new("latexmk")
+    // Émettre le statut de début de compilation
+    let _ = handle.emit("compile-status", CompilePayload {
+        status: "compiling".to_string(),
+        logs: "".to_string(),
+    });
+
+    // Lancer latexmk et capturer stdout et stderr
+    let (success, logs) = match Command::new("latexmk")
         .arg("-pdf")
         .arg("-interaction=nonstopmode")
         .arg("-cd")
         .arg(main_file)
         .current_dir(project_path)
-        .status();
+        .output()
+    {
+        Ok(output) => {
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            
+            let mut logs = stdout;
+            if !stderr.is_empty() {
+                if !logs.is_empty() {
+                    logs.push_str("\n");
+                }
+                logs.push_str(&stderr);
+            }
+            
+            (output.status.success(), logs)
+        }
+        Err(e) => {
+            (false, format!("Erreur lors du lancement de latexmk : {}", e))
+        }
+    };
+
+    // Émettre le statut de fin de compilation
+    let status_str = if success { "success" } else { "error" };
+    let _ = handle.emit("compile-status", CompilePayload {
+        status: status_str.to_string(),
+        logs,
+    });
+
+    // Si la compilation a échoué, on nettoie les fichiers auxiliaires/temporaires pour le fichier principal
+    // et on supprime le fichier de base de données .fdb_latexmk pour forcer latexmk à relancer
+    // pdflatex lors de la prochaine tentative (ce qui génère l'erreur avec "!").
+    if !success {
+        let _ = Command::new("latexmk")
+            .arg("-c")
+            .arg(main_file)
+            .current_dir(project_path)
+            .status();
+
+        let fdb_path = target.with_extension("fdb_latexmk");
+        if fdb_path.exists() {
+            let _ = std::fs::remove_file(fdb_path);
+        }
+    }
 
     std::thread::sleep(Duration::from_millis(500));
 

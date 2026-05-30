@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon } from "lucide-react";
+import { listen } from "@tauri-apps/api/event";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop } from "lucide-react";
 import "./index.css";
 
 interface HealthStatus {
@@ -16,7 +17,17 @@ interface Project {
 }
 
 function App() {
-  const [view, setView] = useState<"dashboard" | "settings" | "project">("dashboard");
+  const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
+  const [helpTab, setHelpTab] = useState<"basics" | "text" | "math" | "media">("basics");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleCopy = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(id);
+    setTimeout(() => {
+      setCopiedId(null);
+    }, 2000);
+  };
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const saved = localStorage.getItem("texrapide_theme");
     return saved === "light" || saved === "dark" ? saved : "dark";
@@ -116,9 +127,13 @@ function App() {
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingInline, setIsCreatingInline] = useState(false);
+  const [compileStatus, setCompileStatus] = useState<"idle" | "compiling" | "success" | "error">("idle");
+  const [compileLogs, setCompileLogs] = useState("");
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   
   const mainContentRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
+  const logsEndRef = useRef<HTMLDivElement>(null);
 
   // Ignore files feature
   const [ignoredPatterns, setIgnoredPatterns] = useState<string[]>(() => {
@@ -231,6 +246,35 @@ function App() {
     }
   }, [isCreatingInline]);
 
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    async function setupListener() {
+      unlisten = await listen<{ status: "idle" | "compiling" | "success" | "error"; logs: string }>(
+        "compile-status",
+        (event) => {
+          setCompileStatus(event.payload.status);
+          if (event.payload.status === "compiling") {
+            setCompileLogs("");
+          } else {
+            setCompileLogs(event.payload.logs);
+          }
+        }
+      );
+    }
+    setupListener();
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isLogsOpen && logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [compileLogs, isLogsOpen]);
+
+
+
   const activateProject = (name: string, path?: string) => {
     if (isWatching) return; 
     const fullPath = path || `${dashboardProjectsDir}/${name}`;
@@ -238,6 +282,9 @@ function App() {
     setProjectName(name);
     setIsWatching(false);
     setConfirmRemoval(false);
+    setCompileStatus("idle");
+    setCompileLogs("");
+    setIsLogsOpen(false);
 
     // Smooth scroll to top when activating a project
     mainContentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
@@ -248,6 +295,9 @@ function App() {
     setActiveProject(null);
     setConfirmRemoval(false);
     setIsWatching(false);
+    setCompileStatus("idle");
+    setCompileLogs("");
+    setIsLogsOpen(false);
   };
 
   const handleSelectDir = async () => {
@@ -321,6 +371,7 @@ function App() {
       try {
         await invoke("stop_watch");
         setIsWatching(false);
+        setCompileStatus("idle");
       } catch (error) {
         alert(`Erreur : ${error}`);
       }
@@ -342,6 +393,7 @@ function App() {
       alert(`Erreur VSCode : ${error}`);
     }
   };
+
 
   const addIgnoredPattern = () => {
     if (newPattern && !ignoredPatterns.includes(newPattern)) {
@@ -416,11 +468,12 @@ function App() {
         <nav className="flex flex-col gap-1.5">
           <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} icon={<Layers size={18} />} label="Dashboard" />
           <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => { setView("settings"); setIsCreatingInline(false); }} icon={<Settings size={18} />} label="Configuration" />
+          <NavItem collapsed={isSidebarCollapsed} active={view === "help"} onClick={() => { setView("help"); setIsCreatingInline(false); }} icon={<BookOpen size={18} />} label="Guide & Aide" />
         </nav>
 
         {activeProject && (
           <div className="mt-auto pt-8">
-            <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'} gap-2`}>
+            <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'justify-start'} gap-2`}>
               <button 
                 onClick={handleToggleWatch}
                 className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all ${isWatching ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'}`}
@@ -428,7 +481,34 @@ function App() {
               >
                 {isWatching ? <div className="w-2.5 h-2.5 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
               </button>
-              {!isSidebarCollapsed && (
+              {compileStatus !== "idle" && (
+                <button 
+                  onClick={() => setIsLogsOpen(true)}
+                  className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
+                    compileStatus === "compiling"
+                      ? 'bg-blue-600/10 text-blue-400 border-blue-500/30'
+                      : compileStatus === "error"
+                        ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red'
+                        : 'bg-green-600/10 text-green-400 border-green-500/20 hover:bg-green-600/20'
+                  }`}
+                  title="Logs de compilation"
+                >
+                  <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin" : ""} />
+                  {compileStatus === "error" && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                    </span>
+                  )}
+                  {compileStatus === "success" && (
+                    <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                  )}
+                </button>
+              )}
+
+              {(!isSidebarCollapsed || !isWatching) && (
                 <button 
                   onClick={handleOpenVSCode}
                   className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-border-input transition-all"
@@ -442,7 +522,6 @@ function App() {
         )}
       </aside>
 
-      {/* Main Content */}
       <main ref={mainContentRef} className="flex-1 overflow-y-auto p-6 md:p-12 scroll-smooth">
         <div className="max-w-6xl mx-auto flex flex-col gap-8">
           
@@ -516,6 +595,32 @@ function App() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {compileStatus !== "idle" && (
+                        <button 
+                          onClick={() => setIsLogsOpen(true)}
+                          className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
+                            compileStatus === "compiling"
+                              ? 'bg-blue-600/10 text-blue-400 border-blue-500/30'
+                              : compileStatus === "error"
+                                ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red shadow-lg shadow-red-500/20'
+                                : 'bg-green-600/10 text-green-400 border-green-500/20 hover:bg-green-600/20'
+                          }`}
+                          title="Logs de compilation"
+                        >
+                          <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin" : ""} />
+                          {compileStatus === "error" && (
+                            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                          )}
+                          {compileStatus === "success" && (
+                            <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                            </span>
+                          )}
+                        </button>
+                      )}
                       <button 
                         onClick={handleToggleWatch}
                         disabled={projectTexFiles.length === 0}
@@ -530,6 +635,7 @@ function App() {
                       >
                         {isWatching ? <div className="w-3 h-3 bg-green-400 rounded-sm" /> : <Play size={18} fill="currentColor" />}
                       </button>
+
                       <button 
                         onClick={handleOpenVSCode}
                         className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input border border-border-input transition-all"
@@ -1152,8 +1258,442 @@ function App() {
               </div>
             </div>
           )}
+
+          {view === "help" && (
+            <div className="fade-in flex flex-col gap-10">
+              <header className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-bold text-text-main mb-2">Guide de démarrage & Aide</h1>
+                  <p className="text-text-subtle text-sm">Configurez votre environnement LaTeX et retrouvez les commandes indispensables.</p>
+                </div>
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]'}`}></div>
+                  <span className="text-[10px] font-black uppercase tracking-tight">
+                    {isSystemReady ? "Environnement Prêt" : "Configuration Recommandée"}
+                  </span>
+                </div>
+              </header>
+
+              {/* Section 1: De quoi ai-je besoin ? */}
+              <section className="bg-bg-card border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col gap-6">
+                <div>
+                  <h2 className="text-xl font-bold text-text-main mb-1">De quoi ai-je besoin ?</h2>
+                  <p className="text-text-subtle text-xs">Pour compiler vos fichiers PDF localement, vous devez installer une distribution LaTeX adaptée à votre système d'exploitation.</p>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* macOS Card */}
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">macOS</span>
+                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
+                      </div>
+                      <h3 className="text-base font-bold text-text-main mb-1">MacTeX</h3>
+                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution recommandée pour macOS. Complète et s'intègre parfaitement avec les outils du système.</p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
+                        <code className="text-[10px] font-mono text-text-muted truncate select-all">brew install --cask mactex</code>
+                        <button 
+                          onClick={() => handleCopy("brew install --cask mactex", "mac")}
+                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
+                          title="Copier la commande"
+                        >
+                          {copiedId === "mac" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                      <a 
+                        href="https://www.tug.org/mactex/" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                      >
+                        Site officiel <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Windows Card */}
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Windows</span>
+                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
+                      </div>
+                      <h3 className="text-base font-bold text-text-main mb-1">MiKTeX</h3>
+                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution moderne et légère pour Windows. Télécharge automatiquement les packages manquants à la volée.</p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
+                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX</code>
+                        <button 
+                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX", "win")}
+                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
+                          title="Copier la commande"
+                        >
+                          {copiedId === "win" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                      <a 
+                        href="https://miktex.org/download" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                      >
+                        Site officiel <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Linux Card */}
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Linux</span>
+                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
+                      </div>
+                      <h3 className="text-base font-bold text-text-main mb-1">TeX Live</h3>
+                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution standard pour Unix/Linux. Disponible directement dans les gestionnaires de paquets.</p>
+                    </div>
+                    
+                    <div className="flex flex-col gap-3">
+                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
+                        <code className="text-[10px] font-mono text-text-muted truncate select-all">sudo apt install texlive-full</code>
+                        <button 
+                          onClick={() => handleCopy("sudo apt install texlive-full", "linux")}
+                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
+                          title="Copier la commande"
+                        >
+                          {copiedId === "linux" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                        </button>
+                      </div>
+                      <a 
+                        href="https://www.tug.org/texlive/" 
+                        target="_blank" 
+                        rel="noreferrer"
+                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                      >
+                        Site officiel <ExternalLink size={12} />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 2: Antisèche LaTeX */}
+              <section className="bg-bg-card border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col gap-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-text-main mb-1">Antisèche LaTeX (Cheat Sheet)</h2>
+                    <p className="text-text-subtle text-xs">Retrouvez et copiez les commandes les plus couramment utilisées pour rédiger vos documents.</p>
+                  </div>
+                  
+                  {/* Category switcher */}
+                  <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle self-start md:self-auto">
+                    <button 
+                      onClick={() => setHelpTab("basics")}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${helpTab === "basics" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                    >
+                      Bases
+                    </button>
+                    <button 
+                      onClick={() => setHelpTab("text")}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${helpTab === "text" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                    >
+                      Texte
+                    </button>
+                    <button 
+                      onClick={() => setHelpTab("math")}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${helpTab === "math" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                    >
+                      Maths
+                    </button>
+                    <button 
+                      onClick={() => setHelpTab("media")}
+                      className={`px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${helpTab === "media" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                    >
+                      Médias
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {helpTab === "basics" && (
+                    <>
+                      <CheatSheetItem 
+                        title="Structure minimale d'un document" 
+                        description="Tout document LaTeX doit avoir cette structure de base." 
+                        code={`\\documentclass{article}
+\\usepackage[utf8]{inputenc}
+
+\\begin{document}
+  Votre texte ici...
+\\end{document}`}
+                        id="base-struct"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Titre et auteur" 
+                        description="Définit les métadonnées et génère le bloc de titre." 
+                        code={`\\title{Titre du document}
+\\author{Nom de l'auteur}
+\\date{\\today}
+
+% Dans le document :
+\\maketitle`}
+                        id="base-title"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Titres de sections" 
+                        description="Pour organiser votre document en chapitres et sections." 
+                        code={`\\section{Section principale}
+\\subsection{Sous-section}
+\\subsubsection{Sous-sous-section}
+\\paragraph{Paragraphe}`}
+                        id="base-sections"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Table des matières" 
+                        description="Génère automatiquement le sommaire à partir des sections." 
+                        code={`\\tableofcontents`}
+                        id="base-toc"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    </>
+                  )}
+
+                  {helpTab === "text" && (
+                    <>
+                      <CheatSheetItem 
+                        title="Mise en forme du texte" 
+                        description="Appliquez des styles de texte simples." 
+                        code={`\\textbf{Texte en gras}
+\\textit{Texte en italique}
+\\underline{Texte souligné}
+\\texttt{Texte en chasse fixe}`}
+                        id="text-format"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Listes à puces (non ordonnées)" 
+                        description="Affiche une liste simple avec des puces." 
+                        code={`\\begin{itemize}
+  \\item Premier élément
+  \\item Deuxième élément
+\\end{itemize}`}
+                        id="text-list"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Listes numérotées" 
+                        description="Affiche une liste ordonnée avec des chiffres." 
+                        code={`\\begin{enumerate}
+  \\item Premier élément
+  \\item Deuxième élément
+\\end{enumerate}`}
+                        id="text-enum"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Notes de bas de page" 
+                        description="Ajoute un appel de note et le texte en bas de page." 
+                        code={`Voici un exemple de texte avec une note de bas de page\\footnote{Le texte explicatif en bas.}.`}
+                        id="text-footnote"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    </>
+                  )}
+
+                  {helpTab === "math" && (
+                    <>
+                      <CheatSheetItem 
+                        title="Équation en ligne (Inline)" 
+                        description="Insère des symboles ou équations au milieu du texte." 
+                        code={`La célèbre équation $E = mc^2$ d'Einstein.`}
+                        id="math-inline"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Équation centrée (Hors-ligne)" 
+                        description="Affiche une équation sur sa propre ligne, centrée et sans numéro." 
+                        code={`\\[ f(x) = \\int_{a}^{b} g(t) \\,dt \\]`}
+                        id="math-block"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Équation numérotée" 
+                        description="Affiche une équation numérotée pour pouvoir la référencer." 
+                        code={`\\begin{equation}
+  a^2 + b^2 = c^2
+  \\label{eq:pythagore}
+\\end{equation}`}
+                        id="math-eq"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Fractions, indices et exposants" 
+                        description="Commandes mathématiques courantes." 
+                        code={`\\frac{a}{b}   % Fraction a sur b
+x^{2}         % Exposant (x au carré)
+x_{n}         % Indice (x indice n)
+\\sqrt{x}     % Racine carrée de x`}
+                        id="math-helpers"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    </>
+                  )}
+
+                  {helpTab === "media" && (
+                    <>
+                      <CheatSheetItem 
+                        title="Insertion d'une image" 
+                        description="Permet d'ajouter une image centrée avec légende." 
+                        code={`% Requiert \\usepackage{graphicx} dans le préambule
+\\begin{figure}[h]
+  \\centering
+  \\includegraphics[width=0.5\\textwidth]{nom_image.png}
+  \\caption{Légende de l'image}
+  \\label{fig:mon_image}
+\\end{figure}`}
+                        id="media-image"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                      <CheatSheetItem 
+                        title="Tableau simple" 
+                        description="Crée un tableau avec bordures verticales et horizontales." 
+                        code={`\\begin{table}[h]
+  \\centering
+  \\begin{tabular}{|l|c|r|}
+    \\hline
+    Gauche & Centré & Droite \\\\
+    \\hline
+    Valeur 1 & Valeur 2 & Valeur 3 \\\\
+    \\hline
+  \\end{tabular}
+  \\caption{Exemple de tableau}
+\\end{table}`}
+                        id="media-table"
+                        copiedId={copiedId}
+                        onCopy={handleCopy}
+                      />
+                    </>
+                  )}
+                </div>
+              </section>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Overlay de fond pour la console */}
+      {isLogsOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 transition-opacity duration-300"
+          onClick={() => setIsLogsOpen(false)}
+        />
+      )}
+
+      <div 
+        className={`fixed bottom-0 right-0 left-0 bg-bg-card/95 border-t border-border-input z-50 transition-all duration-300 ease-out transform ${
+          isLogsOpen ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0 pointer-events-none'
+        } glass-panel shadow-2xl h-[400px] flex flex-col`}
+      >
+        {/* Poignée de tiroir */}
+        <div className="w-full flex justify-center py-2 cursor-pointer select-none shrink-0" onClick={() => setIsLogsOpen(false)}>
+          <div className="w-12 h-1 bg-text-extra-subtle/30 rounded-full" />
+        </div>
+
+        {/* En-tête */}
+        <div className="flex items-center justify-between px-6 pb-3 border-b border-border-subtle shrink-0">
+          <div className="flex items-center gap-3">
+            <Terminal size={16} className={compileStatus === "compiling" ? "text-blue-400 animate-spin" : compileStatus === "error" ? "text-red-400" : "text-green-400"} />
+            <span className="font-display font-bold text-sm tracking-wide">
+              Console de compilation — {projectName}
+            </span>
+            {compileStatus === "compiling" && (
+              <span className="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full font-bold animate-pulse uppercase tracking-wider">
+                En cours
+              </span>
+            )}
+            {compileStatus === "success" && (
+              <span className="text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                Réussie
+              </span>
+            )}
+            {compileStatus === "error" && (
+              <span className="text-[9px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-full font-bold animate-pulse uppercase tracking-wider">
+                Échouée
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+
+            {compileLogs && (
+              <button 
+                onClick={() => handleCopy(compileLogs, "console-logs")}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-bg-input hover:bg-bg-input-hover text-text-muted hover:text-text-main border border-border-subtle transition-all text-[10px] font-bold"
+              >
+                {copiedId === "console-logs" ? <Check size={10} className="text-green-400" /> : <Copy size={10} />}
+                {copiedId === "console-logs" ? "Copié !" : "Copier les logs"}
+              </button>
+            )}
+            <button 
+              onClick={() => setIsLogsOpen(false)}
+              className="p-1.5 text-text-subtle hover:text-text-main rounded-lg hover:bg-bg-input transition-all"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Zone des logs de console */}
+        <div className="flex-1 min-h-0 bg-black/35 p-6 font-mono text-[11px] overflow-y-auto selection:bg-blue-500/20 select-text custom-scrollbar">
+          {compileLogs ? (
+            <pre className="whitespace-pre-wrap break-all text-text-muted leading-relaxed font-mono">
+              {compileLogs.split('\n').map((line, idx) => {
+                const lowerLine = line.toLowerCase();
+                const isError = lowerLine.includes("error") || line.startsWith("! ") || lowerLine.includes("l.");
+                const isWarning = lowerLine.includes("warning");
+                let lineClass = "text-text-muted";
+                if (isError) lineClass = "text-red-400 font-bold";
+                else if (isWarning) lineClass = "text-amber-400";
+                
+                return (
+                  <div key={idx} className={`${lineClass} font-mono py-0.5`}>
+                    {line}
+                  </div>
+                );
+              })}
+            </pre>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-text-extra-subtle gap-2 italic">
+              <Terminal size={20} className="opacity-40" />
+              <span>Aucun log disponible pour le moment.</span>
+              {isWatching && <span>Modifiez un fichier ou sauvegardez pour lancer la compilation.</span>}
+            </div>
+          )}
+          <div ref={logsEndRef} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1223,6 +1763,49 @@ function VSCodeIcon({ size = 20 }: { size?: number }) {
         </filter>
       </defs>
     </svg>
+  );
+}
+
+function CheatSheetItem({ 
+  title, 
+  description, 
+  code, 
+  id, 
+  copiedId, 
+  onCopy 
+}: { 
+  title: string; 
+  description: string; 
+  code: string; 
+  id: string; 
+  copiedId: string | null; 
+  onCopy: (text: string, id: string) => void; 
+}) {
+  return (
+    <div className="bg-bg-input/10 hover:bg-bg-input/20 border border-border-subtle rounded-xl p-4 flex flex-col justify-between transition-colors">
+      <div>
+        <h3 className="text-xs font-bold text-text-main mb-1">{title}</h3>
+        <p className="text-text-subtle text-[10px] mb-3 leading-relaxed">{description}</p>
+      </div>
+      
+      <div className="relative group/code mt-2">
+        <pre className="bg-bg-deep border border-border-input rounded-lg p-3 text-[10px] font-mono text-text-muted overflow-x-auto whitespace-pre">
+          {code}
+        </pre>
+        <button 
+          onClick={() => onCopy(code, id)}
+          className="absolute top-2 right-2 p-1.5 text-text-subtle hover:text-text-main bg-bg-card/85 hover:bg-bg-input rounded border border-border-subtle transition-all opacity-0 group-hover/code:opacity-100 cursor-pointer"
+          title="Copier le code"
+        >
+          {copiedId === id ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+        </button>
+        {copiedId === id && (
+          <span className="absolute bottom-2 right-2 text-[9px] bg-green-500/10 text-green-400 border border-green-500/20 px-1.5 py-0.5 rounded font-bold">
+            Copié !
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

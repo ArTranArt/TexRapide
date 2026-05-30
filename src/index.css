@@ -117,3 +117,19 @@
 .animate-dash {
   animation: dash 1.5s linear infinite;
 }
+
+@keyframes blink-red {
+  0%, 100% {
+    border-color: rgba(239, 68, 68, 0.2);
+    background-color: rgba(239, 68, 68, 0.05);
+  }
+  50% {
+    border-color: rgba(239, 68, 68, 0.8);
+    background-color: rgba(239, 68, 68, 0.2);
+    box-shadow: 0 0 12px rgba(239, 68, 68, 0.35);
+  }
+}
+
+.animate-blink-red {
+  animation: blink-red 1.5s infinite ease-in-out;
+}
