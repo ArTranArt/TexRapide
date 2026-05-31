@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -19,6 +19,13 @@ interface HealthStatus {
 interface Project {
   name: string;
   last_modified: number;
+}
+
+interface FileEntry {
+  name: string;
+  relative_path: string;
+  is_dir: boolean;
+  children?: FileEntry[];
 }
 
 // CodeMirror decorations and effects for temporary line highlighting (SyncTeX inverse search)
@@ -54,6 +61,29 @@ function App() {
   const [helpTab, setHelpTab] = useState<"basics" | "text" | "math" | "media">("basics");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [lineWrapping, setLineWrapping] = useState<boolean>(false);
+  const [showFileTree, setShowFileTree] = useState<boolean>(true);
+  const [projectTree, setProjectTree] = useState<FileEntry[]>([]);
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
+    const saved = localStorage.getItem("texrapide_auto_save");
+    return saved !== "false";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_auto_save", autoSaveEnabled.toString());
+  }, [autoSaveEnabled]);
+
+  const toggleDir = (dirPath: string) => {
+    setExpandedDirs(prev => {
+      const next = new Set(prev);
+      if (next.has(dirPath)) {
+        next.delete(dirPath);
+      } else {
+        next.add(dirPath);
+      }
+      return next;
+    });
+  };
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -433,14 +463,14 @@ function App() {
 
   // Auto-save logic
   useEffect(() => {
-    if (!activeProject || !editingFile || !hasUnsavedChanges) return;
+    if (!autoSaveEnabled || !activeProject || !editingFile || !hasUnsavedChanges) return;
     
     const delayDebounce = setTimeout(() => {
       saveFileContent(editingFile, editorContent);
     }, 1000); // 1s debounce
 
     return () => clearTimeout(delayDebounce);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges]);
+  }, [autoSaveEnabled, editorContent, activeProject, editingFile, hasUnsavedChanges]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -551,6 +581,15 @@ function App() {
     }
   };
 
+  const fetchProjectTree = async (path: string) => {
+    try {
+      const tree = await invoke<FileEntry[]>("list_project_tree", { path });
+      setProjectTree(tree);
+    } catch (error) {
+      console.error("Failed to fetch project tree:", error);
+    }
+  };
+
   useEffect(() => {
     if (view === "dashboard") {
       fetchProjects();
@@ -562,6 +601,7 @@ function App() {
   useEffect(() => {
     if (activeProject) {
       fetchProjectTexFiles(activeProject);
+      fetchProjectTree(activeProject);
     }
   }, [activeProject, ignoredPatterns]);
 
@@ -1206,6 +1246,17 @@ function App() {
                       <ChevronLeft size={20} />
                     </button>
 
+                    {/* Collapsible File Explorer Toggle Button */}
+                    <button 
+                      onClick={() => setShowFileTree(prev => !prev)}
+                      className={`w-12 h-12 flex items-center justify-center border-r border-border-subtle hover:bg-bg-input-hover transition-colors cursor-pointer shrink-0 ${
+                        showFileTree ? "text-blue-400 bg-blue-500/5" : "text-text-muted hover:text-text-main"
+                      }`}
+                      title="Afficher/Masquer l'explorateur de fichiers"
+                    >
+                      <FolderOpen size={16} />
+                    </button>
+
                     {/* Project Title and Muted Path (with Copy on click) */}
                     <div className="flex flex-col min-w-0 flex-1 ml-3">
                       <span className="text-xs font-bold text-text-main truncate leading-tight" title={projectName}>
@@ -1226,26 +1277,31 @@ function App() {
                       </span>
                     </div>
 
-                    {/* Inline Selectors */}
+                    {/* Inline Selectors / Actions */}
                     <div className="flex items-center gap-2 shrink-0">
-                      
-                      {/* Single File Selector */}
-                      <div className="relative">
-                        <select
-                          value={editingFile}
-                          disabled={isWatching}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setEditingFile(val);
-                            setMainFile(val);
-                          }}
-                          className="bg-bg-input border border-border-subtle hover:border-border-input rounded-md pl-2 pr-6 text-[10px] font-mono text-text-muted hover:text-text-main outline-none focus:border-blue-500/50 cursor-pointer min-w-[100px] max-w-[160px] appearance-none h-6 disabled:cursor-not-allowed disabled:opacity-50 transition-all"
-                          title={isWatching ? "Impossible de changer de fichier en mode exécution" : "Choisir le fichier actif"}
-                        >
-                          {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
-                        <ChevronDown size={10} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-text-extra-subtle pointer-events-none" />
+                      {/* Compiled Main File Target Indicator */}
+                      <div className="flex items-center gap-1 text-[10px] font-mono text-text-subtle px-2 py-0.5 rounded bg-bg-input/30 border border-border-subtle/50 shrink-0">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-text-extra-subtle">Cible :</span>
+                        <span className="text-text-muted truncate max-w-[100px]" title={mainFile}>
+                          {mainFile || "aucun"}
+                        </span>
                       </div>
+
+                      {/* Manual Save & Compile Button */}
+                      {(!autoSaveEnabled || hasUnsavedChanges) && (
+                        <button
+                          onClick={() => saveFileContent(editingFile, editorContent)}
+                          disabled={!hasUnsavedChanges}
+                          className={`w-6 h-6 flex items-center justify-center rounded-md border transition-all cursor-pointer ${
+                            hasUnsavedChanges 
+                              ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-500 shadow-md shadow-blue-500/10 active:scale-95" 
+                              : "bg-bg-input border-border-subtle text-text-extra-subtle cursor-not-allowed"
+                          }`}
+                          title="Sauvegarder et compiler (Cmd+S)"
+                        >
+                          <Save size={12} />
+                        </button>
+                      )}
 
                       {/* Line wrapping toggle button */}
                       <button
@@ -1262,20 +1318,42 @@ function App() {
                     </div>
                   </div>
 
-                  {/* Code Editor (Zero margins/padding, fills remaining space) */}
-                  <div className="flex-1 min-h-0 w-full overflow-hidden bg-bg-sidebar">
-                    <CodeMirror
-                      ref={editorRef}
-                      value={editorContent}
-                      height="100%"
-                      theme={theme}
-                      extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
-                      onChange={(value) => {
-                        setEditorContent(value);
-                        setHasUnsavedChanges(true);
-                      }}
-                      className="h-full text-xs font-mono"
-                    />
+                  {/* Code Editor & File Tree Content Area */}
+                  <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-bg-sidebar">
+                    {/* Collapsible File Explorer Sidebar */}
+                    {showFileTree && (
+                      <div className="w-40 shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full overflow-y-auto select-none">
+                        <FileTree
+                          tree={projectTree}
+                          expandedDirs={expandedDirs}
+                          toggleDir={toggleDir}
+                          selectedFile={editingFile}
+                          onFileSelect={(relative_path) => {
+                            setEditingFile(relative_path);
+                            // If selected file is a .tex file, also set it as main file.
+                            if (relative_path.toLowerCase().endsWith(".tex")) {
+                              setMainFile(relative_path);
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Code Editor */}
+                    <div className="flex-1 min-h-0 h-full overflow-hidden">
+                      <CodeMirror
+                        ref={editorRef}
+                        value={editorContent}
+                        height="100%"
+                        theme={theme}
+                        extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
+                        onChange={(value) => {
+                          setEditorContent(value);
+                          setHasUnsavedChanges(true);
+                        }}
+                        className="h-full text-xs font-mono"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -1666,6 +1744,31 @@ function App() {
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${theme === "dark" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
                         >
                           <Moon size={12} /> Sombre
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Sauvegarde Card */}
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Save size={16} className="text-blue-500" />
+                        <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Sauvegarde & Compile</h2>
+                      </div>
+                      
+                      <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle transition-colors duration-300">
+                        <button 
+                          onClick={() => setAutoSaveEnabled(true)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${autoSaveEnabled ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          Automatique (1s)
+                        </button>
+                        <button 
+                          onClick={() => setAutoSaveEnabled(false)}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${!autoSaveEnabled ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          Manuelle (Cmd+S)
                         </button>
                       </div>
                     </div>
@@ -2357,6 +2460,99 @@ function CheatSheetItem({
           </span>
         )}
       </div>
+    </div>
+  );
+}
+
+function FileTreeItem({
+  entry,
+  level,
+  expandedDirs,
+  toggleDir,
+  selectedFile,
+  onFileSelect
+}: {
+  entry: FileEntry;
+  level: number;
+  expandedDirs: Set<string>;
+  toggleDir: (path: string) => void;
+  selectedFile: string;
+  onFileSelect: (path: string) => void;
+}) {
+  const isExpanded = expandedDirs.has(entry.relative_path);
+  const isSelected = selectedFile === entry.relative_path;
+
+  if (entry.is_dir) {
+    return (
+      <div className="flex flex-col">
+        <button
+          onClick={() => toggleDir(entry.relative_path)}
+          style={{ paddingLeft: `${level * 8 + 6}px` }}
+          className="w-full text-left py-1 pr-2 hover:bg-bg-input-hover text-text-muted hover:text-text-main flex items-center gap-1.5 transition-colors text-[11px] font-mono cursor-pointer border-none bg-transparent"
+        >
+          <ChevronRight
+            size={10}
+            className={`transform transition-transform text-text-extra-subtle shrink-0 ${isExpanded ? "rotate-90" : ""}`}
+          />
+          <span className="truncate">{entry.name}</span>
+        </button>
+
+        {isExpanded && entry.children && entry.children.map(child => (
+          <FileTreeItem
+            key={child.relative_path}
+            entry={child}
+            level={level + 1}
+            expandedDirs={expandedDirs}
+            toggleDir={toggleDir}
+            selectedFile={selectedFile}
+            onFileSelect={onFileSelect}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onFileSelect(entry.relative_path)}
+      style={{ paddingLeft: `${level * 8 + 18}px` }}
+      className={`w-full text-left py-1.5 pr-2 flex items-center gap-1.5 transition-colors text-[11px] font-mono cursor-pointer border-none bg-transparent border-l-2 ${
+        isSelected
+          ? "bg-blue-500/10 text-blue-400 border-blue-500 font-semibold"
+          : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border-transparent"
+      }`}
+    >
+      <span className="truncate">{entry.name}</span>
+    </button>
+  );
+}
+
+function FileTree({
+  tree,
+  expandedDirs,
+  toggleDir,
+  selectedFile,
+  onFileSelect
+}: {
+  tree: FileEntry[];
+  expandedDirs: Set<string>;
+  toggleDir: (path: string) => void;
+  selectedFile: string;
+  onFileSelect: (path: string) => void;
+}) {
+  return (
+    <div className="w-full flex flex-col overflow-y-auto select-none py-2">
+      {tree.map(entry => (
+        <FileTreeItem
+          key={entry.relative_path}
+          entry={entry}
+          level={0}
+          expandedDirs={expandedDirs}
+          toggleDir={toggleDir}
+          selectedFile={selectedFile}
+          onFileSelect={onFileSelect}
+        />
+      ))}
     </div>
   );
 }

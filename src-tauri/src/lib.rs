@@ -25,6 +25,7 @@ pub fn run() {
             project::list_projects,
             project::list_templates,
             project::list_tex_files,
+            project::list_project_tree,
             project::open_in_vscode,
             project::open_in_vscode_at_line,
             project::file_exists,

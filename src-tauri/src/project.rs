@@ -228,6 +228,80 @@ pub fn synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Re
     Ok(SynctexResult { file, line })
 }
 
+#[derive(serde::Serialize)]
+pub struct FileEntry {
+    pub name: String,
+    pub relative_path: String,
+    pub is_dir: bool,
+    pub children: Option<Vec<FileEntry>>,
+}
+
+fn scan_dir_recursive(dir_path: &Path, root_path: &Path) -> Result<Vec<FileEntry>, String> {
+    let mut entries = Vec::new();
+    
+    if dir_path.is_dir() {
+        for entry in fs::read_dir(dir_path).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let path = entry.path();
+            let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
+            
+            // Skip hidden files, target folders, standard node_modules
+            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" {
+                continue;
+            }
+            
+            let relative_path = path.strip_prefix(root_path)
+                .map_err(|e| e.to_string())?
+                .to_str()
+                .ok_or("Invalid path encoding")?
+                .to_string()
+                .replace("\\", "/");
+                
+            if path.is_dir() {
+                let children = scan_dir_recursive(&path, root_path)?;
+                entries.push(FileEntry {
+                    name,
+                    relative_path,
+                    is_dir: true,
+                    children: Some(children),
+                });
+            } else {
+                let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
+                let ignored_exts = ["aux", "log", "toc", "lof", "lot", "out", "synctex.gz", "pdf", "fls", "fdb_latexmk", "blg", "bbl", "run.xml", "bcf"];
+                if ignored_exts.contains(&ext.as_str()) {
+                    continue;
+                }
+                
+                entries.push(FileEntry {
+                    name,
+                    relative_path,
+                    is_dir: false,
+                    children: None,
+                });
+            }
+        }
+    }
+    
+    // Sort: directories first, then files alphabetically
+    entries.sort_by(|a, b| {
+        if a.is_dir == b.is_dir {
+            a.name.to_lowercase().cmp(&b.name.to_lowercase())
+        } else if a.is_dir {
+            std::cmp::Ordering::Less
+        } else {
+            std::cmp::Ordering::Greater
+        }
+    });
+    
+    Ok(entries)
+}
+
+#[tauri::command]
+pub fn list_project_tree(path: String) -> Result<Vec<FileEntry>, String> {
+    let root = Path::new(&path);
+    scan_dir_recursive(root, root)
+}
+
 
 
 
