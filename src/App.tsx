@@ -64,6 +64,15 @@ function App() {
   const [showFileTree, setShowFileTree] = useState<boolean>(true);
   const [projectTree, setProjectTree] = useState<FileEntry[]>([]);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [isCreatingFile, setIsCreatingFile] = useState<boolean>(false);
+  const [newFileName, setNewFileName] = useState<string>("");
+  const newFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isCreatingFile && newFileInputRef.current) {
+      newFileInputRef.current.focus();
+    }
+  }, [isCreatingFile]);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
     const saved = localStorage.getItem("texrapide_auto_save");
     return saved !== "false";
@@ -608,6 +617,41 @@ function App() {
       setProjectTree(filterTreeNodes(tree));
     } catch (error) {
       console.error("Failed to fetch project tree:", error);
+    }
+  };
+
+  const handleCreateFile = async () => {
+    if (!activeProject || !newFileName.trim()) return;
+    
+    let fileName = newFileName.trim();
+    if (!fileName.includes(".")) {
+      fileName += ".tex";
+    }
+    
+    const filePath = `${activeProject}/${fileName}`;
+    
+    try {
+      const exists = await invoke<boolean>("file_exists", { path: filePath });
+      if (exists) {
+        alert("Ce fichier existe déjà.");
+        return;
+      }
+      
+      await invoke("write_file", { path: filePath, content: "" });
+      
+      setNewFileName("");
+      setIsCreatingFile(false);
+      
+      await fetchProjectTexFiles(activeProject);
+      await fetchProjectTree(activeProject);
+      
+      setEditingFile(fileName);
+      if (fileName.toLowerCase().endsWith(".tex")) {
+        setMainFile(fileName);
+      }
+    } catch (error) {
+      console.error("Failed to create file:", error);
+      alert("Erreur lors de la création du fichier.");
     }
   };
 
@@ -1345,7 +1389,46 @@ function App() {
                   <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-bg-sidebar">
                     {/* Collapsible File Explorer Sidebar */}
                     {showFileTree && (
-                      <div className="w-40 shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full overflow-y-auto select-none">
+                      <div className="w-40 shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full select-none">
+                        {/* Sidebar Header */}
+                        <div className="flex items-center justify-between px-2.5 py-2 border-b border-border-subtle/50 shrink-0 bg-bg-sidebar/40">
+                          <span className="text-[9px] font-black uppercase tracking-wider text-text-extra-subtle">Fichiers</span>
+                          <button
+                            onClick={() => setIsCreatingFile(prev => !prev)}
+                            className="p-1 hover:bg-bg-input-hover rounded text-text-muted hover:text-text-main transition-colors cursor-pointer"
+                            title="Nouveau fichier"
+                          >
+                            <Plus size={10} />
+                          </button>
+                        </div>
+
+                        {/* Inline File Creation Input */}
+                        {isCreatingFile && (
+                          <div className="px-2 py-1.5 border-b border-border-subtle/40 bg-bg-input/20 shrink-0">
+                            <input
+                              ref={newFileInputRef}
+                              type="text"
+                              placeholder="Nom (ex: intro.tex)..."
+                              className="w-full bg-bg-input border border-border-input rounded px-1.5 py-1 text-[10px] font-mono text-text-main outline-none focus:border-blue-500/50"
+                              value={newFileName}
+                              onChange={(e) => setNewFileName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleCreateFile();
+                                else if (e.key === "Escape") {
+                                  setIsCreatingFile(false);
+                                  setNewFileName("");
+                                }
+                              }}
+                              onBlur={() => {
+                                setTimeout(() => {
+                                  setIsCreatingFile(false);
+                                  setNewFileName("");
+                                }, 200);
+                              }}
+                            />
+                          </div>
+                        )}
+
                         <FileTree
                           tree={projectTree}
                           expandedDirs={expandedDirs}

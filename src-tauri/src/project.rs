@@ -172,7 +172,11 @@ pub fn read_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
-    std::fs::write(path, content).map_err(|e| e.to_string())
+    let path_obj = Path::new(&path);
+    if let Some(parent) = path_obj.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    std::fs::write(path_obj, content).map_err(|e| e.to_string())
 }
 
 #[derive(serde::Serialize)]
