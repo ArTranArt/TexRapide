@@ -282,6 +282,8 @@ function App() {
     }
   };
   const [editingFile, setEditingFile] = useState<string>("");
+  const [editorContent, setEditorContent] = useState<string>("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
     const saved = localStorage.getItem("texrapide_left_panel_width");
     return saved ? parseInt(saved, 10) : 450;
@@ -426,6 +428,9 @@ function App() {
     console.log("SyncTeX selected file:", relativeFile, "line:", line);
 
     if (relativeFile !== editingFile) {
+      if (hasUnsavedChanges && editingFile) {
+        await saveFileContent(editingFile, editorContent);
+      }
       setEditingFile(relativeFile);
       if (relativeFile.toLowerCase().endsWith(".tex") && !relativeFile.includes("/")) {
         setMainFile(relativeFile);
@@ -436,8 +441,6 @@ function App() {
     }
   };
 
-  const [editorContent, setEditorContent] = useState<string>( "");
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     if (pendingHighlightLine && editorContent) {
@@ -639,6 +642,10 @@ function App() {
         return;
       }
       
+      if (hasUnsavedChanges && editingFile) {
+        await saveFileContent(editingFile, editorContent);
+      }
+
       await invoke("write_file", { path: filePath, content: "" });
       
       setNewFileName("");
@@ -1347,9 +1354,17 @@ function App() {
                     {/* Inline Selectors / Actions */}
                     <div className="flex items-center gap-2 shrink-0">
                       {/* Compiled Main File Target Indicator */}
-                      <div className="flex items-center gap-1 text-[10px] font-mono text-text-subtle px-2 py-0.5 rounded bg-bg-input/30 border border-border-subtle/50 shrink-0">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-text-extra-subtle">Cible :</span>
-                        <span className="text-text-muted truncate max-w-[100px]" title={mainFile}>
+                      <div className={`flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded border transition-all shrink-0 ${
+                        compileStatus === "compiling"
+                          ? "bg-blue-500/10 border-blue-500/30 text-blue-400 font-semibold"
+                          : "bg-bg-input/30 border-border-subtle/50 text-text-subtle"
+                      }`}>
+                        {compileStatus === "compiling" ? (
+                          <RefreshCw size={10} className="animate-spin text-blue-400 shrink-0" />
+                        ) : (
+                          <span className="text-[8px] font-bold uppercase tracking-wider text-text-extra-subtle">Cible :</span>
+                        )}
+                        <span className={`truncate max-w-[100px] ${compileStatus === "compiling" ? "text-blue-300" : "text-text-muted"}`} title={mainFile}>
                           {mainFile || "aucun"}
                         </span>
                       </div>
@@ -1436,7 +1451,10 @@ function App() {
                           expandedDirs={expandedDirs}
                           toggleDir={toggleDir}
                           selectedFile={editingFile}
-                          onFileSelect={(relative_path) => {
+                          onFileSelect={async (relative_path) => {
+                            if (hasUnsavedChanges && editingFile) {
+                              await saveFileContent(editingFile, editorContent);
+                            }
                             setEditingFile(relative_path);
                             // If selected file is a .tex file at root level, also set it as main file.
                             if (relative_path.toLowerCase().endsWith(".tex") && !relative_path.includes("/")) {
