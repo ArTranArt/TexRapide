@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save, Edit2, Trash2 } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save, Edit2, Trash2, Keyboard } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -306,6 +306,13 @@ function App() {
   const editorRef = useRef<any>(null);
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
 
+  const [zoomInKey, setZoomInKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key") || "+");
+  const [zoomInKeyAlt, setZoomInKeyAlt] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key_alt") || "=");
+  const [zoomOutKey, setZoomOutKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_out_key") || "-");
+  const [commentKey, setCommentKey] = useState<string>(() => localStorage.getItem("texrapide_comment_key") || "/");
+  const [commentKeyAlt, setCommentKeyAlt] = useState<string>(() => localStorage.getItem("texrapide_comment_key_alt") || ":");
+  const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomInAlt" | "zoomOut" | "comment" | "commentAlt" | null>(null);
+
   useEffect(() => {
     localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
   }, [leftPanelWidth]);
@@ -313,6 +320,56 @@ function App() {
   useEffect(() => {
     localStorage.setItem("texrapide_editor_font_size", editorFontSize.toString());
   }, [editorFontSize]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_zoom_in_key", zoomInKey);
+  }, [zoomInKey]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_zoom_in_key_alt", zoomInKeyAlt);
+  }, [zoomInKeyAlt]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_zoom_out_key", zoomOutKey);
+  }, [zoomOutKey]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_comment_key", commentKey);
+  }, [commentKey]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_comment_key_alt", commentKeyAlt);
+  }, [commentKeyAlt]);
+
+  useEffect(() => {
+    if (!recordingField) return;
+
+    const handleRecordingKeyDown = (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      const key = e.key;
+      if (key === "Escape") {
+        setRecordingField(null);
+        return;
+      }
+      
+      if (["Control", "Shift", "Alt", "Meta", "CapsLock", "Tab", "Enter"].includes(key)) {
+        return;
+      }
+
+      if (recordingField === "zoomIn") setZoomInKey(key);
+      else if (recordingField === "zoomInAlt") setZoomInKeyAlt(key);
+      else if (recordingField === "zoomOut") setZoomOutKey(key);
+      else if (recordingField === "comment") setCommentKey(key);
+      else if (recordingField === "commentAlt") setCommentKeyAlt(key);
+      
+      setRecordingField(null);
+    };
+
+    window.addEventListener("keydown", handleRecordingKeyDown, true);
+    return () => window.removeEventListener("keydown", handleRecordingKeyDown, true);
+  }, [recordingField]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -527,7 +584,7 @@ function App() {
         }
       } else if (
         (e.metaKey || e.ctrlKey) && 
-        (e.key === "/" || e.key === ":")
+        (e.key === commentKey || e.key === commentKeyAlt)
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -538,11 +595,11 @@ function App() {
       } else if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (!isHoveringPdf) {
-          if (e.key === "=" || e.key === "+" || e.code === "NumpadAdd") {
+          if (e.key === zoomInKey || e.key === zoomInKeyAlt || e.code === "NumpadAdd") {
             e.preventDefault();
             e.stopPropagation();
             setEditorFontSize(s => Math.min(32, s + 1));
-          } else if (e.key === "-" || e.code === "NumpadSubtract") {
+          } else if (e.key === zoomOutKey || e.code === "NumpadSubtract") {
             e.preventDefault();
             e.stopPropagation();
             setEditorFontSize(s => Math.max(8, s - 1));
@@ -552,7 +609,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges]);
+  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomInKeyAlt, zoomOutKey, commentKey, commentKeyAlt]);
 
   // Default selected file loading
   useEffect(() => {
@@ -1765,6 +1822,9 @@ function App() {
                           projectName={projectName}
                           compileStatus={compileStatus}
                           onLineSelect={handleLineSelect}
+                          zoomInKey={zoomInKey}
+                          zoomInKeyAlt={zoomInKeyAlt}
+                          zoomOutKey={zoomOutKey}
                         />
                       </div>
                     ) : (
@@ -2147,6 +2207,127 @@ function App() {
                         </button>
                       </div>
                     </div>
+                  </section>
+
+                  {/* Raccourcis Clavier Card */}
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
+                    <div className="flex items-center gap-2 mb-6">
+                      <Keyboard size={16} className="text-blue-500" />
+                      <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Raccourcis Clavier (avec Cmd ⌘ / Ctrl)</h2>
+                    </div>
+
+                    <div className="flex flex-col gap-4">
+                      {/* Zoom In */}
+                      <div className="flex items-center justify-between py-2 border-b border-border-subtle/40">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-bold text-text-main">Zoom Avant</span>
+                          <span className="text-[10px] text-text-subtle">Agrandir la police de l'éditeur ou le PDF</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                            <span>⌘</span>
+                            <span>{zoomInKey}</span>
+                            <button
+                              onClick={() => setRecordingField(recordingField === "zoomIn" ? null : "zoomIn")}
+                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                                recordingField === "zoomIn"
+                                  ? "bg-blue-600 text-white animate-pulse"
+                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                              }`}
+                              title="Changer le raccourci principal"
+                            >
+                              {recordingField === "zoomIn" ? "..." : "Éditer"}
+                            </button>
+                          </div>
+                          
+                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                            <span>⌘</span>
+                            <span>{zoomInKeyAlt}</span>
+                            <button
+                              onClick={() => setRecordingField(recordingField === "zoomInAlt" ? null : "zoomInAlt")}
+                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                                recordingField === "zoomInAlt"
+                                  ? "bg-blue-600 text-white animate-pulse"
+                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                              }`}
+                              title="Changer le raccourci secondaire"
+                            >
+                              {recordingField === "zoomInAlt" ? "..." : "Éditer"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Zoom Out */}
+                      <div className="flex items-center justify-between py-2 border-b border-border-subtle/40">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-bold text-text-main">Zoom Arrière</span>
+                          <span className="text-[10px] text-text-subtle">Réduire la police de l'éditeur ou le PDF</span>
+                        </div>
+                        <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                          <span>⌘</span>
+                          <span>{zoomOutKey}</span>
+                          <button
+                            onClick={() => setRecordingField(recordingField === "zoomOut" ? null : "zoomOut")}
+                            className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                              recordingField === "zoomOut"
+                                ? "bg-blue-600 text-white animate-pulse"
+                                : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                            }`}
+                            title="Changer le raccourci"
+                          >
+                            {recordingField === "zoomOut" ? "..." : "Éditer"}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Comment */}
+                      <div className="flex items-center justify-between py-2">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs font-bold text-text-main">Commenter / Décommenter</span>
+                          <span className="text-[10px] text-text-subtle">Ajouter ou enlever un commentaire (%) dans le code</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                            <span>⌘</span>
+                            <span>{commentKey}</span>
+                            <button
+                              onClick={() => setRecordingField(recordingField === "comment" ? null : "comment")}
+                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                                recordingField === "comment"
+                                  ? "bg-blue-600 text-white animate-pulse"
+                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                              }`}
+                              title="Changer le raccourci principal"
+                            >
+                              {recordingField === "comment" ? "..." : "Éditer"}
+                            </button>
+                          </div>
+
+                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                            <span>⌘</span>
+                            <span>{commentKeyAlt}</span>
+                            <button
+                              onClick={() => setRecordingField(recordingField === "commentAlt" ? null : "commentAlt")}
+                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                                recordingField === "commentAlt"
+                                  ? "bg-blue-600 text-white animate-pulse"
+                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                              }`}
+                              title="Changer le raccourci secondaire"
+                            >
+                              {recordingField === "commentAlt" ? "..." : "Éditer"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {recordingField && (
+                      <div className="mt-5 p-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-lg text-center text-[10px] font-bold animate-pulse select-none font-sans">
+                        Appuyez sur une touche pour assigner le nouveau raccourci (ou Echap pour annuler)...
+                      </div>
+                    )}
                   </section>
                 </div>
 

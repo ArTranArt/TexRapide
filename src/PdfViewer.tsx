@@ -8,9 +8,21 @@ interface PdfViewerProps {
   projectName: string;
   onLineSelect: (file: string, line: number) => void;
   compileStatus: string;
+  zoomInKey?: string;
+  zoomInKeyAlt?: string;
+  zoomOutKey?: string;
 }
 
-export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileStatus }: PdfViewerProps) {
+export function PdfViewer({ 
+  pdfSrc, 
+  pdfPath, 
+  projectName, 
+  onLineSelect, 
+  compileStatus,
+  zoomInKey = "+",
+  zoomInKeyAlt = "=",
+  zoomOutKey = "-"
+}: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.2);
@@ -205,12 +217,12 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
       if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (isHoveringPdf) {
-          if (e.key === "=" || e.key === "+" || e.code === "NumpadAdd") {
+          if (e.key === zoomInKey || e.key === zoomInKeyAlt || e.code === "NumpadAdd") {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
             setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
-          } else if (e.key === "-" || e.code === "NumpadSubtract") {
+          } else if (e.key === zoomOutKey || e.code === "NumpadSubtract") {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
@@ -222,7 +234,7 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, []);
+  }, [zoomInKey, zoomInKeyAlt, zoomOutKey]);
 
   return (
     <div id="integrated-pdf-viewer" className="flex flex-col h-full w-full bg-bg-deep select-none relative overflow-hidden">
