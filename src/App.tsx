@@ -470,12 +470,14 @@ function App() {
 
   const saveFileContent = async (fileName: string, content: string) => {
     if (!activeProject) return;
+    setCompileStatus("compiling");
     const filePath = `${activeProject}/${fileName}`;
     try {
       await invoke("write_file", { path: filePath, content });
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Failed to write file:", error);
+      setCompileStatus("error");
     }
   };
 
