@@ -33,7 +33,8 @@ pub fn run() {
             project::write_file,
             project::synctex_inverse_search,
             watcher::start_watch,
-            watcher::stop_watch
+            watcher::stop_watch,
+            watcher::compile_once
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -74,6 +74,17 @@ pub fn stop_watch(state: State<'_, WatcherState>) -> std::result::Result<(), Str
     Ok(())
 }
 
+#[tauri::command]
+pub fn compile_once(
+    handle: AppHandle,
+    project_path: String,
+    main_file: String,
+    pdf_viewer_mode: String,
+) -> std::result::Result<(), String> {
+    run_build(&handle, &project_path, &main_file, &pdf_viewer_mode);
+    Ok(())
+}
+
 fn is_relevant_event(event: Event) -> bool {
     event.paths.iter().any(|p| {
         let ext = p.extension().map_or("", |e| e.to_str().unwrap_or(""));

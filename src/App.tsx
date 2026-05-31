@@ -201,6 +201,7 @@ function App() {
   const [isCreatingInline, setIsCreatingInline] = useState(false);
   const [compileStatus, setCompileStatus] = useState<"idle" | "compiling" | "success" | "error">("idle");
   const [compileLogs, setCompileLogs] = useState("");
+  const isSwitchLocked = isWatching || compileStatus === "compiling";
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   
   const mainContentRef = useRef<HTMLDivElement>(null);
@@ -362,8 +363,8 @@ function App() {
 
   const handleLineSelect = async (rawPath: string, line: number) => {
     if (!activeProject) return;
-    if (compileStatus === "compiling") {
-      console.log("SyncTeX jump blocked: compilation is active.");
+    if (isSwitchLocked) {
+      console.log("SyncTeX jump blocked: project is watching/compiling.");
       return;
     }
 
@@ -475,6 +476,14 @@ function App() {
     try {
       await invoke("write_file", { path: filePath, content });
       setHasUnsavedChanges(false);
+      
+      if (!autoSaveEnabled) {
+        await invoke("compile_once", { 
+          projectPath: activeProject, 
+          mainFile: mainFile, 
+          pdfViewerMode: pdfViewerMode 
+        });
+      }
     } catch (error) {
       console.error("Failed to write file:", error);
       setCompileStatus("error");
@@ -838,8 +847,33 @@ function App() {
     }
   };
 
+  const compileOnce = async () => {
+    if (!activeProject || !mainFile) return;
+    try {
+      if (hasUnsavedChanges && editingFile) {
+        await saveFileContent(editingFile, editorContent);
+      } else {
+        setCompileStatus("compiling");
+        await invoke("compile_once", { 
+          projectPath: activeProject, 
+          mainFile: mainFile, 
+          pdfViewerMode: pdfViewerMode 
+        });
+      }
+    } catch (error) {
+      console.error("Failed to compile project:", error);
+      setCompileStatus("error");
+      alert(`Erreur de compilation : ${error}`);
+    }
+  };
+
   const handleToggleWatch = async () => {
     if (!activeProject) return;
+    
+    if (!autoSaveEnabled) {
+      await compileOnce();
+      return;
+    }
     
     if (isWatching) {
       try {
@@ -1418,17 +1452,17 @@ function App() {
                           <span className="text-[9px] font-black uppercase tracking-wider text-text-extra-subtle">Fichiers</span>
                           <button
                             onClick={() => {
-                              if (compileStatus !== "compiling") {
+                              if (!isSwitchLocked) {
                                 setIsCreatingFile(prev => !prev);
                               }
                             }}
-                            disabled={compileStatus === "compiling"}
+                            disabled={isSwitchLocked}
                             className={`p-1 rounded text-text-muted transition-colors ${
-                              compileStatus === "compiling" 
+                              isSwitchLocked 
                                 ? "opacity-30 cursor-not-allowed" 
                                 : "hover:bg-bg-input-hover hover:text-text-main cursor-pointer"
                             }`}
-                            title={compileStatus === "compiling" ? "Création bloquée pendant la compilation" : "Nouveau fichier"}
+                            title={isSwitchLocked ? "Création bloquée pendant la compilation/visualisation" : "Nouveau fichier"}
                           >
                             <Plus size={10} />
                           </button>
@@ -1467,6 +1501,7 @@ function App() {
                           toggleDir={toggleDir}
                           selectedFile={editingFile}
                           onFileSelect={async (relative_path) => {
+                            if (isSwitchLocked) return;
                             if (hasUnsavedChanges && editingFile) {
                               await saveFileContent(editingFile, editorContent);
                             }
@@ -1476,7 +1511,7 @@ function App() {
                               setMainFile(relative_path);
                             }
                           }}
-                          isCompiling={compileStatus === "compiling"}
+                          isCompiling={isSwitchLocked}
                         />
                       </div>
                     )}
@@ -1510,7 +1545,7 @@ function App() {
                 {/* Right Panel */}
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
-                    !isWatching ? (
+                    (!isWatching && autoSaveEnabled) ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
                         <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
                           <Play size={28} fill="currentColor" className="ml-1 text-blue-400" />
