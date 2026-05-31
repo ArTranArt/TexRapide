@@ -205,12 +205,12 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
       if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (isHoveringPdf) {
-          if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
+          if (e.key === "=" || e.key === "+" || e.code === "NumpadAdd") {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
             setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
-          } else if (e.key === "-" || e.key === ")" || e.code === "Minus" || e.code === "NumpadSubtract") {
+          } else if (e.key === "-" || e.code === "NumpadSubtract") {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
