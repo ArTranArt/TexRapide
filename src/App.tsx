@@ -371,9 +371,16 @@ function App() {
 
       const newShortcut = { key, code };
 
-      if (recordingField === "zoomIn") setZoomInKey(newShortcut);
-      else if (recordingField === "zoomOut") setZoomOutKey(newShortcut);
-      else if (recordingField === "comment") setCommentKey(newShortcut);
+      if (recordingField === "zoomIn") {
+        if (key === "=" || key === "+") setZoomInKey(null);
+        else setZoomInKey(newShortcut);
+      } else if (recordingField === "zoomOut") {
+        if (key === "-") setZoomOutKey(null);
+        else setZoomOutKey(newShortcut);
+      } else if (recordingField === "comment") {
+        if (key === "/" || key === ":") setCommentKey(null);
+        else setCommentKey(newShortcut);
+      }
       
       setRecordingField(null);
     };
