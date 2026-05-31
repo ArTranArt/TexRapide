@@ -2268,7 +2268,7 @@ function App() {
                             <span>⌘</span>
                             <span>+</span>
                             <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                              {recordingField === "zoomIn" ? "..." : (zoomInKey ? zoomInKey.key : "+")}
+                              {recordingField === "zoomIn" ? "..." : (zoomInKey ? zoomInKey.key : "=")}
                             </span>
                           </button>
                         </div>
