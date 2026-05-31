@@ -73,14 +73,7 @@ function App() {
       newFileInputRef.current.focus();
     }
   }, [isCreatingFile]);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState<boolean>(() => {
-    const saved = localStorage.getItem("texrapide_auto_save");
-    return saved !== "false";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("texrapide_auto_save", autoSaveEnabled.toString());
-  }, [autoSaveEnabled]);
+  const autoSaveEnabled = true;
 
   const toggleDir = (dirPath: string) => {
     setExpandedDirs(prev => {
@@ -201,7 +194,7 @@ function App() {
   const [isCreatingInline, setIsCreatingInline] = useState(false);
   const [compileStatus, setCompileStatus] = useState<"idle" | "compiling" | "success" | "error">("idle");
   const [compileLogs, setCompileLogs] = useState("");
-  const isSwitchLocked = isWatching || compileStatus === "compiling";
+  const isSwitchLocked = compileStatus === "compiling";
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   
   const mainContentRef = useRef<HTMLDivElement>(null);
@@ -695,6 +688,52 @@ function App() {
   }, [activeProject, ignoredPatterns]);
 
   useEffect(() => {
+    if (activeProject && isWatching) {
+      let active = true;
+      const startWatching = async () => {
+        try {
+          await invoke("start_watch", { 
+            projectPath: activeProject, 
+            mainFile: mainFile, 
+            pdfViewerMode: pdfViewerMode 
+          });
+        } catch (error) {
+          console.error("Failed to start watch mode:", error);
+          if (active) setIsWatching(false);
+        }
+      };
+      startWatching();
+      
+      return () => {
+        active = false;
+        invoke("stop_watch").catch(console.error);
+      };
+    } else {
+      invoke("stop_watch").catch(console.error);
+    }
+  }, [activeProject, isWatching, mainFile, pdfViewerMode]);
+
+  const handleToggleWatch = async () => {
+    if (!activeProject) return;
+    
+    if (isWatching) {
+      try {
+        await invoke("stop_watch");
+        setIsWatching(false);
+        setCompileStatus("idle");
+      } catch (error) {
+        alert(`Erreur : ${error}`);
+      }
+    } else {
+      try {
+        setIsWatching(true);
+      } catch (error) {
+        alert(`Erreur : ${error}`);
+      }
+    }
+  };
+
+  useEffect(() => {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
 
@@ -753,7 +792,7 @@ function App() {
 
 
   const activateProject = (name: string, path?: string) => {
-    if (isWatching) return; 
+    if (isSwitchLocked) return; 
     const fullPath = path || `${dashboardProjectsDir}/${name}`;
     setActiveProject(fullPath);
     setProjectName(name);
@@ -771,7 +810,7 @@ function App() {
   };
 
   const handleDeselectProject = () => {
-    if (isWatching) return;
+    if (isSwitchLocked) return;
     setActiveProject(null);
     setIsWatching(false);
     setCompileStatus("idle");
@@ -799,7 +838,7 @@ function App() {
   };
 
   const handleSelectDashboardDir = async () => {
-    if (isWatching) return;
+    if (isSwitchLocked) return;
     try {
       const selected = await open({
         directory: true,
@@ -847,51 +886,8 @@ function App() {
     }
   };
 
-  const compileOnce = async () => {
-    if (!activeProject || !mainFile) return;
-    try {
-      if (hasUnsavedChanges && editingFile) {
-        await saveFileContent(editingFile, editorContent);
-      } else {
-        setCompileStatus("compiling");
-        await invoke("compile_once", { 
-          projectPath: activeProject, 
-          mainFile: mainFile, 
-          pdfViewerMode: pdfViewerMode 
-        });
-      }
-    } catch (error) {
-      console.error("Failed to compile project:", error);
-      setCompileStatus("error");
-      alert(`Erreur de compilation : ${error}`);
-    }
-  };
 
-  const handleToggleWatch = async () => {
-    if (!activeProject) return;
-    
-    if (!autoSaveEnabled) {
-      await compileOnce();
-      return;
-    }
-    
-    if (isWatching) {
-      try {
-        await invoke("stop_watch");
-        setIsWatching(false);
-        setCompileStatus("idle");
-      } catch (error) {
-        alert(`Erreur : ${error}`);
-      }
-    } else {
-      try {
-        await invoke("start_watch", { projectPath: activeProject, mainFile: mainFile, pdfViewerMode: pdfViewerMode });
-        setIsWatching(true);
-      } catch (error) {
-        alert(`Erreur : ${error}`);
-      }
-    }
-  };
+
 
   const handleOpenVSCode = async () => {
     if (!activeProject) return;
@@ -952,7 +948,7 @@ function App() {
 
         <div 
           onClick={() => {
-            if (isWatching) return;
+            if (isSwitchLocked) return;
             setDashboardProjectsDir(targetDir);
             setActiveProject(null);
             setView("dashboard");
@@ -1055,9 +1051,9 @@ function App() {
                   {/* Close button */}
                   <button 
                     onClick={handleDeselectProject}
-                    disabled={isWatching}
-                    className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isWatching ? 'cursor-not-allowed text-text-extra-subtle/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'} cursor-pointer`}
-                    title={isWatching ? "Arrêtez le watch mode d'abord" : "Désélectionner ce projet"}
+                    disabled={isSwitchLocked}
+                    className={`absolute top-4 right-4 p-2 transition-all opacity-0 group-hover/card:opacity-100 ${isSwitchLocked ? 'cursor-not-allowed text-text-extra-subtle/5' : 'text-text-extra-subtle hover:text-red-400 hover:bg-red-500/10'} cursor-pointer`}
+                    title={isSwitchLocked ? "Verrouillé pendant la compilation" : "Désélectionner ce projet"}
                   >
                     <X size={16} />
                   </button>
@@ -1078,7 +1074,7 @@ function App() {
                           <>
                             <select 
                               value={mainFile}
-                              disabled={isWatching}
+                              disabled={isSwitchLocked}
                               onChange={(e) => {
                                 const val = e.target.value;
                                 setMainFile(val);
@@ -1088,10 +1084,10 @@ function App() {
                             >
                               {projectTexFiles.map(f => <option key={f} value={f}>{f}</option>)}
                             </select>
-                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isWatching ? 'bg-bg-card/40 border-green-500/20 text-green-400/70' : 'text-text-subtle bg-bg-input border-border-subtle hover:border-white/20 hover:text-text-muted'}`}>
-                              <Code size={12} className={isWatching ? 'text-green-500' : 'text-blue-500/50'} />
+                            <div className={`flex items-center gap-2 text-xs font-mono px-2.5 py-1.5 rounded-md border transition-all cursor-pointer ${isSwitchLocked ? 'bg-bg-card/40 border-border-subtle text-text-extra-subtle/50 cursor-not-allowed opacity-50' : 'text-text-subtle bg-bg-input border-border-subtle hover:border-white/20 hover:text-text-muted'}`}>
+                              <Code size={12} className={isSwitchLocked ? 'text-text-extra-subtle' : 'text-blue-500/50'} />
                               <span className="truncate max-w-[150px]">{mainFile}</span>
-                              {!isWatching && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-text-extra-subtle" />}
+                              {!isSwitchLocked && projectTexFiles.length > 1 && <ChevronDown size={12} className="text-text-extra-subtle" />}
                             </div>
                           </>
                         ) : (
@@ -1183,14 +1179,14 @@ function App() {
                     <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle">
                       <button 
                         onClick={() => setSortBy("recent")}
-                        disabled={isWatching}
+                        disabled={isSwitchLocked}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "recent" ? 'bg-bg-input text-text-main shadow-sm' : 'text-text-extra-subtle hover:text-text-subtle disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <Clock size={12} /> Récents
                       </button>
                       <button 
                         onClick={() => setSortBy("alphabetical")}
-                        disabled={isWatching}
+                        disabled={isSwitchLocked}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${sortBy === "alphabetical" ? 'bg-bg-input text-text-main shadow-sm' : 'text-text-extra-subtle hover:text-text-subtle disabled:opacity-30 disabled:cursor-not-allowed'}`}
                       >
                         <SortAsc size={12} /> A-Z
@@ -1202,9 +1198,9 @@ function App() {
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={handleSelectDashboardDir}
-                        disabled={isWatching}
-                        className={`p-2 rounded-lg border transition-all ${isWatching ? 'bg-bg-input border-border-subtle text-text-extra-subtle/5 cursor-not-allowed' : 'bg-bg-input hover:bg-bg-input border-border-subtle text-text-subtle hover:text-blue-500'}`}
-                        title={isWatching ? "Verrouillé pendant le watch mode" : "Explorer un autre dossier"}
+                        disabled={isSwitchLocked}
+                        className={`p-2 rounded-lg border transition-all ${isSwitchLocked ? 'bg-bg-input border-border-subtle text-text-extra-subtle/5 cursor-not-allowed' : 'bg-bg-input hover:bg-bg-input border-border-subtle text-text-subtle hover:text-blue-500'}`}
+                        title={isSwitchLocked ? "Verrouillé pendant la compilation" : "Explorer un autre dossier"}
                       >
                         <FolderPlus size={16} />
                       </button>
@@ -1240,8 +1236,8 @@ function App() {
                   {!isCreatingInline ? (
                     <button 
                       onClick={() => setIsCreatingInline(true)}
-                      disabled={isWatching}
-                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all group ${isWatching ? 'border-border-subtle text-text-extra-subtle/5 opacity-50 cursor-not-allowed' : 'border-border-subtle text-text-extra-subtle hover:border-blue-500/30 hover:bg-blue-500/[0.02] hover:scale-[1.01]'}`}
+                      disabled={isSwitchLocked}
+                      className={`flex items-center gap-4 p-4 rounded-2xl border-2 border-dashed transition-all group ${isSwitchLocked ? 'border-border-subtle text-text-extra-subtle/5 opacity-50 cursor-not-allowed' : 'border-border-subtle text-text-extra-subtle hover:border-blue-500/30 hover:bg-blue-500/[0.02] hover:scale-[1.01]'}`}
                     >
                       <div className="p-2.5 rounded-xl bg-bg-input text-text-extra-subtle group-hover:bg-blue-500/10 group-hover:text-blue-500 transition-colors">
                         <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
@@ -1314,7 +1310,7 @@ function App() {
                         date={formatDate(p.last_modified)}
                         active={activeProject === `${dashboardProjectsDir}/${p.name}`} 
                         isWatching={isWatching}
-                        disabled={isWatching && activeProject !== `${dashboardProjectsDir}/${p.name}`}
+                        disabled={isSwitchLocked && activeProject !== `${dashboardProjectsDir}/${p.name}`}
                         onClick={() => activateProject(p.name)} 
                       />
                     ))
@@ -1420,7 +1416,7 @@ function App() {
                         }`}
                         title={
                           hasUnsavedChanges 
-                            ? (autoSaveEnabled ? "Sauvegarde automatique en cours..." : "Sauvegarder et compiler (Cmd+S)")
+                            ? "Sauvegarde automatique en cours..."
                             : "Changements enregistrés et compilés"
                         }
                       >
@@ -1545,7 +1541,7 @@ function App() {
                 {/* Right Panel */}
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
-                    (!isWatching && autoSaveEnabled) ? (
+                    !isWatching ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
                         <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
                           <Play size={28} fill="currentColor" className="ml-1 text-blue-400" />
@@ -1882,7 +1878,7 @@ function App() {
                       <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center px-1">
                           <label className="text-[10px] font-bold text-text-subtle uppercase tracking-widest">Dossier Projets</label>
-                          <button onClick={handleSelectDir} disabled={isWatching} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-30">Modifier</button>
+                          <button onClick={handleSelectDir} disabled={isSwitchLocked} className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors disabled:opacity-30">Modifier</button>
                         </div>
                         <div className="bg-bg-input border border-border-input rounded-lg p-2.5 text-xs font-mono text-text-muted truncate">
                           {targetDir}
@@ -1926,30 +1922,7 @@ function App() {
                     </div>
                   </section>
 
-                  {/* Sauvegarde Card */}
-                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Save size={16} className="text-blue-500" />
-                        <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Sauvegarde & Compile</h2>
-                      </div>
-                      
-                      <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle transition-colors duration-300">
-                        <button 
-                          onClick={() => setAutoSaveEnabled(true)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${autoSaveEnabled ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
-                        >
-                          Automatique (1s)
-                        </button>
-                        <button 
-                          onClick={() => setAutoSaveEnabled(false)}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${!autoSaveEnabled ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
-                        >
-                          Manuelle (Cmd+S)
-                        </button>
-                      </div>
-                    </div>
-                  </section>
+
 
                   {/* Lecteur PDF Card */}
                   <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">

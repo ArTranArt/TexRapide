@@ -249,8 +249,8 @@ fn scan_dir_recursive(dir_path: &Path, root_path: &Path) -> Result<Vec<FileEntry
             let path = entry.path();
             let name = path.file_name().and_then(|s| s.to_str()).unwrap_or("").to_string();
             
-            // Skip hidden files, target folders, standard node_modules
-            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" {
+            // Skip hidden files, target folders, standard node_modules, and synctex/gzip files
+            if name.starts_with('.') || name == "node_modules" || name == "target" || name == "dist" || name.ends_with(".synctex.gz") || name.ends_with(".synctex") || name.ends_with(".gz") {
                 continue;
             }
             
@@ -271,7 +271,7 @@ fn scan_dir_recursive(dir_path: &Path, root_path: &Path) -> Result<Vec<FileEntry
                 });
             } else {
                 let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("").to_lowercase();
-                let ignored_exts = ["aux", "log", "toc", "lof", "lot", "out", "synctex.gz", "pdf", "fls", "fdb_latexmk", "blg", "bbl", "run.xml", "bcf"];
+                let ignored_exts = ["aux", "log", "toc", "lof", "lot", "out", "synctex.gz", "pdf", "fls", "fdb_latexmk", "blg", "bbl", "run.xml", "bcf", "gz"];
                 if ignored_exts.contains(&ext.as_str()) {
                     continue;
                 }

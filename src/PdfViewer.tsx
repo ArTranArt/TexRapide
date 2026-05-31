@@ -16,6 +16,7 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const hasLoadedRef = useRef<boolean>(false);
 
   // Resize and Fit-to-Width states
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -29,7 +30,9 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   // Load PDF when pdfSrc or compileStatus changes (compilation success triggers reload)
   useEffect(() => {
     if (!pdfSrc) return;
-    setLoading(true);
+    if (!hasLoadedRef.current) {
+      setLoading(true);
+    }
     setError(null);
 
     const pdfjsLib = (window as any).pdfjsLib;
@@ -56,6 +59,7 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
             setPageOriginalWidth(vp.width || 595);
           });
         }
+        hasLoadedRef.current = true;
         setLoading(false);
       },
       (err: any) => {
