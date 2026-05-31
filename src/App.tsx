@@ -362,6 +362,10 @@ function App() {
 
   const handleLineSelect = async (rawPath: string, line: number) => {
     if (!activeProject) return;
+    if (compileStatus === "compiling") {
+      console.log("SyncTeX jump blocked: compilation is active.");
+      return;
+    }
 
     let normalizedPath = rawPath.replace(/\\/g, "/");
     const normalizedProjectDir = activeProject.replace(/\\/g, "/");
@@ -1411,9 +1415,18 @@ function App() {
                         <div className="flex items-center justify-between px-2.5 py-2 border-b border-border-subtle/50 shrink-0 bg-bg-sidebar/40">
                           <span className="text-[9px] font-black uppercase tracking-wider text-text-extra-subtle">Fichiers</span>
                           <button
-                            onClick={() => setIsCreatingFile(prev => !prev)}
-                            className="p-1 hover:bg-bg-input-hover rounded text-text-muted hover:text-text-main transition-colors cursor-pointer"
-                            title="Nouveau fichier"
+                            onClick={() => {
+                              if (compileStatus !== "compiling") {
+                                setIsCreatingFile(prev => !prev);
+                              }
+                            }}
+                            disabled={compileStatus === "compiling"}
+                            className={`p-1 rounded text-text-muted transition-colors ${
+                              compileStatus === "compiling" 
+                                ? "opacity-30 cursor-not-allowed" 
+                                : "hover:bg-bg-input-hover hover:text-text-main cursor-pointer"
+                            }`}
+                            title={compileStatus === "compiling" ? "Création bloquée pendant la compilation" : "Nouveau fichier"}
                           >
                             <Plus size={10} />
                           </button>
@@ -1461,6 +1474,7 @@ function App() {
                               setMainFile(relative_path);
                             }
                           }}
+                          isCompiling={compileStatus === "compiling"}
                         />
                       </div>
                     )}
@@ -2596,7 +2610,8 @@ function FileTreeItem({
   expandedDirs,
   toggleDir,
   selectedFile,
-  onFileSelect
+  onFileSelect,
+  isCompiling
 }: {
   entry: FileEntry;
   level: number;
@@ -2604,6 +2619,7 @@ function FileTreeItem({
   toggleDir: (path: string) => void;
   selectedFile: string;
   onFileSelect: (path: string) => void;
+  isCompiling: boolean;
 }) {
   const isExpanded = expandedDirs.has(entry.relative_path);
   const isSelected = selectedFile === entry.relative_path;
@@ -2612,9 +2628,12 @@ function FileTreeItem({
     return (
       <div className="flex flex-col">
         <button
-          onClick={() => toggleDir(entry.relative_path)}
+          onClick={() => !isCompiling && toggleDir(entry.relative_path)}
+          disabled={isCompiling}
           style={{ paddingLeft: `${level * 8 + 6}px` }}
-          className="w-full text-left py-1 pr-2 hover:bg-bg-input-hover text-text-muted hover:text-text-main flex items-center gap-1.5 transition-colors text-[11px] font-mono cursor-pointer border-none bg-transparent"
+          className={`w-full text-left py-1 pr-2 hover:bg-bg-input-hover text-text-muted hover:text-text-main flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent ${
+            isCompiling ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+          }`}
         >
           <ChevronRight
             size={10}
@@ -2632,6 +2651,7 @@ function FileTreeItem({
             toggleDir={toggleDir}
             selectedFile={selectedFile}
             onFileSelect={onFileSelect}
+            isCompiling={isCompiling}
           />
         ))}
       </div>
@@ -2640,12 +2660,15 @@ function FileTreeItem({
 
   return (
     <button
-      onClick={() => onFileSelect(entry.relative_path)}
+      onClick={() => !isCompiling && onFileSelect(entry.relative_path)}
+      disabled={isCompiling}
       style={{ paddingLeft: `${level * 8 + 18}px` }}
-      className={`w-full text-left py-1.5 pr-2 flex items-center gap-1.5 transition-colors text-[11px] font-mono cursor-pointer border-none bg-transparent border-l-2 ${
-        isSelected
-          ? "bg-blue-500/10 text-blue-400 border-blue-500 font-semibold"
-          : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border-transparent"
+      className={`w-full text-left py-1.5 pr-2 flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent border-l-2 ${
+        isCompiling
+          ? "opacity-50 cursor-not-allowed text-text-extra-subtle border-transparent"
+          : isSelected
+            ? "bg-blue-500/10 text-blue-400 border-blue-500 font-semibold cursor-pointer"
+            : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border-transparent cursor-pointer"
       }`}
     >
       <span className="truncate">{entry.name}</span>
@@ -2658,13 +2681,15 @@ function FileTree({
   expandedDirs,
   toggleDir,
   selectedFile,
-  onFileSelect
+  onFileSelect,
+  isCompiling
 }: {
   tree: FileEntry[];
   expandedDirs: Set<string>;
   toggleDir: (path: string) => void;
   selectedFile: string;
   onFileSelect: (path: string) => void;
+  isCompiling: boolean;
 }) {
   return (
     <div className="w-full flex flex-col overflow-y-auto select-none py-2">
@@ -2677,6 +2702,7 @@ function FileTree({
           toggleDir={toggleDir}
           selectedFile={selectedFile}
           onFileSelect={onFileSelect}
+          isCompiling={isCompiling}
         />
       ))}
     </div>
