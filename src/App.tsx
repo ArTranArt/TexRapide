@@ -6,8 +6,8 @@ import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, 
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
-import { EditorView, Decoration } from "@codemirror/view";
-import { toggleComment } from "@codemirror/commands";
+import { EditorView, Decoration, keymap } from "@codemirror/view";
+import { toggleComment, insertNewline } from "@codemirror/commands";
 import { PdfViewer } from "./PdfViewer";
 import "./index.css";
 
@@ -318,6 +318,14 @@ function App() {
     return parseShortcut(localStorage.getItem("texrapide_comment_shortcut"));
   });
   const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomOut" | "comment" | null>(null);
+  const [autoIndent, setAutoIndent] = useState<boolean>(() => {
+    const saved = localStorage.getItem("texrapide_auto_indent");
+    return saved ? saved === "true" : false; // Default is false (n'indente pas par défaut)
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_auto_indent", autoIndent.toString());
+  }, [autoIndent]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
@@ -1806,7 +1814,12 @@ function App() {
                         value={editorContent}
                         height="100%"
                         theme={theme}
-                        extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
+                        extensions={[
+                          latex(), 
+                          lineHighlightField, 
+                          ...(lineWrapping ? [EditorView.lineWrapping] : []),
+                          ...(!autoIndent ? [keymap.of([{ key: "Enter", run: insertNewline }])] : [])
+                        ]}
                         onChange={(value) => {
                           setEditorContent(value);
                           setHasUnsavedChanges(true);
@@ -2209,6 +2222,34 @@ function App() {
                         >
                           <Moon size={12} /> Sombre
                         </button>
+                      </div>
+                    </div>
+                  </section>
+
+                  {/* Éditeur Card */}
+                  <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Code size={16} className="text-blue-500" />
+                        <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Éditeur</h2>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-text-subtle font-bold">Indentation auto.</span>
+                        <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle transition-colors duration-300">
+                          <button 
+                            onClick={() => setAutoIndent(true)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${autoIndent ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                          >
+                            Activer
+                          </button>
+                          <button 
+                            onClick={() => setAutoIndent(false)}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${!autoIndent ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                          >
+                            Désactiver
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </section>
