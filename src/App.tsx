@@ -298,6 +298,10 @@ function App() {
     const saved = localStorage.getItem("texrapide_left_panel_width");
     return saved ? parseInt(saved, 10) : 450;
   });
+  const [editorFontSize, setEditorFontSize] = useState<number>(() => {
+    const saved = localStorage.getItem("texrapide_editor_font_size");
+    return saved ? parseInt(saved, 10) : 13;
+  });
   const isResizingRef = useRef(false);
   const editorRef = useRef<any>(null);
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
@@ -305,6 +309,10 @@ function App() {
   useEffect(() => {
     localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
   }, [leftPanelWidth]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_editor_font_size", editorFontSize.toString());
+  }, [editorFontSize]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -526,6 +534,14 @@ function App() {
         const editorView = editorRef.current?.view;
         if (editorView) {
           toggleComment(editorView);
+        }
+      } else if (e.metaKey || e.ctrlKey) {
+        if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
+          e.preventDefault();
+          setEditorFontSize(s => Math.min(32, s + 1));
+        } else if (e.key === "-" || e.code === "Minus" || e.code === "NumpadSubtract") {
+          e.preventDefault();
+          setEditorFontSize(s => Math.max(8, s - 1));
         }
       }
     };
@@ -1701,7 +1717,8 @@ function App() {
                           setEditorContent(value);
                           setHasUnsavedChanges(true);
                         }}
-                        className="h-full text-xs font-mono"
+                        className="h-full font-mono"
+                        style={{ fontSize: `${editorFontSize}px` }}
                       />
                     </div>
                   </div>
