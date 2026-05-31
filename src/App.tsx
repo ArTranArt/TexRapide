@@ -1287,21 +1287,23 @@ function App() {
                         </span>
                       </div>
 
-                      {/* Manual Save & Compile Button */}
-                      {(!autoSaveEnabled || hasUnsavedChanges) && (
-                        <button
-                          onClick={() => saveFileContent(editingFile, editorContent)}
-                          disabled={!hasUnsavedChanges}
-                          className={`w-6 h-6 flex items-center justify-center rounded-md border transition-all cursor-pointer ${
-                            hasUnsavedChanges 
-                              ? "bg-blue-600 border-blue-500 text-white hover:bg-blue-500 shadow-md shadow-blue-500/10 active:scale-95" 
-                              : "bg-bg-input border-border-subtle text-text-extra-subtle cursor-not-allowed"
-                          }`}
-                          title="Sauvegarder et compiler (Cmd+S)"
-                        >
-                          <Save size={12} />
-                        </button>
-                      )}
+                      {/* Save Status & Compile Button */}
+                      <button
+                        onClick={() => saveFileContent(editingFile, editorContent)}
+                        disabled={!hasUnsavedChanges}
+                        className={`w-6 h-6 flex items-center justify-center rounded-md border transition-all ${
+                          hasUnsavedChanges 
+                            ? "bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25 active:scale-95 cursor-pointer shadow-[0_0_8px_rgba(245,158,11,0.15)]" 
+                            : "bg-green-500/10 border-green-500/20 text-green-400 cursor-default"
+                        }`}
+                        title={
+                          hasUnsavedChanges 
+                            ? (autoSaveEnabled ? "Sauvegarde automatique en cours..." : "Sauvegarder et compiler (Cmd+S)")
+                            : "Changements enregistrés et compilés"
+                        }
+                      >
+                        {hasUnsavedChanges ? <Save size={12} /> : <Check size={12} />}
+                      </button>
 
                       {/* Line wrapping toggle button */}
                       <button
