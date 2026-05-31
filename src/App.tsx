@@ -427,7 +427,9 @@ function App() {
 
     if (relativeFile !== editingFile) {
       setEditingFile(relativeFile);
-      setMainFile(relativeFile); // Keep them in sync
+      if (relativeFile.toLowerCase().endsWith(".tex") && !relativeFile.includes("/")) {
+        setMainFile(relativeFile);
+      }
       setPendingHighlightLine(line);
     } else {
       jumpToEditorLine(line);
@@ -646,7 +648,7 @@ function App() {
       await fetchProjectTree(activeProject);
       
       setEditingFile(fileName);
-      if (fileName.toLowerCase().endsWith(".tex")) {
+      if (fileName.toLowerCase().endsWith(".tex") && !fileName.includes("/")) {
         setMainFile(fileName);
       }
     } catch (error) {
@@ -1436,8 +1438,8 @@ function App() {
                           selectedFile={editingFile}
                           onFileSelect={(relative_path) => {
                             setEditingFile(relative_path);
-                            // If selected file is a .tex file, also set it as main file.
-                            if (relative_path.toLowerCase().endsWith(".tex")) {
+                            // If selected file is a .tex file at root level, also set it as main file.
+                            if (relative_path.toLowerCase().endsWith(".tex") && !relative_path.includes("/")) {
                               setMainFile(relative_path);
                             }
                           }}
