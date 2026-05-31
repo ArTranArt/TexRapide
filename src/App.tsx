@@ -584,7 +584,28 @@ function App() {
   const fetchProjectTree = async (path: string) => {
     try {
       const tree = await invoke<FileEntry[]>("list_project_tree", { path });
-      setProjectTree(tree);
+      
+      // Filter tree based on ignoredPatterns
+      const filterTreeNodes = (nodes: FileEntry[]): FileEntry[] => {
+        return nodes
+          .filter(node => {
+            const nameLower = node.name.toLowerCase();
+            return !ignoredPatterns.some(pattern => 
+              pattern && nameLower.includes(pattern.toLowerCase())
+            );
+          })
+          .map(node => {
+            if (node.is_dir && node.children) {
+              return {
+                ...node,
+                children: filterTreeNodes(node.children)
+              };
+            }
+            return node;
+          });
+      };
+      
+      setProjectTree(filterTreeNodes(tree));
     } catch (error) {
       console.error("Failed to fetch project tree:", error);
     }
