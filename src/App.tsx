@@ -292,9 +292,31 @@ function App() {
   const editorRef = useRef<any>(null);
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
 
-  const [zoomInKey, setZoomInKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key") || "+");
-  const [zoomOutKey, setZoomOutKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_out_key") || "-");
-  const [commentKey, setCommentKey] = useState<string>(() => localStorage.getItem("texrapide_comment_key") || "/");
+  interface Shortcut {
+    key: string;
+    code: string;
+  }
+
+  const parseShortcut = (saved: string | null): Shortcut | null => {
+    if (!saved) return null;
+    try {
+      const parsed = JSON.parse(saved);
+      if (parsed && typeof parsed === "object" && typeof parsed.key === "string" && typeof parsed.code === "string") {
+        return parsed;
+      }
+    } catch (_) {}
+    return null;
+  };
+
+  const [zoomInKey, setZoomInKey] = useState<Shortcut | null>(() => {
+    return parseShortcut(localStorage.getItem("texrapide_zoom_in_shortcut"));
+  });
+  const [zoomOutKey, setZoomOutKey] = useState<Shortcut | null>(() => {
+    return parseShortcut(localStorage.getItem("texrapide_zoom_out_shortcut"));
+  });
+  const [commentKey, setCommentKey] = useState<Shortcut | null>(() => {
+    return parseShortcut(localStorage.getItem("texrapide_comment_shortcut"));
+  });
   const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomOut" | "comment" | null>(null);
 
   useEffect(() => {
@@ -306,15 +328,27 @@ function App() {
   }, [editorFontSize]);
 
   useEffect(() => {
-    localStorage.setItem("texrapide_zoom_in_key", zoomInKey);
+    if (zoomInKey) {
+      localStorage.setItem("texrapide_zoom_in_shortcut", JSON.stringify(zoomInKey));
+    } else {
+      localStorage.removeItem("texrapide_zoom_in_shortcut");
+    }
   }, [zoomInKey]);
 
   useEffect(() => {
-    localStorage.setItem("texrapide_zoom_out_key", zoomOutKey);
+    if (zoomOutKey) {
+      localStorage.setItem("texrapide_zoom_out_shortcut", JSON.stringify(zoomOutKey));
+    } else {
+      localStorage.removeItem("texrapide_zoom_out_shortcut");
+    }
   }, [zoomOutKey]);
 
   useEffect(() => {
-    localStorage.setItem("texrapide_comment_key", commentKey);
+    if (commentKey) {
+      localStorage.setItem("texrapide_comment_shortcut", JSON.stringify(commentKey));
+    } else {
+      localStorage.removeItem("texrapide_comment_shortcut");
+    }
   }, [commentKey]);
 
   useEffect(() => {
@@ -325,6 +359,7 @@ function App() {
       e.stopPropagation();
       
       const key = e.key;
+      const code = e.code;
       if (key === "Escape") {
         setRecordingField(null);
         return;
@@ -334,9 +369,11 @@ function App() {
         return;
       }
 
-      if (recordingField === "zoomIn") setZoomInKey(key);
-      else if (recordingField === "zoomOut") setZoomOutKey(key);
-      else if (recordingField === "comment") setCommentKey(key);
+      const newShortcut = { key, code };
+
+      if (recordingField === "zoomIn") setZoomInKey(newShortcut);
+      else if (recordingField === "zoomOut") setZoomOutKey(newShortcut);
+      else if (recordingField === "comment") setCommentKey(newShortcut);
       
       setRecordingField(null);
     };
@@ -556,24 +593,38 @@ function App() {
         if (activeProject && editingFile && hasUnsavedChanges) {
           saveFileContent(editingFile, editorContent);
         }
-      } else if (
-        (e.metaKey || e.ctrlKey) && e.shiftKey && 
-        e.key === commentKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        const editorView = editorRef.current?.view;
-        if (editorView) {
-          toggleComment(editorView);
-        }
       } else if (e.metaKey || e.ctrlKey) {
+        // 1. Comment handling (always needs Shift modifier)
+        const isCommentMatch = commentKey
+          ? (e.shiftKey && e.code === commentKey.code)
+          : (e.shiftKey && (e.key === "/" || e.key === ":" || e.code === "Slash"));
+
+        if (isCommentMatch) {
+          e.preventDefault();
+          e.stopPropagation();
+          const editorView = editorRef.current?.view;
+          if (editorView) {
+            toggleComment(editorView);
+          }
+          return;
+        }
+
+        // 2. Zoom handling
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (!isHoveringPdf) {
-          if (e.key === zoomInKey || (zoomInKey === "+" && e.key === "=") || e.code === "NumpadAdd") {
+          const isZoomInMatch = zoomInKey
+            ? (e.code === zoomInKey.code || e.code === "NumpadAdd")
+            : (e.key === "+" || e.key === "=" || e.code === "NumpadAdd");
+
+          const isZoomOutMatch = zoomOutKey
+            ? (e.code === zoomOutKey.code || e.code === "NumpadSubtract")
+            : (e.key === "-" || e.code === "NumpadSubtract");
+
+          if (isZoomInMatch) {
             e.preventDefault();
             e.stopPropagation();
             setEditorFontSize(s => Math.min(32, s + 1));
-          } else if (e.key === zoomOutKey || e.code === "NumpadSubtract") {
+          } else if (isZoomOutMatch) {
             e.preventDefault();
             e.stopPropagation();
             setEditorFontSize(s => Math.max(8, s - 1));
@@ -2197,9 +2248,9 @@ function App() {
                           <span className="text-[10px] text-text-subtle">Agrandir la police de l'éditeur ou le PDF</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {zoomInKey !== "+" && (
+                          {zoomInKey !== null && (
                             <button
-                              onClick={() => setZoomInKey("+")}
+                              onClick={() => setZoomInKey(null)}
                               className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
                             >
                               défaut
@@ -2217,7 +2268,7 @@ function App() {
                             <span>⌘</span>
                             <span>+</span>
                             <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                              {recordingField === "zoomIn" ? "..." : zoomInKey}
+                              {recordingField === "zoomIn" ? "..." : (zoomInKey ? zoomInKey.key : "+")}
                             </span>
                           </button>
                         </div>
@@ -2230,9 +2281,9 @@ function App() {
                           <span className="text-[10px] text-text-subtle">Réduire la police de l'éditeur ou le PDF</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {zoomOutKey !== "-" && (
+                          {zoomOutKey !== null && (
                             <button
-                              onClick={() => setZoomOutKey("-")}
+                              onClick={() => setZoomOutKey(null)}
                               className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
                             >
                               défaut
@@ -2250,7 +2301,7 @@ function App() {
                             <span>⌘</span>
                             <span>+</span>
                             <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                              {recordingField === "zoomOut" ? "..." : zoomOutKey}
+                              {recordingField === "zoomOut" ? "..." : (zoomOutKey ? zoomOutKey.key : "-")}
                             </span>
                           </button>
                         </div>
@@ -2263,9 +2314,9 @@ function App() {
                           <span className="text-[10px] text-text-subtle">Ajouter ou enlever un commentaire (%) dans le code</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          {commentKey !== "/" && (
+                          {commentKey !== null && (
                             <button
-                              onClick={() => setCommentKey("/")}
+                              onClick={() => setCommentKey(null)}
                               className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
                             >
                               défaut
@@ -2285,7 +2336,7 @@ function App() {
                             <span>⇧</span>
                             <span>+</span>
                             <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                              {recordingField === "comment" ? "..." : commentKey}
+                              {recordingField === "comment" ? "..." : (commentKey ? commentKey.key : "/")}
                             </span>
                           </button>
                         </div>

@@ -2,14 +2,19 @@ import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X } from "lucide-react";
 
+interface Shortcut {
+  key: string;
+  code: string;
+}
+
 interface PdfViewerProps {
   pdfSrc: string; // The URL/converted file path of the PDF
   pdfPath: string; // The absolute path of the PDF on the disk
   projectName: string;
   onLineSelect: (file: string, line: number) => void;
   compileStatus: string;
-  zoomInKey?: string;
-  zoomOutKey?: string;
+  zoomInKey?: Shortcut | null;
+  zoomOutKey?: Shortcut | null;
 }
 
 export function PdfViewer({ 
@@ -18,8 +23,8 @@ export function PdfViewer({
   projectName, 
   onLineSelect, 
   compileStatus,
-  zoomInKey = "+",
-  zoomOutKey = "-"
+  zoomInKey = null,
+  zoomOutKey = null
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -215,12 +220,20 @@ export function PdfViewer({
       if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (isHoveringPdf) {
-          if (e.key === zoomInKey || (zoomInKey === "+" && e.key === "=") || e.code === "NumpadAdd") {
+          const isZoomInMatch = zoomInKey
+            ? (e.code === zoomInKey.code || e.code === "NumpadAdd")
+            : (e.key === "+" || e.key === "=" || e.code === "NumpadAdd");
+
+          const isZoomOutMatch = zoomOutKey
+            ? (e.code === zoomOutKey.code || e.code === "NumpadSubtract")
+            : (e.key === "-" || e.code === "NumpadSubtract");
+
+          if (isZoomInMatch) {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
             setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
-          } else if (e.key === zoomOutKey || e.code === "NumpadSubtract") {
+          } else if (isZoomOutMatch) {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
