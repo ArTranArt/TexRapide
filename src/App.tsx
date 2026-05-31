@@ -6,7 +6,7 @@ import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, 
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
-import { EditorView, Decoration, keymap } from "@codemirror/view";
+import { EditorView, Decoration } from "@codemirror/view";
 import { toggleComment } from "@codemirror/commands";
 import { PdfViewer } from "./PdfViewer";
 import "./index.css";
@@ -57,20 +57,6 @@ const lineHighlightField = StateField.define<any>({
   provide: (f: any) => EditorView.decorations.from(f)
 });
 
-const commentKeymap = keymap.of([
-  {
-    key: "Mod-Shift-:",
-    run: toggleComment,
-  },
-  {
-    key: "Mod-:",
-    run: toggleComment,
-  },
-  {
-    key: "Mod-/",
-    run: toggleComment,
-  }
-]);
 
 function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
@@ -310,8 +296,7 @@ function App() {
   const [zoomInKeyAlt, setZoomInKeyAlt] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key_alt") || "=");
   const [zoomOutKey, setZoomOutKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_out_key") || "-");
   const [commentKey, setCommentKey] = useState<string>(() => localStorage.getItem("texrapide_comment_key") || "/");
-  const [commentKeyAlt, setCommentKeyAlt] = useState<string>(() => localStorage.getItem("texrapide_comment_key_alt") || ":");
-  const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomInAlt" | "zoomOut" | "comment" | "commentAlt" | null>(null);
+  const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomInAlt" | "zoomOut" | "comment" | null>(null);
 
   useEffect(() => {
     localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
@@ -338,10 +323,6 @@ function App() {
   }, [commentKey]);
 
   useEffect(() => {
-    localStorage.setItem("texrapide_comment_key_alt", commentKeyAlt);
-  }, [commentKeyAlt]);
-
-  useEffect(() => {
     if (!recordingField) return;
 
     const handleRecordingKeyDown = (e: KeyboardEvent) => {
@@ -362,7 +343,6 @@ function App() {
       else if (recordingField === "zoomInAlt") setZoomInKeyAlt(key);
       else if (recordingField === "zoomOut") setZoomOutKey(key);
       else if (recordingField === "comment") setCommentKey(key);
-      else if (recordingField === "commentAlt") setCommentKeyAlt(key);
       
       setRecordingField(null);
     };
@@ -583,8 +563,8 @@ function App() {
           saveFileContent(editingFile, editorContent);
         }
       } else if (
-        (e.metaKey || e.ctrlKey) && 
-        (e.key === commentKey || e.key === commentKeyAlt)
+        (e.metaKey || e.ctrlKey) && e.shiftKey && 
+        e.key === commentKey
       ) {
         e.preventDefault();
         e.stopPropagation();
@@ -609,7 +589,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomInKeyAlt, zoomOutKey, commentKey, commentKeyAlt]);
+  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomInKeyAlt, zoomOutKey, commentKey]);
 
   // Default selected file loading
   useEffect(() => {
@@ -1774,7 +1754,7 @@ function App() {
                         value={editorContent}
                         height="100%"
                         theme={theme}
-                        extensions={[latex(), commentKeymap, lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
+                        extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
                         onChange={(value) => {
                           setEditorContent(value);
                           setHasUnsavedChanges(true);
@@ -2213,112 +2193,138 @@ function App() {
                   <section className="bg-bg-card border border-border-subtle rounded-xl p-6 transition-colors duration-300">
                     <div className="flex items-center gap-2 mb-6">
                       <Keyboard size={16} className="text-blue-500" />
-                      <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Raccourcis Clavier (avec Cmd ⌘ / Ctrl)</h2>
+                      <h2 className="text-[11px] font-black text-text-subtle uppercase tracking-[0.2em]">Raccourcis Clavier</h2>
                     </div>
 
                     <div className="flex flex-col gap-4">
                       {/* Zoom In */}
-                      <div className="flex items-center justify-between py-2 border-b border-border-subtle/40">
+                      <div className="flex items-center justify-between py-2.5 border-b border-border-subtle/40">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-bold text-text-main">Zoom Avant</span>
                           <span className="text-[10px] text-text-subtle">Agrandir la police de l'éditeur ou le PDF</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
-                            <span>⌘</span>
-                            <span>{zoomInKey}</span>
+                        <div className="flex items-center gap-4">
+                          {/* Zoom In Key 1 */}
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => setRecordingField(recordingField === "zoomIn" ? null : "zoomIn")}
-                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                              className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
                                 recordingField === "zoomIn"
-                                  ? "bg-blue-600 text-white animate-pulse"
-                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                                  ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
+                                  : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
                               }`}
-                              title="Changer le raccourci principal"
+                              title={recordingField === "zoomIn" ? "En attente d'une touche..." : "Cliquer pour modifier"}
                             >
-                              {recordingField === "zoomIn" ? "..." : "Éditer"}
+                              <span>⌘</span>
+                              <span>+</span>
+                              <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
+                                {recordingField === "zoomIn" ? "..." : zoomInKey}
+                              </span>
                             </button>
+                            {zoomInKey !== "+" && (
+                              <button
+                                onClick={() => setZoomInKey("+")}
+                                className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
+                              >
+                                défaut
+                              </button>
+                            )}
                           </div>
-                          
-                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
-                            <span>⌘</span>
-                            <span>{zoomInKeyAlt}</span>
+
+                          {/* Zoom In Key 2 */}
+                          <div className="flex items-center gap-2">
                             <button
                               onClick={() => setRecordingField(recordingField === "zoomInAlt" ? null : "zoomInAlt")}
-                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                              className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
                                 recordingField === "zoomInAlt"
-                                  ? "bg-blue-600 text-white animate-pulse"
-                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                                  ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
+                                  : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
                               }`}
-                              title="Changer le raccourci secondaire"
+                              title={recordingField === "zoomInAlt" ? "En attente d'une touche..." : "Cliquer pour modifier"}
                             >
-                              {recordingField === "zoomInAlt" ? "..." : "Éditer"}
+                              <span>⌘</span>
+                              <span>+</span>
+                              <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
+                                {recordingField === "zoomInAlt" ? "..." : zoomInKeyAlt}
+                              </span>
                             </button>
+                            {zoomInKeyAlt !== "=" && (
+                              <button
+                                onClick={() => setZoomInKeyAlt("=")}
+                                className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
+                              >
+                                défaut
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
 
                       {/* Zoom Out */}
-                      <div className="flex items-center justify-between py-2 border-b border-border-subtle/40">
+                      <div className="flex items-center justify-between py-2.5 border-b border-border-subtle/40">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-bold text-text-main">Zoom Arrière</span>
                           <span className="text-[10px] text-text-subtle">Réduire la police de l'éditeur ou le PDF</span>
                         </div>
-                        <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
-                          <span>⌘</span>
-                          <span>{zoomOutKey}</span>
+                        <div className="flex items-center gap-2">
                           <button
                             onClick={() => setRecordingField(recordingField === "zoomOut" ? null : "zoomOut")}
-                            className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
+                            className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
                               recordingField === "zoomOut"
-                                ? "bg-blue-600 text-white animate-pulse"
-                                : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
+                                ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
+                                : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
                             }`}
-                            title="Changer le raccourci"
+                            title={recordingField === "zoomOut" ? "En attente d'une touche..." : "Cliquer pour modifier"}
                           >
-                            {recordingField === "zoomOut" ? "..." : "Éditer"}
+                            <span>⌘</span>
+                            <span>+</span>
+                            <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
+                              {recordingField === "zoomOut" ? "..." : zoomOutKey}
+                            </span>
                           </button>
+                          {zoomOutKey !== "-" && (
+                            <button
+                              onClick={() => setZoomOutKey("-")}
+                              className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
+                            >
+                              défaut
+                            </button>
+                          )}
                         </div>
                       </div>
 
                       {/* Comment */}
-                      <div className="flex items-center justify-between py-2">
+                      <div className="flex items-center justify-between py-2.5">
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs font-bold text-text-main">Commenter / Décommenter</span>
                           <span className="text-[10px] text-text-subtle">Ajouter ou enlever un commentaire (%) dans le code</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
+                          <button
+                            onClick={() => setRecordingField(recordingField === "comment" ? null : "comment")}
+                            className={`flex items-center gap-1 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
+                              recordingField === "comment"
+                                ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
+                                : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
+                            }`}
+                            title={recordingField === "comment" ? "En attente d'une touche..." : "Cliquer pour modifier"}
+                          >
                             <span>⌘</span>
-                            <span>{commentKey}</span>
+                            <span>+</span>
+                            <span>⇧</span>
+                            <span>+</span>
+                            <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
+                              {recordingField === "comment" ? "..." : commentKey}
+                            </span>
+                          </button>
+                          {commentKey !== "/" && (
                             <button
-                              onClick={() => setRecordingField(recordingField === "comment" ? null : "comment")}
-                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
-                                recordingField === "comment"
-                                  ? "bg-blue-600 text-white animate-pulse"
-                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
-                              }`}
-                              title="Changer le raccourci principal"
+                              onClick={() => setCommentKey("/")}
+                              className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
                             >
-                              {recordingField === "comment" ? "..." : "Éditer"}
+                              défaut
                             </button>
-                          </div>
-
-                          <div className="flex items-center gap-1 bg-bg-input border border-border-input rounded-lg px-2 py-1 min-w-[70px] justify-center text-xs font-mono font-bold text-text-muted select-none">
-                            <span>⌘</span>
-                            <span>{commentKeyAlt}</span>
-                            <button
-                              onClick={() => setRecordingField(recordingField === "commentAlt" ? null : "commentAlt")}
-                              className={`ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold transition-all cursor-pointer ${
-                                recordingField === "commentAlt"
-                                  ? "bg-blue-600 text-white animate-pulse"
-                                  : "bg-bg-card hover:bg-bg-deep text-text-subtle border border-border-subtle hover:text-text-main"
-                              }`}
-                              title="Changer le raccourci secondaire"
-                            >
-                              {recordingField === "commentAlt" ? "..." : "Éditer"}
-                            </button>
-                          </div>
+                          )}
                         </div>
                       </div>
                     </div>
