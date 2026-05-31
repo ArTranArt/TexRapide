@@ -293,10 +293,9 @@ function App() {
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
 
   const [zoomInKey, setZoomInKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key") || "+");
-  const [zoomInKeyAlt, setZoomInKeyAlt] = useState<string>(() => localStorage.getItem("texrapide_zoom_in_key_alt") || "=");
   const [zoomOutKey, setZoomOutKey] = useState<string>(() => localStorage.getItem("texrapide_zoom_out_key") || "-");
   const [commentKey, setCommentKey] = useState<string>(() => localStorage.getItem("texrapide_comment_key") || "/");
-  const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomInAlt" | "zoomOut" | "comment" | null>(null);
+  const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomOut" | "comment" | null>(null);
 
   useEffect(() => {
     localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
@@ -309,10 +308,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem("texrapide_zoom_in_key", zoomInKey);
   }, [zoomInKey]);
-
-  useEffect(() => {
-    localStorage.setItem("texrapide_zoom_in_key_alt", zoomInKeyAlt);
-  }, [zoomInKeyAlt]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_zoom_out_key", zoomOutKey);
@@ -340,7 +335,6 @@ function App() {
       }
 
       if (recordingField === "zoomIn") setZoomInKey(key);
-      else if (recordingField === "zoomInAlt") setZoomInKeyAlt(key);
       else if (recordingField === "zoomOut") setZoomOutKey(key);
       else if (recordingField === "comment") setCommentKey(key);
       
@@ -575,7 +569,7 @@ function App() {
       } else if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (!isHoveringPdf) {
-          if (e.key === zoomInKey || e.key === zoomInKeyAlt || e.code === "NumpadAdd") {
+          if (e.key === zoomInKey || (zoomInKey === "+" && e.key === "=") || e.code === "NumpadAdd") {
             e.preventDefault();
             e.stopPropagation();
             setEditorFontSize(s => Math.min(32, s + 1));
@@ -589,7 +583,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomInKeyAlt, zoomOutKey, commentKey]);
+  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey]);
 
   // Default selected file loading
   useEffect(() => {
@@ -1803,7 +1797,6 @@ function App() {
                           compileStatus={compileStatus}
                           onLineSelect={handleLineSelect}
                           zoomInKey={zoomInKey}
-                          zoomInKeyAlt={zoomInKeyAlt}
                           zoomOutKey={zoomOutKey}
                         />
                       </div>
@@ -2203,60 +2196,30 @@ function App() {
                           <span className="text-xs font-bold text-text-main">Zoom Avant</span>
                           <span className="text-[10px] text-text-subtle">Agrandir la police de l'éditeur ou le PDF</span>
                         </div>
-                        <div className="flex items-center gap-4">
-                          {/* Zoom In Key 1 */}
-                          <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2">
+                          {zoomInKey !== "+" && (
                             <button
-                              onClick={() => setRecordingField(recordingField === "zoomIn" ? null : "zoomIn")}
-                              className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
-                                recordingField === "zoomIn"
-                                  ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
-                                  : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
-                              }`}
-                              title={recordingField === "zoomIn" ? "En attente d'une touche..." : "Cliquer pour modifier"}
+                              onClick={() => setZoomInKey("+")}
+                              className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
                             >
-                              <span>⌘</span>
-                              <span>+</span>
-                              <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                                {recordingField === "zoomIn" ? "..." : zoomInKey}
-                              </span>
+                              défaut
                             </button>
-                            {zoomInKey !== "+" && (
-                              <button
-                                onClick={() => setZoomInKey("+")}
-                                className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
-                              >
-                                défaut
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Zoom In Key 2 */}
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => setRecordingField(recordingField === "zoomInAlt" ? null : "zoomInAlt")}
-                              className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
-                                recordingField === "zoomInAlt"
-                                  ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
-                                  : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
-                              }`}
-                              title={recordingField === "zoomInAlt" ? "En attente d'une touche..." : "Cliquer pour modifier"}
-                            >
-                              <span>⌘</span>
-                              <span>+</span>
-                              <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
-                                {recordingField === "zoomInAlt" ? "..." : zoomInKeyAlt}
-                              </span>
-                            </button>
-                            {zoomInKeyAlt !== "=" && (
-                              <button
-                                onClick={() => setZoomInKeyAlt("=")}
-                                className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
-                              >
-                                défaut
-                              </button>
-                            )}
-                          </div>
+                          )}
+                          <button
+                            onClick={() => setRecordingField(recordingField === "zoomIn" ? null : "zoomIn")}
+                            className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
+                              recordingField === "zoomIn"
+                                ? "border-blue-500 text-blue-400 bg-blue-500/5 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.15)]"
+                                : "border-border-input text-text-muted hover:text-text-main hover:border-border-subtle"
+                            }`}
+                            title={recordingField === "zoomIn" ? "En attente d'une touche..." : "Cliquer pour modifier"}
+                          >
+                            <span>⌘</span>
+                            <span>+</span>
+                            <span className="text-[10px] font-sans font-black text-text-main bg-bg-card/85 border border-border-subtle px-1.5 py-0.5 rounded">
+                              {recordingField === "zoomIn" ? "..." : zoomInKey}
+                            </span>
+                          </button>
                         </div>
                       </div>
 
@@ -2267,6 +2230,14 @@ function App() {
                           <span className="text-[10px] text-text-subtle">Réduire la police de l'éditeur ou le PDF</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          {zoomOutKey !== "-" && (
+                            <button
+                              onClick={() => setZoomOutKey("-")}
+                              className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
+                            >
+                              défaut
+                            </button>
+                          )}
                           <button
                             onClick={() => setRecordingField(recordingField === "zoomOut" ? null : "zoomOut")}
                             className={`flex items-center gap-1.5 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
@@ -2282,14 +2253,6 @@ function App() {
                               {recordingField === "zoomOut" ? "..." : zoomOutKey}
                             </span>
                           </button>
-                          {zoomOutKey !== "-" && (
-                            <button
-                              onClick={() => setZoomOutKey("-")}
-                              className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
-                            >
-                              défaut
-                            </button>
-                          )}
                         </div>
                       </div>
 
@@ -2300,6 +2263,14 @@ function App() {
                           <span className="text-[10px] text-text-subtle">Ajouter ou enlever un commentaire (%) dans le code</span>
                         </div>
                         <div className="flex items-center gap-2">
+                          {commentKey !== "/" && (
+                            <button
+                              onClick={() => setCommentKey("/")}
+                              className="text-[10px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer mr-1.5"
+                            >
+                              défaut
+                            </button>
+                          )}
                           <button
                             onClick={() => setRecordingField(recordingField === "comment" ? null : "comment")}
                             className={`flex items-center gap-1 bg-bg-input hover:bg-bg-deep border rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold transition-all cursor-pointer select-none ${
@@ -2317,14 +2288,6 @@ function App() {
                               {recordingField === "comment" ? "..." : commentKey}
                             </span>
                           </button>
-                          {commentKey !== "/" && (
-                            <button
-                              onClick={() => setCommentKey("/")}
-                              className="text-[9px] font-bold text-blue-500 hover:text-blue-400 transition-colors cursor-pointer"
-                            >
-                              défaut
-                            </button>
-                          )}
                         </div>
                       </div>
                     </div>

@@ -9,7 +9,6 @@ interface PdfViewerProps {
   onLineSelect: (file: string, line: number) => void;
   compileStatus: string;
   zoomInKey?: string;
-  zoomInKeyAlt?: string;
   zoomOutKey?: string;
 }
 
@@ -20,7 +19,6 @@ export function PdfViewer({
   onLineSelect, 
   compileStatus,
   zoomInKey = "+",
-  zoomInKeyAlt = "=",
   zoomOutKey = "-"
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
@@ -217,7 +215,7 @@ export function PdfViewer({
       if (e.metaKey || e.ctrlKey) {
         const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
         if (isHoveringPdf) {
-          if (e.key === zoomInKey || e.key === zoomInKeyAlt || e.code === "NumpadAdd") {
+          if (e.key === zoomInKey || (zoomInKey === "+" && e.key === "=") || e.code === "NumpadAdd") {
             e.preventDefault();
             e.stopPropagation();
             setIsFitWidth(false);
@@ -234,7 +232,7 @@ export function PdfViewer({
 
     window.addEventListener("keydown", handleGlobalKeyDown);
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
-  }, [zoomInKey, zoomInKeyAlt, zoomOutKey]);
+  }, [zoomInKey, zoomOutKey]);
 
   return (
     <div id="integrated-pdf-viewer" className="flex flex-col h-full w-full bg-bg-deep select-none relative overflow-hidden">
