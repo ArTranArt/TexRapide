@@ -207,10 +207,12 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
         if (isHoveringPdf) {
           if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
             e.preventDefault();
+            e.stopPropagation();
             setIsFitWidth(false);
             setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
-          } else if (e.key === "-" || e.code === "Minus" || e.code === "NumpadSubtract") {
+          } else if (e.key === "-" || e.key === ")" || e.code === "Minus" || e.code === "NumpadSubtract") {
             e.preventDefault();
+            e.stopPropagation();
             setIsFitWidth(false);
             setScale(s => Math.max(0.2, Math.round((s - 0.1) * 10) / 10));
           }

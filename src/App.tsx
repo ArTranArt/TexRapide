@@ -540,9 +540,11 @@ function App() {
         if (!isHoveringPdf) {
           if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
             e.preventDefault();
+            e.stopPropagation();
             setEditorFontSize(s => Math.min(32, s + 1));
-          } else if (e.key === "-" || e.code === "Minus" || e.code === "NumpadSubtract") {
+          } else if (e.key === "-" || e.key === ")" || e.code === "Minus" || e.code === "NumpadSubtract") {
             e.preventDefault();
+            e.stopPropagation();
             setEditorFontSize(s => Math.max(8, s - 1));
           }
         }
