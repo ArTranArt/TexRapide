@@ -203,14 +203,17 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey) {
-        if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
-          e.preventDefault();
-          setIsFitWidth(false);
-          setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
-        } else if (e.key === "-" || e.code === "Minus" || e.code === "NumpadSubtract") {
-          e.preventDefault();
-          setIsFitWidth(false);
-          setScale(s => Math.max(0.2, Math.round((s - 0.1) * 10) / 10));
+        const isHoveringPdf = document.getElementById("integrated-pdf-viewer")?.matches(":hover");
+        if (isHoveringPdf) {
+          if (e.key === "=" || e.key === "+" || e.code === "Equal" || e.code === "NumpadAdd") {
+            e.preventDefault();
+            setIsFitWidth(false);
+            setScale(s => Math.min(5.0, Math.round((s + 0.1) * 10) / 10));
+          } else if (e.key === "-" || e.code === "Minus" || e.code === "NumpadSubtract") {
+            e.preventDefault();
+            setIsFitWidth(false);
+            setScale(s => Math.max(0.2, Math.round((s - 0.1) * 10) / 10));
+          }
         }
       }
     };
@@ -220,7 +223,7 @@ export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileS
   }, []);
 
   return (
-    <div className="flex flex-col h-full w-full bg-bg-deep select-none relative overflow-hidden">
+    <div id="integrated-pdf-viewer" className="flex flex-col h-full w-full bg-bg-deep select-none relative overflow-hidden">
       {/* Floating Web-app style Download Toast */}
       {toast && (
         <div 
