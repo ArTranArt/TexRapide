@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 use fs_extra::dir::{copy, CopyOptions};
 use std::process::Command;
+use tauri::Manager;
 
 #[tauri::command]
 pub fn list_tex_files(path: String) -> Result<Vec<String>, String> {
@@ -304,6 +305,90 @@ fn scan_dir_recursive(dir_path: &Path, root_path: &Path) -> Result<Vec<FileEntry
 pub fn list_project_tree(path: String) -> Result<Vec<FileEntry>, String> {
     let root = Path::new(&path);
     scan_dir_recursive(root, root)
+}
+
+#[tauri::command]
+pub fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
+    let old = Path::new(&old_path);
+    let new = Path::new(&new_path);
+    if let Some(parent) = new.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::rename(old, new).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn duplicate_file(src_path: String, dest_path: String) -> Result<(), String> {
+    let src = Path::new(&src_path);
+    let dest = Path::new(&dest_path);
+    if let Some(parent) = dest.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::copy(src, dest).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_file(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if p.is_dir() {
+        fs::remove_dir_all(p).map_err(|e| e.to_string())?;
+    } else {
+        fs::remove_file(p).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn export_pdf_to_downloads(app_handle: tauri::AppHandle, pdf_path: String, filename: String) -> Result<String, String> {
+    let src = Path::new(&pdf_path);
+    if !src.exists() {
+        return Err("Le fichier PDF source n'existe pas. Veuillez d'abord compiler le projet.".to_string());
+    }
+
+    let download_dir = app_handle.path().download_dir()
+        .map_err(|e| format!("Impossible de localiser le dossier des téléchargements : {}", e))?;
+
+    let dest = download_dir.join(&filename);
+    
+    std::fs::copy(src, &dest).map_err(|e| format!("Erreur lors de la copie du fichier : {}", e))?;
+
+    Ok(dest.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn show_in_finder(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err("Le fichier n'existe pas.".to_string());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg("-R")
+            .arg(p)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg(format!("/select,\"{}\"", p.to_string_lossy()))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        if let Some(parent) = p.parent() {
+            Command::new("xdg-open")
+                .arg(parent)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
 }
 
 

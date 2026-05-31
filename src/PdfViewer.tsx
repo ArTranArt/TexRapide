@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X } from "lucide-react";
 
 interface PdfViewerProps {
   pdfSrc: string; // The URL/converted file path of the PDF
   pdfPath: string; // The absolute path of the PDF on the disk
+  projectName: string;
   onLineSelect: (file: string, line: number) => void;
   compileStatus: string;
 }
 
-export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfViewerProps) {
+export function PdfViewer({ pdfSrc, pdfPath, projectName, onLineSelect, compileStatus }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
   const [scale, setScale] = useState<number>(1.2);
@@ -17,6 +18,74 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef<boolean>(false);
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+
+  // States for download animations
+  const [toast, setToast] = useState<{ filename: string; destPath: string; isClosing: boolean } | null>(null);
+  const [toastProgress, setToastProgress] = useState<number>(100);
+
+  const handleDownloadPdf = async () => {
+    if (!pdfPath) return;
+    setIsDownloading(true);
+
+    try {
+      const safeProjectName = projectName ? projectName.replace(/[^a-zA-Z0-9_\-]/g, "_") : "document";
+      const filename = `${safeProjectName}.pdf`;
+
+      const destPath = await invoke<string>("export_pdf_to_downloads", {
+        pdfPath,
+        filename,
+      });
+
+      // Show toast immediately on success
+      setToastProgress(100);
+      setToast({
+        filename,
+        destPath,
+        isClosing: false,
+      });
+
+    } catch (err) {
+      console.error("Failed to export PDF:", err);
+      alert(`Erreur lors du téléchargement : ${err}`);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleOpenDownloadedFile = async () => {
+    if (!toast) return;
+    try {
+      await invoke("show_in_finder", { path: toast.destPath });
+    } catch (err) {
+      console.error("Failed to open file in Finder:", err);
+      alert(`Impossible d'ouvrir le fichier : ${err}`);
+    }
+  };
+
+  const handleCloseToast = () => {
+    setToast(prev => prev ? { ...prev, isClosing: true } : null);
+    setTimeout(() => {
+      setToast(null);
+    }, 400);
+  };
+
+  // Countdown timer for toast
+  useEffect(() => {
+    if (!toast || toast.isClosing) return;
+
+    let current = 100;
+    const interval = setInterval(() => {
+      current -= 2; // Decays over ~2.5 seconds (50 ticks of 50ms)
+      setToastProgress(current);
+      if (current <= 0) {
+        clearInterval(interval);
+        handleCloseToast();
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [toast]);
 
   // Resize and Fit-to-Width states
   const [containerWidth, setContainerWidth] = useState<number>(0);
@@ -131,7 +200,50 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
   }, [pdf, numPages]);
 
   return (
-    <div className="flex flex-col h-full w-full bg-bg-deep select-none relative">
+    <div className="flex flex-col h-full w-full bg-bg-deep select-none relative overflow-hidden">
+      {/* Floating Web-app style Download Toast */}
+      {toast && (
+        <div 
+          className={`absolute top-12 right-4 z-50 bg-bg-card/90 backdrop-blur-xl border border-border-input/40 rounded-xl p-3.5 shadow-2xl flex items-center gap-3 w-80 overflow-hidden select-none ${
+            toast.isClosing ? "animate-toast-out" : "animate-toast-in"
+          }`}
+        >
+          <div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-400 shrink-0">
+            <FileText size={18} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-[11px] font-bold text-text-main truncate" title={toast.filename}>
+              {toast.filename}
+            </h4>
+            <p className="text-[9px] text-text-muted mt-0.5 font-sans">Ajouté aux Téléchargements</p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button 
+              onClick={handleOpenDownloadedFile}
+              className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[10px] font-bold cursor-pointer transition-colors shadow-sm font-sans"
+            >
+              Ouvrir
+            </button>
+            <button 
+              onClick={handleCloseToast}
+              className="p-1 text-text-muted hover:text-text-main hover:bg-bg-input-hover rounded transition-colors cursor-pointer"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          
+          {/* Progress bar line at the bottom */}
+          <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-blue-500/10">
+            <div 
+              className="h-full bg-blue-500 transition-all ease-linear"
+              style={{ 
+                width: `${toastProgress}%`,
+                transitionDuration: '50ms'
+              }}
+            />
+          </div>
+        </div>
+      )}
       {/* PDF Controls */}
       <div className="h-10 border-b border-border-subtle bg-bg-sidebar px-4 flex items-center justify-between shrink-0 select-none z-10">
         <span className="text-[10px] font-bold text-text-subtle font-display uppercase tracking-wider flex items-center gap-2">
@@ -184,6 +296,15 @@ export function PdfViewer({ pdfSrc, pdfPath, onLineSelect, compileStatus }: PdfV
           </button>
 
           <div className="w-[1px] h-4 bg-border-subtle mx-1" />
+
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="p-1 rounded transition-colors cursor-pointer text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent disabled:opacity-35 disabled:cursor-not-allowed"
+            title="Télécharger le PDF dans votre dossier Téléchargements"
+          >
+            <Download size={14} className={isDownloading ? "animate-spin" : ""} />
+          </button>
 
           <button
             onClick={() => setShowPageNav(prev => !prev)}

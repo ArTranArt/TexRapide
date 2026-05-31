@@ -2,11 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save, Edit2, Trash2 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
-import { EditorView, Decoration } from "@codemirror/view";
+import { EditorView, Decoration, keymap } from "@codemirror/view";
+import { toggleComment } from "@codemirror/commands";
 import { PdfViewer } from "./PdfViewer";
 import "./index.css";
 
@@ -55,6 +56,21 @@ const lineHighlightField = StateField.define<any>({
   },
   provide: (f: any) => EditorView.decorations.from(f)
 });
+
+const commentKeymap = keymap.of([
+  {
+    key: "Mod-Shift-:",
+    run: toggleComment,
+  },
+  {
+    key: "Mod-:",
+    run: toggleComment,
+  },
+  {
+    key: "Mod-/",
+    run: toggleComment,
+  }
+]);
 
 function App() {
   const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
@@ -464,7 +480,6 @@ function App() {
 
   const saveFileContent = async (fileName: string, content: string) => {
     if (!activeProject) return;
-    setCompileStatus("compiling");
     const filePath = `${activeProject}/${fileName}`;
     try {
       await invoke("write_file", { path: filePath, content });
@@ -501,6 +516,16 @@ function App() {
         e.preventDefault();
         if (activeProject && editingFile && hasUnsavedChanges) {
           saveFileContent(editingFile, editorContent);
+        }
+      } else if (
+        (e.metaKey || e.ctrlKey) && 
+        (e.key === "/" || e.key === ":" || e.code === "Slash" || e.code === "Period")
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        const editorView = editorRef.current?.view;
+        if (editorView) {
+          toggleComment(editorView);
         }
       }
     };
@@ -669,6 +694,144 @@ function App() {
     } catch (error) {
       console.error("Failed to create file:", error);
       alert("Erreur lors de la création du fichier.");
+    }
+  };
+
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number, entry: FileEntry } | null>(null);
+  const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [renamingValue, setRenamingValue] = useState<string>("");
+
+  const handleRename = async (entry: FileEntry, newValue: string) => {
+    if (!newValue.trim() || newValue.trim() === entry.name) {
+      setRenamingPath(null);
+      return;
+    }
+    
+    const oldPath = `${activeProject}/${entry.relative_path}`;
+    const parentPath = entry.relative_path.includes("/") 
+      ? entry.relative_path.substring(0, entry.relative_path.lastIndexOf("/")) 
+      : "";
+    const newRelativePath = parentPath ? `${parentPath}/${newValue.trim()}` : newValue.trim();
+    const newPath = `${activeProject}/${newRelativePath}`;
+
+    try {
+      if (isSwitchLocked) return;
+      if (hasUnsavedChanges && editingFile === entry.relative_path) {
+        await saveFileContent(editingFile, editorContent);
+      }
+      
+      await invoke("rename_file", { oldPath, newPath });
+      
+      if (entry.is_dir) {
+        const oldPrefix = `${entry.relative_path}/`;
+        const newPrefix = `${newRelativePath}/`;
+        if (editingFile.startsWith(oldPrefix)) {
+          setEditingFile(newPrefix + editingFile.slice(oldPrefix.length));
+        }
+        if (mainFile.startsWith(oldPrefix)) {
+          setMainFile(newPrefix + mainFile.slice(oldPrefix.length));
+        }
+        setExpandedDirs(prev => {
+          const next = new Set<string>();
+          prev.forEach(path => {
+            if (path === entry.relative_path) {
+              next.add(newRelativePath);
+            } else if (path.startsWith(oldPrefix)) {
+              next.add(newPrefix + path.slice(oldPrefix.length));
+            } else {
+              next.add(path);
+            }
+          });
+          return next;
+        });
+      } else {
+        if (editingFile === entry.relative_path) {
+          setEditingFile(newRelativePath);
+        }
+        if (mainFile === entry.relative_path) {
+          setMainFile(newRelativePath);
+        }
+      }
+
+      await fetchProjectTexFiles(activeProject!);
+      await fetchProjectTree(activeProject!);
+    } catch (error) {
+      alert(`Erreur lors du renommage : ${error}`);
+    } finally {
+      setRenamingPath(null);
+    }
+  };
+
+  const handleDuplicate = async (entry: FileEntry) => {
+    if (entry.is_dir) return;
+
+    const dotIndex = entry.name.lastIndexOf(".");
+    const baseName = dotIndex !== -1 ? entry.name.substring(0, dotIndex) : entry.name;
+    const ext = dotIndex !== -1 ? entry.name.substring(dotIndex) : "";
+    
+    let copyName = `${baseName}_copy${ext}`;
+    const parentPath = entry.relative_path.includes("/") 
+      ? entry.relative_path.substring(0, entry.relative_path.lastIndexOf("/")) 
+      : "";
+    let destRelativePath = parentPath ? `${parentPath}/${copyName}` : copyName;
+    let destPath = `${activeProject}/${destRelativePath}`;
+
+    try {
+      if (isSwitchLocked) return;
+      
+      let counter = 1;
+      while (await invoke<boolean>("file_exists", { path: destPath })) {
+        counter++;
+        copyName = `${baseName}_copy${counter}${ext}`;
+        destRelativePath = parentPath ? `${parentPath}/${copyName}` : copyName;
+        destPath = `${activeProject}/${destRelativePath}`;
+      }
+
+      const srcPath = `${activeProject}/${entry.relative_path}`;
+      await invoke("duplicate_file", { srcPath, destPath });
+      
+      await fetchProjectTexFiles(activeProject!);
+      await fetchProjectTree(activeProject!);
+      
+      setEditingFile(destRelativePath);
+    } catch (error) {
+      alert(`Erreur lors de la duplication : ${error}`);
+    }
+  };
+
+  const handleDelete = async (entry: FileEntry) => {
+    const confirmMsg = entry.is_dir 
+      ? `Voulez-vous vraiment supprimer le dossier "${entry.name}" et tout son contenu ?`
+      : `Voulez-vous vraiment supprimer le fichier "${entry.name}" ?`;
+      
+    if (!confirm(confirmMsg)) return;
+
+    const fullPath = `${activeProject}/${entry.relative_path}`;
+
+    try {
+      if (isSwitchLocked) return;
+      await invoke("delete_file", { path: fullPath });
+      
+      const matchesPath = (path: string, target: string, isDir: boolean) => {
+        if (isDir) {
+          return path === target || path.startsWith(target + "/");
+        }
+        return path === target;
+      };
+
+      if (matchesPath(editingFile, entry.relative_path, entry.is_dir)) {
+        setEditingFile("");
+        setEditorContent("");
+        setHasUnsavedChanges(false);
+      }
+      if (matchesPath(mainFile, entry.relative_path, entry.is_dir)) {
+        setMainFile("");
+      }
+
+      await fetchProjectTexFiles(activeProject!);
+      await fetchProjectTree(activeProject!);
+    } catch (error) {
+      alert(`Erreur lors de la suppression : ${error}`);
     }
   };
 
@@ -1508,6 +1671,20 @@ function App() {
                             }
                           }}
                           isCompiling={isSwitchLocked}
+                          renamingPath={renamingPath}
+                          setRenamingPath={setRenamingPath}
+                          renamingValue={renamingValue}
+                          setRenamingValue={setRenamingValue}
+                          onRenameSubmit={handleRename}
+                          onItemContextMenu={(e, entry) => {
+                            e.preventDefault();
+                            if (isSwitchLocked) return;
+                            setContextMenu({
+                              x: e.clientX,
+                              y: e.clientY,
+                              entry
+                            });
+                          }}
                         />
                       </div>
                     )}
@@ -1519,7 +1696,7 @@ function App() {
                         value={editorContent}
                         height="100%"
                         theme={theme}
-                        extensions={[latex(), lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
+                        extensions={[latex(), commentKeymap, lineHighlightField, ...(lineWrapping ? [EditorView.lineWrapping] : [])]}
                         onChange={(value) => {
                           setEditorContent(value);
                           setHasUnsavedChanges(true);
@@ -1563,6 +1740,7 @@ function App() {
                         <PdfViewer 
                           pdfSrc={pdfSrc}
                           pdfPath={pdfPath || ""}
+                          projectName={projectName}
                           compileStatus={compileStatus}
                           onLineSelect={handleLineSelect}
                         />
@@ -2499,6 +2677,56 @@ x_{n}         % Indice (x indice n)
           <div ref={logsEndRef} />
         </div>
       </div>
+      
+      {contextMenu && (
+        <>
+          <div 
+            className="fixed inset-0 z-40 bg-transparent" 
+            onClick={() => setContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setContextMenu(null);
+            }}
+          />
+          <div 
+            style={{ 
+              top: `${contextMenu.y}px`, 
+              left: `${contextMenu.x}px` 
+            }}
+            className="fixed bg-bg-card/90 backdrop-blur-xl border border-border-input/40 rounded-xl shadow-2xl p-1.5 z-50 min-w-[150px] flex flex-col gap-0.5 text-[11px] font-medium select-none animate-in fade-in zoom-in-95 duration-100 ease-out"
+            onClick={() => setContextMenu(null)}
+          >
+            <button 
+              onClick={() => {
+                setRenamingPath(contextMenu.entry.relative_path);
+                setRenamingValue(contextMenu.entry.name);
+              }}
+              className="w-full text-left px-2.5 py-1.5 hover:bg-blue-600 hover:text-white rounded-lg text-text-main transition-all font-sans cursor-pointer flex items-center gap-2"
+            >
+              <Edit2 size={12} className="opacity-70 shrink-0" />
+              <span>Renommer</span>
+              <span className="ml-auto text-[9px] opacity-40 font-mono tracking-tighter">Enter</span>
+            </button>
+            {!contextMenu.entry.is_dir && (
+              <button 
+                onClick={() => handleDuplicate(contextMenu.entry)}
+                className="w-full text-left px-2.5 py-1.5 hover:bg-blue-600 hover:text-white rounded-lg text-text-main transition-all font-sans cursor-pointer flex items-center gap-2"
+              >
+                <Copy size={12} className="opacity-70 shrink-0" />
+                <span>Dupliquer</span>
+              </button>
+            )}
+            <div className="h-[1px] bg-border-subtle/30 my-0.5" />
+            <button 
+              onClick={() => handleDelete(contextMenu.entry)}
+              className="w-full text-left px-2.5 py-1.5 hover:bg-red-600 hover:text-white rounded-lg text-red-500 transition-all font-sans cursor-pointer flex items-center gap-2"
+            >
+              <Trash2 size={12} className="shrink-0" />
+              <span>Supprimer</span>
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2621,7 +2849,13 @@ function FileTreeItem({
   toggleDir,
   selectedFile,
   onFileSelect,
-  isCompiling
+  isCompiling,
+  renamingPath,
+  setRenamingPath,
+  renamingValue,
+  setRenamingValue,
+  onRenameSubmit,
+  onItemContextMenu
 }: {
   entry: FileEntry;
   level: number;
@@ -2630,27 +2864,80 @@ function FileTreeItem({
   selectedFile: string;
   onFileSelect: (path: string) => void;
   isCompiling: boolean;
+  renamingPath: string | null;
+  setRenamingPath: (val: string | null) => void;
+  renamingValue: string;
+  setRenamingValue: (val: string) => void;
+  onRenameSubmit: (entry: FileEntry, val: string) => void;
+  onItemContextMenu: (e: React.MouseEvent, entry: FileEntry) => void;
 }) {
   const isExpanded = expandedDirs.has(entry.relative_path);
   const isSelected = selectedFile === entry.relative_path;
+  const isRenaming = renamingPath === entry.relative_path;
+  const isCancelledRef = useRef(false);
+
+  useEffect(() => {
+    if (isRenaming) {
+      isCancelledRef.current = false;
+    }
+  }, [isRenaming]);
 
   if (entry.is_dir) {
     return (
       <div className="flex flex-col">
-        <button
-          onClick={() => !isCompiling && toggleDir(entry.relative_path)}
-          disabled={isCompiling}
-          style={{ paddingLeft: `${level * 8 + 6}px` }}
-          className={`w-full text-left py-1 pr-2 hover:bg-bg-input-hover text-text-muted hover:text-text-main flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent ${
-            isCompiling ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
-          }`}
-        >
-          <ChevronRight
-            size={10}
-            className={`transform transition-transform text-text-extra-subtle shrink-0 ${isExpanded ? "rotate-90" : ""}`}
-          />
-          <span className="truncate">{entry.name}</span>
-        </button>
+        {isRenaming ? (
+          <div style={{ paddingLeft: `${level * 8 + 18}px` }} className="py-1 pr-2">
+            <input 
+              value={renamingValue}
+              onChange={(e) => setRenamingValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                } else if (e.key === "Escape") {
+                  isCancelledRef.current = true;
+                  setRenamingPath(null);
+                }
+              }}
+              onBlur={() => {
+                if (!isCancelledRef.current) {
+                  onRenameSubmit(entry, renamingValue);
+                }
+              }}
+              className="bg-bg-input border border-blue-500 rounded px-1.5 py-0.5 text-[11px] font-mono text-text-main focus:outline-none w-full"
+              autoFocus
+              ref={(el) => { if (el) { el.focus(); el.select(); } }}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.currentTarget.focus();
+              if (!isCompiling) toggleDir(entry.relative_path);
+            }}
+            onMouseDown={(e) => e.currentTarget.focus()}
+            onContextMenu={(e) => onItemContextMenu(e, entry)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === "F2") {
+                e.preventDefault();
+                e.stopPropagation();
+                setRenamingPath(entry.relative_path);
+                setRenamingValue(entry.name);
+              }
+            }}
+            disabled={isCompiling}
+            style={{ paddingLeft: `${level * 8 + 6}px` }}
+            className={`w-full text-left py-1 pr-2 hover:bg-bg-input-hover text-text-muted hover:text-text-main flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent focus:outline-none focus:bg-bg-input-hover focus:text-text-main ${
+              isCompiling ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+            }`}
+          >
+            <ChevronRight
+              size={10}
+              className={`transform transition-transform text-text-extra-subtle shrink-0 ${isExpanded ? "rotate-90" : ""}`}
+            />
+            <span className="truncate">{entry.name}</span>
+          </button>
+        )}
 
         {isExpanded && entry.children && entry.children.map(child => (
           <FileTreeItem
@@ -2662,23 +2949,76 @@ function FileTreeItem({
             selectedFile={selectedFile}
             onFileSelect={onFileSelect}
             isCompiling={isCompiling}
+            renamingPath={renamingPath}
+            setRenamingPath={setRenamingPath}
+            renamingValue={renamingValue}
+            setRenamingValue={setRenamingValue}
+            onRenameSubmit={onRenameSubmit}
+            onItemContextMenu={onItemContextMenu}
           />
         ))}
       </div>
     );
   }
 
-  return (
+  return isRenaming ? (
+    <div style={{ paddingLeft: `${level * 8 + 18}px` }} className="py-1 pr-2">
+      <input 
+        value={renamingValue}
+        onChange={(e) => setRenamingValue(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.currentTarget.blur();
+          } else if (e.key === "Escape") {
+            isCancelledRef.current = true;
+            setRenamingPath(null);
+          }
+        }}
+        onBlur={() => {
+          if (!isCancelledRef.current) {
+            onRenameSubmit(entry, renamingValue);
+          }
+        }}
+        className="bg-bg-input border border-blue-500 rounded px-1.5 py-0.5 text-[11px] font-mono text-text-main focus:outline-none w-full"
+        autoFocus
+        ref={(el) => {
+          if (el) {
+            el.focus();
+            const dotIndex = entry.name.lastIndexOf(".");
+            if (dotIndex !== -1) {
+              el.setSelectionRange(0, dotIndex);
+            } else {
+              el.select();
+            }
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>
+  ) : (
     <button
-      onClick={() => !isCompiling && onFileSelect(entry.relative_path)}
+      onClick={(e) => {
+        e.currentTarget.focus();
+        if (!isCompiling) onFileSelect(entry.relative_path);
+      }}
+      onMouseDown={(e) => e.currentTarget.focus()}
+      onContextMenu={(e) => onItemContextMenu(e, entry)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === "F2") {
+          e.preventDefault();
+          e.stopPropagation();
+          setRenamingPath(entry.relative_path);
+          setRenamingValue(entry.name);
+        }
+      }}
       disabled={isCompiling}
       style={{ paddingLeft: `${level * 8 + 18}px` }}
-      className={`w-full text-left py-1.5 pr-2 flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent border-l-2 ${
+      className={`w-full text-left py-1.5 pr-2 flex items-center gap-1.5 transition-colors text-[11px] font-mono border-none bg-transparent border-l-2 focus:outline-none focus:bg-bg-input-hover focus:text-text-main ${
         isCompiling
           ? "opacity-50 cursor-not-allowed text-text-extra-subtle border-transparent"
           : isSelected
-            ? "bg-blue-500/10 text-blue-400 border-blue-500 font-semibold cursor-pointer"
-            : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border-transparent cursor-pointer"
+            ? "bg-blue-500/10 text-blue-400 border-blue-500 font-semibold cursor-pointer focus:border-blue-500 focus:bg-blue-500/15"
+            : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border-transparent cursor-pointer focus:bg-bg-input-hover focus:text-text-main focus:border-blue-500/30"
       }`}
     >
       <span className="truncate">{entry.name}</span>
@@ -2692,7 +3032,13 @@ function FileTree({
   toggleDir,
   selectedFile,
   onFileSelect,
-  isCompiling
+  isCompiling,
+  renamingPath,
+  setRenamingPath,
+  renamingValue,
+  setRenamingValue,
+  onRenameSubmit,
+  onItemContextMenu
 }: {
   tree: FileEntry[];
   expandedDirs: Set<string>;
@@ -2700,6 +3046,12 @@ function FileTree({
   selectedFile: string;
   onFileSelect: (path: string) => void;
   isCompiling: boolean;
+  renamingPath: string | null;
+  setRenamingPath: (val: string | null) => void;
+  renamingValue: string;
+  setRenamingValue: (val: string) => void;
+  onRenameSubmit: (entry: FileEntry, val: string) => void;
+  onItemContextMenu: (e: React.MouseEvent, entry: FileEntry) => void;
 }) {
   return (
     <div className="w-full flex flex-col overflow-y-auto select-none py-2">
@@ -2713,6 +3065,12 @@ function FileTree({
           selectedFile={selectedFile}
           onFileSelect={onFileSelect}
           isCompiling={isCompiling}
+          renamingPath={renamingPath}
+          setRenamingPath={setRenamingPath}
+          renamingValue={renamingValue}
+          setRenamingValue={setRenamingValue}
+          onRenameSubmit={onRenameSubmit}
+          onItemContextMenu={onItemContextMenu}
         />
       ))}
     </div>

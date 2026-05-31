@@ -168,4 +168,58 @@
   background-color: rgba(239, 68, 68, 0.15);
 }
 
+/* Fly to downloads animation */
+@keyframes fly-to-downloads {
+  0% {
+    transform: translate(0, 0) scale(1.1) rotate(0deg);
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.6);
+  }
+  30% {
+    transform: translate(15px, -10px) scale(1.2) rotate(-10deg);
+    opacity: 1;
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.8);
+  }
+  100% {
+    transform: translate(120px, -60px) scale(0.1) rotate(30deg);
+    opacity: 0;
+    box-shadow: 0 0 0px rgba(59, 130, 246, 0);
+  }
+}
+
+.animate-download-fly {
+  animation: fly-to-downloads 0.9s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+/* Toast animations */
+@keyframes toast-slide-in {
+  from {
+    transform: translateX(120%) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(120%) scale(0.95);
+    opacity: 0;
+  }
+}
+
+.animate-toast-in {
+  animation: toast-slide-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-toast-out {
+  animation: toast-slide-out 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 
