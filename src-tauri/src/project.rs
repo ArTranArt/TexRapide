@@ -350,7 +350,29 @@ pub fn export_pdf_to_downloads(app_handle: tauri::AppHandle, pdf_path: String, f
     let download_dir = app_handle.path().download_dir()
         .map_err(|e| format!("Impossible de localiser le dossier des téléchargements : {}", e))?;
 
-    let dest = download_dir.join(&filename);
+    let mut dest = download_dir.join(&filename);
+    if dest.exists() {
+        let path_obj = Path::new(&filename);
+        let file_stem = path_obj
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or("document");
+        let file_ext = path_obj
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("pdf");
+            
+        let mut counter = 1;
+        loop {
+            let new_filename = format!("{} ({}).{}", file_stem, counter, file_ext);
+            let candidate = download_dir.join(&new_filename);
+            if !candidate.exists() {
+                dest = candidate;
+                break;
+            }
+            counter += 1;
+        }
+    }
     
     std::fs::copy(src, &dest).map_err(|e| format!("Erreur lors de la copie du fichier : {}", e))?;
 
