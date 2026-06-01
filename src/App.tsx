@@ -1455,8 +1455,11 @@ function App() {
                 {/* Section Header */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
-                    <Layers size={20} className={isWatching ? 'text-green-500' : 'text-blue-500'} />
-                    <h2 className="text-xl font-bold uppercase tracking-tight text-text-main">Projets</h2>
+                    <Layers size={20} className="text-blue-500" />
+                    <div className="flex items-baseline gap-2">
+                      <h2 className="text-xl font-bold uppercase tracking-tight text-text-main">Projets</h2>
+                      <span className="text-sm font-bold text-text-subtle">{existingProjects.length}</span>
+                    </div>
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
@@ -1488,7 +1491,6 @@ function App() {
                       >
                         <FolderPlus size={16} />
                       </button>
-                      <span className="text-[10px] font-bold bg-bg-input px-2 py-1 rounded text-text-subtle">{existingProjects.length}</span>
                     </div>
                   </div>
                 </div>
