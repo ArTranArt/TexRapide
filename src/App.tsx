@@ -448,6 +448,9 @@ function App() {
         ]
       });
 
+      // Clear any accidental browser text selection
+      window.getSelection()?.removeAllRanges();
+
       // Clear highlight after 2 seconds
       setTimeout(() => {
         if (view && !view.destroyed) {

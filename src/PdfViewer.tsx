@@ -502,6 +502,16 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
   }, [pdf, pageNumber, scale]);
 
   const handleDoubleClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Clear selection on mouseup to prevent trailing selections across screen after focus jump
+    const clearSelection = () => {
+      window.getSelection()?.removeAllRanges();
+      window.removeEventListener("mouseup", clearSelection);
+    };
+    window.addEventListener("mouseup", clearSelection);
+
     if (!canvasRef.current || !viewport) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
