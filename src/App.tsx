@@ -1456,10 +1456,11 @@ function App() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 px-4">
                   <div className="flex items-center gap-3 shrink-0">
                     <Layers size={20} className="text-blue-500" />
-                    <div className="flex items-baseline gap-2">
-                      <h2 className="text-xl font-bold uppercase tracking-tight text-text-main">Projets</h2>
-                      <span className="text-sm font-bold text-text-subtle">{existingProjects.length}</span>
-                    </div>
+                    <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold uppercase tracking-tight text-text-main">Projets</h2>
+                  <span className="text-sm text-text-subtle">{existingProjects.length}</span>
+                </div>
+                                  
                   </div>
                   
                   <div className="flex items-center gap-4 shrink-0">
@@ -1659,17 +1660,11 @@ function App() {
                         {projectName}
                       </span>
                       <span 
-                        onClick={() => handleCopy(activeProject, "project-path")}
+                        onClick={() => invoke("show_in_finder", { path: activeProject })}
                         className="text-[9px] text-text-extra-subtle font-mono truncate leading-none mt-1 hover:text-blue-400 hover:underline transition-colors cursor-pointer flex items-center gap-1" 
-                        title="Cliquer pour copier le chemin absolu"
+                        title="Ouvrir dans le Finder"
                       >
-                        {copiedId === "project-path" ? (
-                          <span className="text-green-500 flex items-center gap-1 font-bold">
-                            <Check size={8} /> Copié !
-                          </span>
-                        ) : (
-                          activeProject
-                        )}
+                        {activeProject}
                       </span>
                     </div>
 

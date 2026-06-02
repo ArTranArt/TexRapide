@@ -4,8 +4,37 @@ mod watcher;
 use tauri::Manager;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
+#[cfg(target_os = "macos")]
+fn fix_macos_path() {
+    if let Ok(current_path) = std::env::var("PATH") {
+        let mut paths: Vec<String> = current_path.split(':').map(|s| s.to_string()).collect();
+        
+        let additional_paths = vec![
+            "/Library/TeX/texbin",
+            "/usr/local/bin",
+            "/opt/homebrew/bin",
+        ];
+        
+        let mut modified = false;
+        for path in additional_paths {
+            if !paths.contains(&path.to_string()) && std::path::Path::new(path).exists() {
+                paths.push(path.to_string());
+                modified = true;
+            }
+        }
+        
+        if modified {
+            let new_path = paths.join(":");
+            std::env::set_var("PATH", new_path);
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "macos")]
+    fix_macos_path();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
