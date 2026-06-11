@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -1366,7 +1366,7 @@ function App() {
                 }`}
                 title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
               >
-                <Activity size={18} className={isWatching ? "animate-pulse" : ""} />
+                <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
               </button>
             </div>
           </div>
@@ -1506,7 +1506,7 @@ function App() {
                         }`}
                         title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
                       >
-                        <Activity size={18} className={isWatching ? "animate-pulse" : ""} />
+                        <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
                       </button>
 
                       <button 
@@ -1975,7 +1975,7 @@ function App() {
                                 : 'bg-bg-input hover:bg-bg-input-hover text-text-main border-border-subtle'
                             }`}
                           >
-                            <Activity size={14} className={isWatching ? "animate-pulse" : ""} />
+                            <Repeat size={14} className={isWatching ? "animate-pulse" : ""} />
                             {isWatching ? "Compilation continue active" : "Compilation continue"}
                           </button>
                         </div>
