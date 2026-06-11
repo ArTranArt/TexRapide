@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, Square, WrapText, Save, Edit2, Trash2, Keyboard } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -608,8 +608,14 @@ function App() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (activeProject && editingFile && hasUnsavedChanges) {
-          saveFileContent(editingFile, editorContent);
+        if (activeProject) {
+          if (isWatching) {
+            if (editingFile && hasUnsavedChanges) {
+              saveFileContent(editingFile, editorContent);
+            }
+          } else {
+            handleCompileOnce();
+          }
         }
       } else if (e.metaKey || e.ctrlKey) {
         // 1. Comment handling (always needs Shift modifier)
@@ -652,7 +658,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey]);
+  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey, isWatching, mainFile, pdfViewerMode]);
 
   // Default selected file loading
   useEffect(() => {
@@ -1017,6 +1023,27 @@ function App() {
     }
   };
 
+  const handleCompileOnce = async () => {
+    if (!activeProject || !mainFile || compileStatus === "compiling") return;
+    
+    // Save current file if there are unsaved changes
+    if (editingFile && hasUnsavedChanges) {
+      await saveFileContent(editingFile, editorContent);
+    }
+    
+    try {
+      setCompileStatus("compiling");
+      await invoke("compile_once", {
+        projectPath: activeProject,
+        mainFile: mainFile,
+        pdfViewerMode: pdfViewerMode
+      });
+    } catch (error) {
+      console.error("Manual compilation failed:", error);
+      setCompileStatus("error");
+    }
+  };
+
   useEffect(() => {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
@@ -1300,17 +1327,46 @@ function App() {
                 )}
               </button>
 
-              {/* 3. Run Button */}
+              {/* 3. Manual Compilation Button */}
+              <button 
+                onClick={handleCompileOnce}
+                disabled={projectTexFiles.length === 0 || compileStatus === "compiling" || isWatching}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  projectTexFiles.length === 0 || isWatching
+                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
+                    : compileStatus === "compiling"
+                      ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
+                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md shadow-black/10'
+                }`}
+                title={
+                  projectTexFiles.length === 0 
+                    ? "Compilation impossible (aucun fichier racine valide)" 
+                    : isWatching 
+                      ? "Compilation continue active" 
+                      : "Compiler une fois (Cmd + S)"
+                }
+              >
+                {compileStatus === "compiling" ? (
+                  <RefreshCw size={16} className="animate-spin text-amber-500" />
+                ) : (
+                  <Play size={18} fill="currentColor" className="text-blue-400" />
+                )}
+              </button>
+
+              {/* 4. Continuous compilation button */}
               <button 
                 onClick={handleToggleWatch}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl font-bold transition-all cursor-pointer ${
-                  isWatching 
-                    ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
-                    : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
+                disabled={projectTexFiles.length === 0}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  projectTexFiles.length === 0 
+                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
+                    : isWatching 
+                      ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
+                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main shadow-md shadow-black/10'
                 }`}
-                title={isWatching ? "Arrêter" : "Démarrer"}
+                title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
               >
-                {isWatching ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                <Activity size={18} className={isWatching ? "animate-pulse" : ""} />
               </button>
             </div>
           </div>
@@ -1411,6 +1467,33 @@ function App() {
                         </button>
                       )}
                       
+                      {/* Manual Compilation Button */}
+                      <button 
+                        onClick={handleCompileOnce}
+                        disabled={projectTexFiles.length === 0 || compileStatus === "compiling" || isWatching}
+                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                          projectTexFiles.length === 0 || isWatching
+                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
+                            : compileStatus === "compiling"
+                              ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
+                              : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md'
+                        }`}
+                        title={
+                          projectTexFiles.length === 0 
+                            ? "Compilation impossible (aucun fichier racine valide)" 
+                            : isWatching 
+                              ? "Compilation continue active" 
+                              : "Compiler une fois (Cmd + S)"
+                        }
+                      >
+                        {compileStatus === "compiling" ? (
+                          <RefreshCw size={16} className="animate-spin text-amber-500" />
+                        ) : (
+                          <Play size={18} fill="currentColor" className="text-blue-400" />
+                        )}
+                      </button>
+
+                      {/* Continuous compilation button */}
                       <button 
                         onClick={handleToggleWatch}
                         disabled={projectTexFiles.length === 0}
@@ -1419,11 +1502,11 @@ function App() {
                             ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
                             : isWatching 
                               ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
-                              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20'
+                              : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main'
                         }`}
-                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter" : "Démarrer"}
+                        title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
                       >
-                        {isWatching ? <Square size={16} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
+                        <Activity size={18} className={isWatching ? "animate-pulse" : ""} />
                       </button>
 
                       <button 
@@ -1842,24 +1925,7 @@ function App() {
                 {/* Right Panel */}
                 <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
                   {pdfViewerMode === "integrated" ? (
-                    !isWatching ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
-                        <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
-                          <Play size={28} fill="currentColor" className="ml-1 text-blue-400" />
-                        </div>
-                        <h3 className="text-lg font-bold text-text-main mb-2">Compilation inactive</h3>
-                        <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
-                          Démarrez la compilation automatique pour éditer et visualiser le document PDF en temps réel.
-                        </p>
-                        <button
-                          onClick={handleToggleWatch}
-                          disabled={projectTexFiles.length === 0}
-                          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer"
-                        >
-                          Lancer la compilation
-                        </button>
-                      </div>
-                    ) : pdfExists ? (
+                    pdfExists ? (
                       <div className="flex-1 w-full h-full relative overflow-hidden">
                         <PdfViewer 
                           pdfSrc={pdfSrc}
@@ -1871,16 +1937,48 @@ function App() {
                           zoomOutKey={zoomOutKey}
                         />
                       </div>
-                    ) : (
+                    ) : compileStatus === "compiling" ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
                         <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
-                          <BookOpen size={28} />
+                          <BookOpen size={28} className="animate-pulse" />
                         </div>
                         <h3 className="text-lg font-bold text-text-main mb-2">Compilation en cours...</h3>
                         <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
                           Veuillez patienter pendant la génération du premier aperçu PDF.
                         </p>
                         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
+                        <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
+                          <BookOpen size={28} />
+                        </div>
+                        <h3 className="text-lg font-bold text-text-main mb-2">Aucun PDF généré</h3>
+                        <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
+                          Compilez votre document pour générer et afficher le document PDF.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <button
+                            onClick={handleCompileOnce}
+                            disabled={projectTexFiles.length === 0 || isWatching}
+                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer flex items-center justify-center gap-2"
+                          >
+                            <Play size={14} fill="currentColor" />
+                            Compiler une fois (Cmd + S)
+                          </button>
+                          <button
+                            onClick={handleToggleWatch}
+                            disabled={projectTexFiles.length === 0}
+                            className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 border ${
+                              isWatching 
+                                ? 'bg-blue-950 border-blue-800/60 text-blue-400 hover:bg-blue-900/60'
+                                : 'bg-bg-input hover:bg-bg-input-hover text-text-main border-border-subtle'
+                            }`}
+                          >
+                            <Activity size={14} className={isWatching ? "animate-pulse" : ""} />
+                            {isWatching ? "Compilation continue active" : "Compilation continue"}
+                          </button>
+                        </div>
                       </div>
                     )
                   ) : (
