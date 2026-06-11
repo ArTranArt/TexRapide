@@ -10,6 +10,7 @@ import { EditorView, Decoration, keymap } from "@codemirror/view";
 import { toggleComment, insertNewline } from "@codemirror/commands";
 import { PdfViewer } from "./PdfViewer";
 import "./index.css";
+import logo from "./assets/logo.png";
 
 interface HealthStatus {
   binary: String;
@@ -1337,8 +1338,8 @@ function App() {
           title="Retour au dossier par défaut"
         >
           <div className="flex items-center gap-3">
-            <div className="bg-blue-600 p-2 rounded-lg shrink-0 shadow-lg shadow-blue-600/20">
-              <Activity size={20} className="text-white" />
+            <div className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center bg-white border border-border-subtle shadow-md shadow-black/10">
+              <img src={logo} alt="Logo" className="w-full h-full object-contain p-0.5" />
             </div>
             {!isSidebarCollapsed && (
               <span className="font-display text-xl font-bold tracking-tight text-text-main/90">
