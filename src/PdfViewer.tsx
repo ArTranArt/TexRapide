@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Eye } from "lucide-react";
 
 interface Shortcut {
   key: string;
@@ -34,6 +34,15 @@ export function PdfViewer({
   const containerRef = useRef<HTMLDivElement>(null);
   const hasLoadedRef = useRef<boolean>(false);
   const [isDownloading, setIsDownloading] = useState<boolean>(false);
+
+  const [pdfFilter, setPdfFilter] = useState<string>(() => {
+    return localStorage.getItem("texrapide_pdf_filter") || "normal";
+  });
+  const [showFilterMenu, setShowFilterMenu] = useState<boolean>(false);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_pdf_filter", pdfFilter);
+  }, [pdfFilter]);
 
   // States for download animations
   const [toast, setToast] = useState<{ filename: string; destPath: string; isClosing: boolean } | null>(null);
@@ -355,7 +364,25 @@ export function PdfViewer({
           </button>
 
           <button
-            onClick={() => setShowPageNav(prev => !prev)}
+            onClick={() => {
+              setShowFilterMenu(prev => !prev);
+              setShowPageNav(false);
+            }}
+            className={`p-1 rounded transition-colors cursor-pointer ${
+              showFilterMenu 
+                ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm" 
+                : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent"
+            }`}
+            title="Filtres de lecture (Mode Sombre, Sépia...)"
+          >
+            <Eye size={14} />
+          </button>
+
+          <button
+            onClick={() => {
+              setShowPageNav(prev => !prev);
+              setShowFilterMenu(false);
+            }}
             className={`p-1 rounded transition-colors cursor-pointer ${
               showPageNav 
                 ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 shadow-sm" 
@@ -394,10 +421,46 @@ export function PdfViewer({
               scale={scale}
               pdfPath={pdfPath}
               onLineSelect={onLineSelect}
+              pdfFilter={pdfFilter}
             />
           </div>
         ))}
       </div>
+
+      {/* Floating Filter Menu Panel */}
+      {showFilterMenu && (
+        <div className="absolute top-12 right-3 w-48 bg-bg-sidebar/90 backdrop-blur-md border border-border-subtle rounded-xl shadow-2xl flex flex-col p-2.5 z-30 animate-fade-in gap-1.5 select-none">
+          <span className="text-[9px] font-bold text-text-subtle uppercase tracking-wider mb-1 block px-1 text-center border-b border-border-subtle/50 pb-1">
+            Filtres de Lecture
+          </span>
+          {[
+            { id: "normal", name: "Normal", color: "bg-white border-gray-300" },
+            { id: "dark", name: "Mode Sombre", color: "bg-[#18181c] border-gray-700" },
+            { id: "sepia", name: "Sépia / Papier", color: "bg-[#f4ecd8] border-[#dfd2be]" },
+            { id: "warm", name: "Confort des Yeux", color: "bg-[#fdf3e7] border-[#ecd8bf]" },
+            { id: "grayscale", name: "Noir & Blanc", color: "bg-gradient-to-r from-black via-gray-500 to-white border-gray-400" },
+          ].map(f => (
+            <button
+              key={f.id}
+              onClick={() => {
+                setPdfFilter(f.id);
+                setShowFilterMenu(false);
+              }}
+              className={`w-full py-1.5 px-2 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-2.5 ${
+                pdfFilter === f.id
+                  ? "bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30"
+                  : "text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent"
+              }`}
+            >
+              <div className={`w-3.5 h-3.5 rounded-full border shrink-0 ${f.color}`} />
+              <span className="truncate">{f.name}</span>
+              {pdfFilter === f.id && (
+                <div className="ml-auto w-1 h-1 rounded-full bg-blue-400" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Floating Page Navigation Panel */}
       {showPageNav && numPages > 0 && (
@@ -439,6 +502,7 @@ interface PdfPageProps {
   scale: number;
   pdfPath: string;
   onLineSelect: (file: string, line: number) => void;
+  pdfFilter: string;
 }
 
 interface Ripple {
@@ -448,7 +512,7 @@ interface Ripple {
   status: "searching" | "success" | "error";
 }
 
-function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps) {
+function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect, pdfFilter }: PdfPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewport, setViewport] = useState<any>(null);
   const renderTaskRef = useRef<any>(null);
@@ -556,8 +620,26 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect }: PdfPageProps
     }
   };
 
+  const getFilterStyle = (filter: string) => {
+    switch (filter) {
+      case "dark":
+        return "invert(0.93) hue-rotate(180deg) brightness(0.95) contrast(1.1)";
+      case "sepia":
+        return "sepia(0.6) contrast(0.95) brightness(0.95)";
+      case "warm":
+        return "sepia(0.3) saturate(1.2) hue-rotate(-5deg) brightness(0.97)";
+      case "grayscale":
+        return "grayscale(1) contrast(1.05)";
+      default:
+        return "none";
+    }
+  };
+
   return (
-    <div className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group shrink-0 mx-auto">
+    <div 
+      className="relative shadow-xl border border-border-subtle bg-white rounded-sm select-none group shrink-0 mx-auto transition-all duration-300"
+      style={{ filter: getFilterStyle(pdfFilter) }}
+    >
       <canvas 
         ref={canvasRef} 
         onDoubleClick={handleDoubleClick}
