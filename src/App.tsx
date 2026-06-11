@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat, Columns2, Rows2 } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -284,14 +284,47 @@ function App() {
     const saved = localStorage.getItem("texrapide_left_panel_width");
     return saved ? parseInt(saved, 10) : 450;
   });
+  const [topPanelHeight, setTopPanelHeight] = useState<number>(() => {
+    const saved = localStorage.getItem("texrapide_top_panel_height");
+    return saved ? parseInt(saved, 10) : 400;
+  });
+  const [splitOrientation, setSplitOrientation] = useState<"horizontal" | "vertical">(() => {
+    const saved = localStorage.getItem("texrapide_split_orientation");
+    if (saved === "horizontal" || saved === "vertical") return saved;
+    return window.innerWidth < 850 ? "vertical" : "horizontal";
+  });
   const [showPdfPanel, setShowPdfPanel] = useState<boolean>(() => {
     const saved = localStorage.getItem("texrapide_show_pdf_panel");
     return saved !== "false";
   });
 
+  const isManualOrientationRef = useRef<boolean>(false);
+
   useEffect(() => {
     localStorage.setItem("texrapide_show_pdf_panel", showPdfPanel.toString());
   }, [showPdfPanel]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_split_orientation", splitOrientation);
+  }, [splitOrientation]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_top_panel_height", topPanelHeight.toString());
+  }, [topPanelHeight]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (isManualOrientationRef.current) return;
+      const width = window.innerWidth;
+      if (width < 850 && splitOrientation !== "vertical") {
+        setSplitOrientation("vertical");
+      } else if (width >= 850 && splitOrientation !== "horizontal") {
+        setSplitOrientation("horizontal");
+      }
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [splitOrientation]);
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_editor_font_size");
     return saved ? parseInt(saved, 10) : 13;
@@ -408,18 +441,27 @@ function App() {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
-    document.body.style.cursor = "col-resize";
+    document.body.style.cursor = splitOrientation === "horizontal" ? "col-resize" : "row-resize";
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
-      const sidebarWidth = isSidebarCollapsed ? 80 : 288;
-      const calculatedWidth = e.clientX - sidebarWidth;
-      const minWidth = 200;
-      const maxWidth = window.innerWidth - sidebarWidth - 120;
-      if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
-        setLeftPanelWidth(calculatedWidth);
+      if (splitOrientation === "horizontal") {
+        const sidebarWidth = isSidebarCollapsed ? 80 : 288;
+        const calculatedWidth = e.clientX - sidebarWidth;
+        const minWidth = 200;
+        const maxWidth = window.innerWidth - sidebarWidth - 120;
+        if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
+          setLeftPanelWidth(calculatedWidth);
+        }
+      } else {
+        const calculatedHeight = e.clientY;
+        const minHeight = 150;
+        const maxHeight = window.innerHeight - 150;
+        if (calculatedHeight >= minHeight && calculatedHeight <= maxHeight) {
+          setTopPanelHeight(calculatedHeight);
+        }
       }
     };
 
@@ -436,7 +478,7 @@ function App() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isSidebarCollapsed]);
+  }, [isSidebarCollapsed, splitOrientation]);
 
   const jumpToEditorLine = (lineNum: number) => {
     const view = editorRef.current?.view;
@@ -1701,12 +1743,28 @@ function App() {
             const pdfSrc = pdfPath ? convertFileSrc(pdfPath) : "";
 
             return (
-              <div className="flex h-full w-full bg-bg-deep overflow-hidden fade-in">
-                {/* Left Panel - Dynamic Width */}
+              <div className={`flex h-full w-full bg-bg-deep overflow-hidden fade-in ${
+                splitOrientation === "horizontal" ? "flex-row" : "flex-col"
+              }`}>
+                {/* Left/Top Panel - Dynamic Size */}
                 <div 
-                  style={showPdfPanel ? { width: `${leftPanelWidth}px` } : undefined}
-                  className={`border-r border-border-subtle bg-bg-sidebar h-full flex flex-col overflow-hidden ${
-                    showPdfPanel ? "min-w-[200px] shrink-0" : "flex-1"
+                  style={
+                    showPdfPanel 
+                      ? (splitOrientation === "horizontal" 
+                          ? { width: `${leftPanelWidth}px` } 
+                          : { height: `${topPanelHeight}px` })
+                      : undefined
+                  }
+                  className={`bg-bg-sidebar flex flex-col overflow-hidden ${
+                    splitOrientation === "horizontal" 
+                      ? "h-full border-r border-border-subtle" 
+                      : "w-full border-b border-border-subtle"
+                  } ${
+                    showPdfPanel 
+                      ? (splitOrientation === "horizontal" 
+                          ? "min-w-[200px] shrink-0" 
+                          : "min-h-[150px] shrink-0")
+                      : "flex-1"
                   }`}
                 >
                   
@@ -1795,6 +1853,20 @@ function App() {
                       >
                         <WrapText size={12} />
                       </button>
+
+                      {/* Toggle Split Orientation Button */}
+                      {showPdfPanel && (
+                        <button
+                          onClick={() => {
+                            isManualOrientationRef.current = true;
+                            setSplitOrientation(prev => prev === "horizontal" ? "vertical" : "horizontal");
+                          }}
+                          className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input transition-all cursor-pointer"
+                          title={splitOrientation === "horizontal" ? "Disposition verticale (dessus/dessous)" : "Disposition horizontale (côte à côte)"}
+                        >
+                          {splitOrientation === "horizontal" ? <Rows2 size={12} /> : <Columns2 size={12} />}
+                        </button>
+                      )}
 
                       {/* Toggle PDF Panel Button */}
                       <button
@@ -1928,13 +2000,23 @@ function App() {
                     {/* Resizer Handle */}
                     <div 
                       onMouseDown={handleMouseDown}
-                      className="w-1.5 bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 cursor-col-resize shrink-0 transition-all select-none z-30 relative group/resizer"
+                      className={`${
+                        splitOrientation === "horizontal" 
+                          ? "w-1.5 h-full cursor-col-resize" 
+                          : "h-1.5 w-full cursor-row-resize"
+                      } bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 shrink-0 transition-all select-none z-30 relative group/resizer`}
                     >
-                      <div className="absolute inset-y-0 left-[2px] w-[1px] bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500" />
+                      <div className={`absolute bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500 ${
+                        splitOrientation === "horizontal"
+                          ? "inset-y-0 left-[2px] w-[1px]"
+                          : "inset-x-0 top-[2px] h-[1px]"
+                      }`} />
                     </div>
 
                     {/* Right Panel */}
-                    <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
+                    <div className={`flex-1 bg-bg-deep flex flex-col relative overflow-hidden ${
+                      splitOrientation === "horizontal" ? "h-full" : "w-full"
+                    }`}>
                       {pdfViewerMode === "integrated" ? (
                         pdfExists ? (
                           <div className="flex-1 w-full h-full relative overflow-hidden">
