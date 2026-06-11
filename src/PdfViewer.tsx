@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Eye } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Eye, EyeOff } from "lucide-react";
 
 interface Shortcut {
   key: string;
@@ -15,6 +15,7 @@ interface PdfViewerProps {
   compileStatus: string;
   zoomInKey?: Shortcut | null;
   zoomOutKey?: Shortcut | null;
+  onHide?: () => void;
 }
 
 export function PdfViewer({ 
@@ -24,7 +25,8 @@ export function PdfViewer({
   onLineSelect, 
   compileStatus,
   zoomInKey = null,
-  zoomOutKey = null
+  zoomOutKey = null,
+  onHide
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -303,12 +305,25 @@ export function PdfViewer({
       )}
       {/* PDF Controls */}
       <div className="h-10 border-b border-border-subtle bg-bg-sidebar px-4 flex items-center justify-between shrink-0 select-none z-10">
-        <span className="text-[10px] font-bold text-text-subtle font-display uppercase tracking-wider flex items-center gap-2">
-          Lecteur Intégré {numPages > 0 && `· ${numPages} Page${numPages > 1 ? "s" : ""}`}
-          {compileStatus === "compiling" && (
-            <RefreshCw size={10} className="animate-spin text-blue-500" />
+        <div className="flex items-center gap-2">
+          {onHide && (
+            <button
+              onClick={onHide}
+              className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-input/30 hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main transition-colors cursor-pointer text-[9px] font-bold uppercase tracking-wider"
+              title="Masquer l'aperçu PDF"
+            >
+              <EyeOff size={11} className="text-blue-400" />
+              Masquer
+            </button>
           )}
-        </span>
+          <span className="text-[10px] font-bold text-text-subtle font-display uppercase tracking-wider flex items-center gap-1.5">
+            {!onHide && "Lecteur Intégré"}
+            {numPages > 0 && `${!onHide ? " · " : ""}${numPages} Page${numPages > 1 ? "s" : ""}`}
+            {compileStatus === "compiling" && (
+              <RefreshCw size={10} className="animate-spin text-blue-500" />
+            )}
+          </span>
+        </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsFitWidth(true)}

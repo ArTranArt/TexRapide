@@ -284,6 +284,14 @@ function App() {
     const saved = localStorage.getItem("texrapide_left_panel_width");
     return saved ? parseInt(saved, 10) : 450;
   });
+  const [showPdfPanel, setShowPdfPanel] = useState<boolean>(() => {
+    const saved = localStorage.getItem("texrapide_show_pdf_panel");
+    return saved !== "false";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_show_pdf_panel", showPdfPanel.toString());
+  }, [showPdfPanel]);
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_editor_font_size");
     return saved ? parseInt(saved, 10) : 13;
@@ -1696,8 +1704,10 @@ function App() {
               <div className="flex h-full w-full bg-bg-deep overflow-hidden fade-in">
                 {/* Left Panel - Dynamic Width */}
                 <div 
-                  style={{ width: `${leftPanelWidth}px` }}
-                  className="min-w-[200px] border-r border-border-subtle bg-bg-sidebar h-full flex flex-col shrink-0 overflow-hidden"
+                  style={showPdfPanel ? { width: `${leftPanelWidth}px` } : undefined}
+                  className={`border-r border-border-subtle bg-bg-sidebar h-full flex flex-col overflow-hidden ${
+                    showPdfPanel ? "min-w-[200px] shrink-0" : "flex-1"
+                  }`}
                 >
                   
                   {/* Ultra-compact Header (Single Row) */}
@@ -1784,6 +1794,19 @@ function App() {
                         title={lineWrapping ? "Désactiver le retour à la ligne automatique" : "Activer le retour à la ligne automatique"}
                       >
                         <WrapText size={12} />
+                      </button>
+
+                      {/* Toggle PDF Panel Button */}
+                      <button
+                        onClick={() => setShowPdfPanel(prev => !prev)}
+                        className={`w-6 h-6 flex items-center justify-center rounded-md border transition-all cursor-pointer ${
+                          showPdfPanel 
+                            ? "bg-blue-500/15 border-blue-500/30 text-blue-400" 
+                            : "bg-amber-500/15 border-amber-500/30 text-amber-400 animate-pulse shadow-[0_0_8px_rgba(245,158,11,0.15)]"
+                        }`}
+                        title={showPdfPanel ? "Masquer l'aperçu PDF" : "Afficher l'aperçu PDF"}
+                      >
+                        <BookOpen size={12} />
                       </button>
                     </div>
                   </div>
@@ -1900,93 +1923,98 @@ function App() {
                   </div>
                 </div>
 
-                {/* Resizer Handle */}
-                <div 
-                  onMouseDown={handleMouseDown}
-                  className="w-1.5 bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 cursor-col-resize shrink-0 transition-all select-none z-30 relative group/resizer"
-                >
-                  <div className="absolute inset-y-0 left-[2px] w-[1px] bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500" />
-                </div>
-
-                {/* Right Panel */}
-                <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
-                  {pdfViewerMode === "integrated" ? (
-                    pdfExists ? (
-                      <div className="flex-1 w-full h-full relative overflow-hidden">
-                        <PdfViewer 
-                          pdfSrc={pdfSrc}
-                          pdfPath={pdfPath || ""}
-                          projectName={projectName}
-                          compileStatus={compileStatus}
-                          onLineSelect={handleLineSelect}
-                          zoomInKey={zoomInKey}
-                          zoomOutKey={zoomOutKey}
-                        />
-                      </div>
-                    ) : compileStatus === "compiling" ? (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
-                        <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
-                          <BookOpen size={28} className="animate-pulse" />
-                        </div>
-                        <h3 className="text-lg font-bold text-text-main mb-2">Compilation en cours...</h3>
-                        <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
-                          Veuillez patienter pendant la génération du premier aperçu PDF.
-                        </p>
-                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                      </div>
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
-                        <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
-                          <BookOpen size={28} />
-                        </div>
-                        <h3 className="text-lg font-bold text-text-main mb-2">Aucun PDF généré</h3>
-                        <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
-                          Compilez votre document pour générer et afficher le document PDF.
-                        </p>
-                        <div className="flex flex-col sm:flex-row gap-3">
-                          <button
-                            onClick={handleCompileOnce}
-                            disabled={projectTexFiles.length === 0 || isWatching}
-                            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer flex items-center justify-center gap-2"
-                          >
-                            <Play size={14} fill="currentColor" />
-                            Compiler une fois (Cmd + S)
-                          </button>
-                          <button
-                            onClick={handleToggleWatch}
-                            disabled={projectTexFiles.length === 0}
-                            className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 border ${
-                              isWatching 
-                                ? 'bg-blue-950 border-blue-800/60 text-blue-400 hover:bg-blue-900/60'
-                                : 'bg-bg-input hover:bg-bg-input-hover text-text-main border-border-subtle'
-                            }`}
-                          >
-                            <Repeat size={14} className={isWatching ? "animate-pulse" : ""} />
-                            {isWatching ? "Compilation continue active" : "Compilation continue"}
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep animate-fade-in">
-                      <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
-                        <ExternalLink size={28} />
-                      </div>
-                      <h3 className="text-lg font-bold text-text-main mb-2">Lecteur Système Actif</h3>
-                      <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
-                        L'aperçu est géré par votre lecteur PDF système externe (Skim sur macOS, SumatraPDF sur Windows, etc.).
-                      </p>
-                      <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle">
-                        <button 
-                          onClick={() => setPdfViewerMode("integrated")}
-                          className="px-3 py-1.5 rounded-md text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-all cursor-pointer"
-                        >
-                          Activer le lecteur intégré
-                        </button>
-                      </div>
+                {showPdfPanel && (
+                  <>
+                    {/* Resizer Handle */}
+                    <div 
+                      onMouseDown={handleMouseDown}
+                      className="w-1.5 bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 cursor-col-resize shrink-0 transition-all select-none z-30 relative group/resizer"
+                    >
+                      <div className="absolute inset-y-0 left-[2px] w-[1px] bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500" />
                     </div>
-                  )}
-                </div>
+
+                    {/* Right Panel */}
+                    <div className="flex-1 bg-bg-deep h-full flex flex-col relative overflow-hidden">
+                      {pdfViewerMode === "integrated" ? (
+                        pdfExists ? (
+                          <div className="flex-1 w-full h-full relative overflow-hidden">
+                            <PdfViewer 
+                              pdfSrc={pdfSrc}
+                              pdfPath={pdfPath || ""}
+                              projectName={projectName}
+                              compileStatus={compileStatus}
+                              onLineSelect={handleLineSelect}
+                              zoomInKey={zoomInKey}
+                              zoomOutKey={zoomOutKey}
+                              onHide={() => setShowPdfPanel(false)}
+                            />
+                          </div>
+                        ) : compileStatus === "compiling" ? (
+                          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
+                            <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
+                              <BookOpen size={28} className="animate-pulse" />
+                            </div>
+                            <h3 className="text-lg font-bold text-text-main mb-2">Compilation en cours...</h3>
+                            <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
+                              Veuillez patienter pendant la génération du premier aperçu PDF.
+                            </p>
+                            <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        ) : (
+                          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep select-none animate-fade-in">
+                            <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
+                              <BookOpen size={28} />
+                            </div>
+                            <h3 className="text-lg font-bold text-text-main mb-2">Aucun PDF généré</h3>
+                            <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
+                              Compilez votre document pour générer et afficher le document PDF.
+                            </p>
+                            <div className="flex flex-col sm:flex-row gap-3">
+                              <button
+                                onClick={handleCompileOnce}
+                                disabled={projectTexFiles.length === 0 || isWatching}
+                                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition-all shadow-lg shadow-blue-600/20 cursor-pointer flex items-center justify-center gap-2"
+                              >
+                                <Play size={14} fill="currentColor" />
+                                Compiler une fois (Cmd + S)
+                              </button>
+                              <button
+                                onClick={handleToggleWatch}
+                                disabled={projectTexFiles.length === 0}
+                                className={`font-bold text-xs px-5 py-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 border ${
+                                  isWatching 
+                                    ? 'bg-blue-950 border-blue-800/60 text-blue-400 hover:bg-blue-900/60'
+                                    : 'bg-bg-input hover:bg-bg-input-hover text-text-main border-border-subtle'
+                                }`}
+                              >
+                                <Repeat size={14} className={isWatching ? "animate-pulse" : ""} />
+                                {isWatching ? "Compilation continue active" : "Compilation continue"}
+                              </button>
+                            </div>
+                          </div>
+                        )
+                      ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-bg-deep animate-fade-in">
+                          <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-400 flex items-center justify-center mb-4">
+                            <ExternalLink size={28} />
+                          </div>
+                          <h3 className="text-lg font-bold text-text-main mb-2">Lecteur Système Actif</h3>
+                          <p className="text-text-subtle text-xs max-w-sm leading-relaxed mb-6">
+                            L'aperçu est géré par votre lecteur PDF système externe (Skim sur macOS, SumatraPDF sur Windows, etc.).
+                          </p>
+                          <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle">
+                            <button 
+                              onClick={() => setPdfViewerMode("integrated")}
+                              className="px-3 py-1.5 rounded-md text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-all cursor-pointer"
+                            >
+                              Activer le lecteur intégré
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             );
           })()}
