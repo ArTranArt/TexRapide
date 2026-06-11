@@ -1286,19 +1286,19 @@ function App() {
           <NavItem collapsed={isSidebarCollapsed} active={view === "help"} onClick={() => { setView("help"); setIsCreatingInline(false); }} icon={<BookOpen size={18} />} label="Guide & Aide" />
         </nav>
 
-        {activeProject && (
-          <div className="mt-auto pt-8 flex flex-col gap-2">
-            {/* Theme Toggle Button */}
-            <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}>
-              <button 
-                onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
-                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
-                title={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
-              >
-                {theme === "dark" ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-blue-400" />}
-              </button>
-            </div>
+        <div className="mt-auto pt-8 flex flex-col gap-3">
+          {/* Theme Toggle Button */}
+          <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}>
+            <button 
+              onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
+              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
+              title={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
+            >
+              {theme === "dark" ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-blue-400" />}
+            </button>
+          </div>
 
+          {activeProject && (
             <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'justify-start'} gap-2`}>
               {/* 1. VSCode Button */}
               <button 
@@ -1380,8 +1380,8 @@ function App() {
                 <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </aside>
 
       <main ref={mainContentRef} className={`flex-1 scroll-smooth ${view === "project" ? "h-screen overflow-hidden" : "overflow-y-auto p-6 md:p-12"}`}>
