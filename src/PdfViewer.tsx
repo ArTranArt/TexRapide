@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Eye, EyeOff } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Columns2, Rows2, Eye } from "lucide-react";
 
 interface Shortcut {
   key: string;
@@ -15,7 +15,8 @@ interface PdfViewerProps {
   compileStatus: string;
   zoomInKey?: Shortcut | null;
   zoomOutKey?: Shortcut | null;
-  onHide?: () => void;
+  splitOrientation?: "horizontal" | "vertical";
+  onToggleSplitOrientation?: () => void;
 }
 
 export function PdfViewer({ 
@@ -26,7 +27,8 @@ export function PdfViewer({
   compileStatus,
   zoomInKey = null,
   zoomOutKey = null,
-  onHide
+  splitOrientation = "horizontal",
+  onToggleSplitOrientation
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -306,23 +308,18 @@ export function PdfViewer({
       {/* PDF Controls */}
       <div className="h-10 border-b border-border-subtle bg-bg-sidebar px-4 flex items-center justify-between shrink-0 select-none z-10">
         <div className="flex items-center gap-2">
-          {onHide && (
+          {onToggleSplitOrientation && (
             <button
-              onClick={onHide}
-              className="flex items-center gap-1.5 px-2 py-1 rounded bg-bg-input/30 hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main transition-colors cursor-pointer text-[9px] font-bold uppercase tracking-wider"
-              title="Masquer l'aperçu PDF"
+              onClick={onToggleSplitOrientation}
+              className="w-6 h-6 flex items-center justify-center rounded border bg-bg-input/30 hover:bg-bg-input-hover border-border-subtle text-text-muted hover:text-text-main transition-colors cursor-pointer"
+              title={splitOrientation === "horizontal" ? "Disposer en bas" : "Disposer sur le côté"}
             >
-              <EyeOff size={11} className="text-blue-400" />
-              Masquer
+              {splitOrientation === "horizontal" ? <Rows2 size={12} /> : <Columns2 size={12} />}
             </button>
           )}
-          <span className="text-[10px] font-bold text-text-subtle font-display uppercase tracking-wider flex items-center gap-1.5">
-            {!onHide && "Lecteur Intégré"}
-            {numPages > 0 && `${!onHide ? " · " : ""}${numPages} Page${numPages > 1 ? "s" : ""}`}
-            {compileStatus === "compiling" && (
-              <RefreshCw size={10} className="animate-spin text-blue-500" />
-            )}
-          </span>
+          {compileStatus === "compiling" && (
+            <RefreshCw size={10} className="animate-spin text-blue-500" />
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button

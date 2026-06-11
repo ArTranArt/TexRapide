@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat, Columns2, Rows2 } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -282,7 +282,7 @@ function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
     const saved = localStorage.getItem("texrapide_left_panel_width");
-    return saved ? parseInt(saved, 10) : 450;
+    return saved ? Math.max(350, parseInt(saved, 10)) : 450;
   });
   const [topPanelHeight, setTopPanelHeight] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_top_panel_height");
@@ -324,22 +324,16 @@ function App() {
         }
       }
 
-      // 2. Clamp editor sizes to ensure PDF panel remains visible
+      // 2. Clamp editor sizes to ensure PDF panel remains visible and editor remains readable
       const sidebarWidth = isSidebarCollapsed ? 80 : 288;
-      const maxAllowedWidth = Math.max(200, window.innerWidth - sidebarWidth - 200); // PDF min-width 200px
+      const maxAllowedWidth = Math.max(350, window.innerWidth - sidebarWidth - 200); // PDF min-width 200px
       setLeftPanelWidth(currentWidth => {
-        if (currentWidth > maxAllowedWidth) {
-          return maxAllowedWidth;
-        }
-        return currentWidth;
+        return Math.max(350, Math.min(currentWidth, maxAllowedWidth));
       });
 
       const maxAllowedHeight = Math.max(150, window.innerHeight - 200); // PDF min-height 200px
       setTopPanelHeight(currentHeight => {
-        if (currentHeight > maxAllowedHeight) {
-          return maxAllowedHeight;
-        }
-        return currentHeight;
+        return Math.max(150, Math.min(currentHeight, maxAllowedHeight));
       });
     };
 
@@ -474,8 +468,8 @@ function App() {
       if (splitOrientation === "horizontal") {
         const sidebarWidth = isSidebarCollapsed ? 80 : 288;
         const calculatedWidth = e.clientX - sidebarWidth;
-        const minWidth = 200;
-        const maxWidth = window.innerWidth - sidebarWidth - 120;
+        const minWidth = 350;
+        const maxWidth = Math.max(minWidth, window.innerWidth - sidebarWidth - 150); // leave at least 150px for PDF
         if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
           setLeftPanelWidth(calculatedWidth);
         }
@@ -1786,7 +1780,7 @@ function App() {
                   } ${
                     showPdfPanel 
                       ? (splitOrientation === "horizontal" 
-                          ? "min-w-[200px] shrink-0" 
+                          ? "min-w-[350px] shrink-0" 
                           : "min-h-[150px] shrink-0")
                       : "flex-1"
                   }`}
@@ -1878,19 +1872,6 @@ function App() {
                         <WrapText size={12} />
                       </button>
 
-                      {/* Toggle Split Orientation Button */}
-                      {showPdfPanel && (
-                        <button
-                          onClick={() => {
-                            isManualOrientationRef.current = true;
-                            setSplitOrientation(prev => prev === "horizontal" ? "vertical" : "horizontal");
-                          }}
-                          className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input transition-all cursor-pointer"
-                          title={splitOrientation === "horizontal" ? "Disposition verticale (dessus/dessous)" : "Disposition horizontale (côte à côte)"}
-                        >
-                          {splitOrientation === "horizontal" ? <Rows2 size={12} /> : <Columns2 size={12} />}
-                        </button>
-                      )}
 
                       {/* Toggle PDF Panel Button */}
                       <button
@@ -2052,7 +2033,11 @@ function App() {
                               onLineSelect={handleLineSelect}
                               zoomInKey={zoomInKey}
                               zoomOutKey={zoomOutKey}
-                              onHide={() => setShowPdfPanel(false)}
+                              splitOrientation={splitOrientation}
+                              onToggleSplitOrientation={() => {
+                                isManualOrientationRef.current = true;
+                                setSplitOrientation(prev => prev === "horizontal" ? "vertical" : "horizontal");
+                              }}
                             />
                           </div>
                         ) : compileStatus === "compiling" ? (
