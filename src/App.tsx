@@ -314,17 +314,41 @@ function App() {
 
   useEffect(() => {
     const handleResize = () => {
-      if (isManualOrientationRef.current) return;
-      const width = window.innerWidth;
-      if (width < 850 && splitOrientation !== "vertical") {
-        setSplitOrientation("vertical");
-      } else if (width >= 850 && splitOrientation !== "horizontal") {
-        setSplitOrientation("horizontal");
+      // 1. Manage orientation based on window width
+      if (!isManualOrientationRef.current) {
+        const width = window.innerWidth;
+        if (width < 850 && splitOrientation !== "vertical") {
+          setSplitOrientation("vertical");
+        } else if (width >= 850 && splitOrientation !== "horizontal") {
+          setSplitOrientation("horizontal");
+        }
       }
+
+      // 2. Clamp editor sizes to ensure PDF panel remains visible
+      const sidebarWidth = isSidebarCollapsed ? 80 : 288;
+      const maxAllowedWidth = Math.max(200, window.innerWidth - sidebarWidth - 200); // PDF min-width 200px
+      setLeftPanelWidth(currentWidth => {
+        if (currentWidth > maxAllowedWidth) {
+          return maxAllowedWidth;
+        }
+        return currentWidth;
+      });
+
+      const maxAllowedHeight = Math.max(150, window.innerHeight - 200); // PDF min-height 200px
+      setTopPanelHeight(currentHeight => {
+        if (currentHeight > maxAllowedHeight) {
+          return maxAllowedHeight;
+        }
+        return currentHeight;
+      });
     };
+
+    // Run once initially
+    handleResize();
+
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [splitOrientation]);
+  }, [splitOrientation, isSidebarCollapsed]);
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_editor_font_size");
     return saved ? parseInt(saved, 10) : 13;
