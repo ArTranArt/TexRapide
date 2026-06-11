@@ -1467,31 +1467,6 @@ function App() {
                         </button>
                       )}
                       
-                      {/* Manual Compilation Button */}
-                      <button 
-                        onClick={handleCompileOnce}
-                        disabled={projectTexFiles.length === 0 || compileStatus === "compiling" || isWatching}
-                        className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
-                          projectTexFiles.length === 0 || isWatching
-                            ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
-                            : compileStatus === "compiling"
-                              ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
-                              : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md'
-                        }`}
-                        title={
-                          projectTexFiles.length === 0 
-                            ? "Compilation impossible (aucun fichier racine valide)" 
-                            : isWatching 
-                              ? "Compilation continue active" 
-                              : "Compiler une fois (Cmd + S)"
-                        }
-                      >
-                        {compileStatus === "compiling" ? (
-                          <RefreshCw size={16} className="animate-spin text-amber-500" />
-                        ) : (
-                          <Play size={18} fill="currentColor" className="text-blue-400" />
-                        )}
-                      </button>
 
                       {/* Continuous compilation button */}
                       <button 
