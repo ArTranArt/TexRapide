@@ -234,6 +234,73 @@ pub fn synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Re
 }
 
 #[derive(serde::Serialize)]
+pub struct SynctexForwardResult {
+    pub page: u32,
+    pub x: f64,
+    pub y: f64,
+}
+
+#[tauri::command]
+pub fn synctex_forward_search(pdf_path: String, line: u32, column: u32, tex_path: String) -> Result<SynctexForwardResult, String> {
+    let arg_input = format!("{}:{}:{}", line, column, tex_path);
+    
+    let output = Command::new("synctex")
+        .arg("view")
+        .arg("-i")
+        .arg(&arg_input)
+        .arg("-o")
+        .arg(&pdf_path)
+        .output()
+        .or_else(|_| {
+            #[cfg(target_os = "macos")]
+            {
+                Command::new("/Library/TeX/texbin/synctex")
+                    .arg("view")
+                    .arg("-i")
+                    .arg(&arg_input)
+                    .arg("-o")
+                    .arg(&pdf_path)
+                    .output()
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                Err(std::io::Error::new(std::io::ErrorKind::NotFound, "synctex not found"))
+            }
+        })
+        .map_err(|e| format!("Erreur lors du lancement de synctex : {}", e))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    
+    let mut page = 1;
+    let mut x = 0.0;
+    let mut y = 0.0;
+    let mut found = false;
+
+    for line_str in stdout.lines() {
+        if line_str.starts_with("Page:") {
+            if let Ok(p) = line_str["Page:".len()..].trim().parse::<u32>() {
+                page = p;
+                found = true;
+            }
+        } else if line_str.starts_with("x:") {
+            if let Ok(val) = line_str["x:".len()..].trim().parse::<f64>() {
+                x = val;
+            }
+        } else if line_str.starts_with("y:") {
+            if let Ok(val) = line_str["y:".len()..].trim().parse::<f64>() {
+                y = val;
+            }
+        }
+    }
+
+    if !found {
+        return Err("Aucune correspondance trouvée dans le fichier SyncTeX.".to_string());
+    }
+
+    Ok(SynctexForwardResult { page, x, y })
+}
+
+#[derive(serde::Serialize)]
 pub struct FileEntry {
     pub name: String,
     pub relative_path: String,

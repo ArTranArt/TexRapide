@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat, Target } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -351,6 +351,56 @@ function App() {
   const isResizingRef = useRef(false);
   const editorRef = useRef<any>(null);
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
+
+  // States and refs for SyncTeX forward search (Code -> PDF)
+  const [forwardSearchRipple, setForwardSearchRipple] = useState<{ page: number; x: number; y: number; timestamp: number } | null>(null);
+  const forwardSearchRefs = useRef({ activeProject, editingFile, mainFile });
+  
+  useEffect(() => {
+    forwardSearchRefs.current = { activeProject, editingFile, mainFile };
+  }, [activeProject, editingFile, mainFile]);
+
+  const handleForwardSearch = useCallback(async (lineNum: number) => {
+    const { activeProject, editingFile, mainFile } = forwardSearchRefs.current;
+    if (!activeProject || !editingFile || !mainFile) return;
+    const texPath = `${activeProject}/${editingFile}`;
+    const pdfPath = `${activeProject}/${mainFile.replace(/\.tex$/, ".pdf")}`;
+
+    try {
+      const result: { page: number; x: number; y: number } = await invoke("synctex_forward_search", {
+        pdfPath,
+        line: lineNum,
+        column: 1,
+        texPath,
+      });
+
+      setForwardSearchRipple({
+        page: result.page,
+        x: result.x,
+        y: result.y,
+        timestamp: Date.now(),
+      });
+    } catch (err) {
+      console.warn("SyncTeX forward search failed:", err);
+    }
+  }, []);
+
+  const cmEventHandlers = useMemo(() => {
+    return EditorView.domEventHandlers({
+      mousedown: (event, view) => {
+        if (event.metaKey || event.ctrlKey) {
+          const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+          if (pos !== null) {
+            const line = view.state.doc.lineAt(pos);
+            handleForwardSearch(line.number);
+            event.preventDefault();
+            return true;
+          }
+        }
+        return false;
+      }
+    });
+  }, [handleForwardSearch]);
 
   interface Shortcut {
     key: string;
@@ -1873,6 +1923,23 @@ function App() {
                         <WrapText size={12} />
                       </button>
 
+                      {/* Forward Search Button */}
+                      {showPdfPanel && (
+                        <button
+                          onClick={() => {
+                            const view = editorRef.current?.view;
+                            if (view) {
+                              const pos = view.state.selection.main.head;
+                              const line = view.state.doc.lineAt(pos);
+                              handleForwardSearch(line.number);
+                            }
+                          }}
+                          className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input transition-all cursor-pointer"
+                          title="Localiser la ligne actuelle dans le PDF (ou Cmd + Click sur le code)"
+                        >
+                          <Target size={12} />
+                        </button>
+                      )}
 
                       {/* Toggle PDF Panel Button */}
                       <button
@@ -1987,6 +2054,7 @@ function App() {
                         extensions={[
                           latex(), 
                           lineHighlightField, 
+                          cmEventHandlers,
                           ...(lineWrapping ? [EditorView.lineWrapping] : []),
                           ...(!autoIndent ? [keymap.of([{ key: "Enter", run: insertNewline }])] : [])
                         ]}
@@ -2039,6 +2107,7 @@ function App() {
                                 isManualOrientationRef.current = true;
                                 setSplitOrientation(prev => prev === "horizontal" ? "vertical" : "horizontal");
                               }}
+                              forwardSearchRipple={forwardSearchRipple}
                             />
                           </div>
                         ) : compileStatus === "compiling" ? (

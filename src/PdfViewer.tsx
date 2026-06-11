@@ -17,6 +17,7 @@ interface PdfViewerProps {
   zoomOutKey?: Shortcut | null;
   splitOrientation?: "horizontal" | "vertical";
   onToggleSplitOrientation?: () => void;
+  forwardSearchRipple?: { page: number; x: number; y: number; timestamp: number } | null;
 }
 
 export function PdfViewer({ 
@@ -28,7 +29,8 @@ export function PdfViewer({
   zoomInKey = null,
   zoomOutKey = null,
   splitOrientation = "horizontal",
-  onToggleSplitOrientation
+  onToggleSplitOrientation,
+  forwardSearchRipple = null
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -226,6 +228,30 @@ export function PdfViewer({
       container.removeEventListener("scroll", handleScroll);
     };
   }, [pdf, numPages]);
+
+  // Handle forward search scrolling (Editor -> PDF)
+  useEffect(() => {
+    if (!forwardSearchRipple) return;
+
+    const pageElement = document.getElementById(`pdf-page-${forwardSearchRipple.page}`);
+    const container = containerRef.current;
+    if (pageElement && container) {
+      const pageRect = pageElement.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      const targetY = forwardSearchRipple.y * scale;
+      const targetX = forwardSearchRipple.x * scale;
+
+      const scrollY = container.scrollTop + pageRect.top - containerRect.top + targetY;
+      const scrollX = container.scrollLeft + pageRect.left - containerRect.left + targetX - (containerRect.width / 2);
+
+      container.scrollTo({ 
+        top: Math.max(0, scrollY - 100), 
+        left: Math.max(0, scrollX), 
+        behavior: "smooth" 
+      });
+    }
+  }, [forwardSearchRipple, scale]);
 
   // Listen to global Cmd + and Cmd - keys to zoom the PDF
   useEffect(() => {
@@ -433,6 +459,11 @@ export function PdfViewer({
               pdfPath={pdfPath}
               onLineSelect={onLineSelect}
               pdfFilter={pdfFilter}
+              forwardSearchRipple={
+                forwardSearchRipple?.page === pageNumber 
+                  ? { x: forwardSearchRipple.x, y: forwardSearchRipple.y, timestamp: forwardSearchRipple.timestamp } 
+                  : null
+              }
             />
           </div>
         ))}
@@ -514,6 +545,7 @@ interface PdfPageProps {
   pdfPath: string;
   onLineSelect: (file: string, line: number) => void;
   pdfFilter: string;
+  forwardSearchRipple: { x: number; y: number; timestamp: number } | null;
 }
 
 interface Ripple {
@@ -523,7 +555,7 @@ interface Ripple {
   status: "searching" | "success" | "error";
 }
 
-function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect, pdfFilter }: PdfPageProps) {
+function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect, pdfFilter, forwardSearchRipple }: PdfPageProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [viewport, setViewport] = useState<any>(null);
   const renderTaskRef = useRef<any>(null);
@@ -575,6 +607,23 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect, pdfFilter }: P
       }
     };
   }, [pdf, pageNumber, scale]);
+
+  useEffect(() => {
+    if (!forwardSearchRipple) return;
+    
+    const pixelX = forwardSearchRipple.x * scale;
+    const pixelY = forwardSearchRipple.y * scale;
+
+    const rippleId = forwardSearchRipple.timestamp;
+    const newRipple: Ripple = { id: rippleId, x: pixelX, y: pixelY, status: "success" };
+    setRipples(prev => [...prev, newRipple]);
+
+    const timeout = setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== rippleId));
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [forwardSearchRipple, scale]);
 
   const handleDoubleClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();

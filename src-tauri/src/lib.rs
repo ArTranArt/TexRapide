@@ -66,6 +66,7 @@ pub fn run() {
             project::export_pdf_to_downloads,
             project::show_in_finder,
             project::synctex_inverse_search,
+            project::synctex_forward_search,
             watcher::start_watch,
             watcher::stop_watch,
             watcher::compile_once
