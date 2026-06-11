@@ -1398,7 +1398,7 @@ function App() {
 
               {/* ACTIVE OR PLACEHOLDER PROJECT CARD */}
               {activeProject ? (
-                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/40' : 'border-border-subtle'}`}>
+                <section className={`bg-bg-card border rounded-2xl p-6 md:p-8 flex flex-col justify-between shadow-xl relative group/card min-h-[210px] transition-colors duration-500 ${isWatching ? 'border-green-500/20' : 'border-border-subtle'}`}>
                   {/* Close button */}
                   <button 
                     onClick={handleDeselectProject}
@@ -3102,14 +3102,14 @@ function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active
 
 function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: { name: string, date: string, active: boolean, isWatching: boolean, disabled: boolean, onClick: () => void }) {
   const activeColorClass = isWatching ? 'text-green-400' : 'text-blue-400';
-  const activeBgClass = isWatching ? 'bg-green-600/5 border-green-500/20 shadow-green-500/5' : 'bg-blue-600/5 border-blue-600/20 shadow-sm';
-  const iconBgClass = isWatching ? (active ? 'bg-green-500/20 text-green-400' : 'bg-bg-input text-text-extra-subtle') : (active ? 'bg-blue-500/20 text-blue-400' : 'bg-bg-input text-text-extra-subtle');
+  const activeBgClass = isWatching ? 'bg-green-600/[0.02] border-green-500/15' : 'bg-blue-600/[0.02] border-blue-600/15 shadow-sm';
+  const iconBgClass = isWatching ? (active ? 'bg-green-500/15 text-green-400' : 'bg-bg-input text-text-extra-subtle') : (active ? 'bg-blue-500/15 text-blue-400' : 'bg-bg-input text-text-extra-subtle');
 
   return (
     <button 
       onClick={onClick}
       disabled={disabled}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all group/row ${active ? activeBgClass : 'bg-bg-card border-border-subtle hover:bg-bg-input-hover hover:border-border-input'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all duration-500 ease-in-out group/row ${active ? activeBgClass : 'bg-bg-card border-border-subtle hover:bg-bg-input-hover hover:border-border-input'} ${disabled ? 'opacity-20 grayscale cursor-not-allowed scale-[0.98]' : 'hover:scale-[1.01] active:scale-95'}`}
     >
       <div className={`p-2.5 rounded-xl transition-colors ${iconBgClass} group-hover/row:text-text-subtle`}>
         {disabled && active ? <Lock size={18} className="text-text-extra-subtle" /> : <FolderOpen size={18} />}

@@ -221,5 +221,25 @@
 .animate-toast-out {
   animation: toast-slide-out 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
-
-
+/* Theme transition utility to prevent visual flashing during theme switches */
+body, 
+aside, 
+main, 
+section, 
+input, 
+select, 
+button, 
+span, 
+p, 
+h1, 
+h2, 
+h3, 
+h4, 
+h5, 
+h6, 
+.bg-bg-card, 
+.bg-bg-sidebar, 
+.border-border-subtle, 
+.border-border-input {
+  transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
