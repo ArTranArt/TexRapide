@@ -351,18 +351,6 @@ export function PdfViewer({
           >
             <ZoomIn size={14} />
           </button>
-
-          <div className="w-[1px] h-4 bg-border-subtle mx-1" />
-
-          <button
-            onClick={handleDownloadPdf}
-            disabled={isDownloading}
-            className="p-1 rounded transition-colors cursor-pointer text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent disabled:opacity-35 disabled:cursor-not-allowed"
-            title="Télécharger le PDF dans votre dossier Téléchargements"
-          >
-            <Download size={14} className={isDownloading ? "animate-spin" : ""} />
-          </button>
-
           <button
             onClick={() => {
               setShowFilterMenu(prev => !prev);
@@ -376,6 +364,17 @@ export function PdfViewer({
             title="Filtres de lecture (Mode Sombre, Sépia...)"
           >
             <Eye size={14} />
+          </button>
+
+          <div className="w-[1px] h-4 bg-border-subtle mx-1" />
+
+          <button
+            onClick={handleDownloadPdf}
+            disabled={isDownloading}
+            className="p-1 rounded transition-colors cursor-pointer text-text-muted hover:text-text-main hover:bg-bg-input-hover border border-transparent disabled:opacity-35 disabled:cursor-not-allowed"
+            title="Télécharger le PDF dans votre dossier Téléchargements"
+          >
+            <Download size={14} className={isDownloading ? "animate-spin" : ""} />
           </button>
 
           <button
