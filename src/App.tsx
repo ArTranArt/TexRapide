@@ -181,9 +181,28 @@ function App() {
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
-  const [targetDir, setTargetDir] = useState("/Users/arthur/Documents/LaTeX/LaTeX_Projects");
-  const [dashboardProjectsDir, setDashboardProjectsDir] = useState(targetDir);
-  const [templateDir, setTemplateDir] = useState("/Users/arthur/Documents/LaTeX/templates");
+  const [targetDir, setTargetDir] = useState(() => {
+    return localStorage.getItem("texrapide_target_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\LaTeX_Projects";
+  });
+  const [dashboardProjectsDir, setDashboardProjectsDir] = useState(() => {
+    return localStorage.getItem("texrapide_dashboard_dir") || localStorage.getItem("texrapide_target_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\LaTeX_Projects";
+  });
+  const [templateDir, setTemplateDir] = useState(() => {
+    return localStorage.getItem("texrapide_template_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\templates";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_target_dir", targetDir);
+  }, [targetDir]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_dashboard_dir", dashboardProjectsDir);
+  }, [dashboardProjectsDir]);
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_template_dir", templateDir);
+  }, [templateDir]);
+
   const [availableTemplates, setAvailableTemplates] = useState<string[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("");
   const [existingProjects, setExistingProjects] = useState<Project[]>([]);
