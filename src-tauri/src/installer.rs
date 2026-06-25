@@ -30,7 +30,7 @@ pub fn download_and_run_windows_installers() -> Result<(), String> {
         "#;
 
         Command::new("powershell")
-            .args(["-NoProfile", "-WindowStyle", "Hidden", "-Command", ps_script])
+            .args(["-NoProfile", "-Command", ps_script])
             .spawn()
             .map_err(|e| format!("Erreur lors du lancement du script: {}", e))?;
 
