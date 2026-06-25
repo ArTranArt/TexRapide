@@ -106,9 +106,25 @@ function App() {
     localStorage.setItem("texrapide_theme", theme);
     document.documentElement.setAttribute("data-theme", theme);
   }, [theme]);
+  const [compilationEngine, setCompilationEngine] = useState<"system" | "tectonic">(() => {
+    const saved = localStorage.getItem("texrapide_compilation_engine");
+    return saved === "tectonic" ? "tectonic" : "system";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_compilation_engine", compilationEngine);
+  }, [compilationEngine]);
+
   const [health, setHealth] = useState<HealthStatus[]>([]);
-  const hasDistribution = health.find(h => h.binary === "distribution")?.installed ?? false;
-  const hasCliTools = health.filter(h => ["pdflatex", "latexmk", "bibtex"].includes(h.binary.toString())).every(h => h.installed);
+  
+  const hasDistribution = compilationEngine === "tectonic" 
+    ? health.find(h => h.binary === "tectonic")?.installed ?? false
+    : health.find(h => h.binary === "distribution")?.installed ?? false;
+    
+  const hasCliTools = compilationEngine === "tectonic"
+    ? true // Tectonic is an all-in-one tool
+    : health.filter(h => ["pdflatex", "latexmk", "bibtex"].includes(h.binary.toString())).every(h => h.installed);
+    
   const hasSkim = health.find(h => h.binary === "skim")?.installed ?? false;
   const isSystemReady = hasDistribution && hasCliTools && hasSkim;
 
@@ -120,6 +136,7 @@ function App() {
   const pdflatexInfo = health.find(h => h.binary === "pdflatex");
   const latexmkInfo = health.find(h => h.binary === "latexmk");
   const bibtexInfo = health.find(h => h.binary === "bibtex");
+  const tectonicInfo = health.find(h => h.binary === "tectonic");
   const skimInfo = health.find(h => h.binary === "skim");
   const distributionInfo = health.find(h => h.binary === "distribution");
 
@@ -150,11 +167,14 @@ function App() {
   const bibtexVer = formatBinaryVersion("bibtex", bibtexInfo?.version);
   const skimVer = formatBinaryVersion("skim", skimInfo?.version);
 
-  const distributionTooltip = hasDistribution 
-    ? `Distribution LaTeX : ${distributionInfo?.version || "détectée"}`
-    : "Distribution LaTeX : non détectée";
+  const tectonicVer = formatBinaryVersion("tectonic", tectonicInfo?.version);
+
+  const distributionTooltip = compilationEngine === "tectonic"
+    ? (hasDistribution ? `Tectonic : ${tectonicVer || "détecté"}` : "Tectonic : non détecté")
+    : (hasDistribution ? `Distribution LaTeX : ${distributionInfo?.version || "détectée"}` : "Distribution LaTeX : non détectée");
 
   const cliTooltip = (() => {
+    if (compilationEngine === "tectonic") return "Tectonic intègre déjà tous les outils CLI nécessaires.";
     const tools = [];
     if (pdflatexInfo?.installed) {
       tools.push(`pdflatex${pdflatexVer ? ` (${pdflatexVer})` : ''}`);
@@ -238,15 +258,6 @@ function App() {
     const saved = localStorage.getItem("texrapide_pdf_viewer_mode");
     return saved === "system" ? "system" : "integrated";
   });
-
-  const [compilationEngine, setCompilationEngine] = useState<"system" | "tectonic">(() => {
-    const saved = localStorage.getItem("texrapide_compilation_engine");
-    return saved === "tectonic" ? "tectonic" : "system";
-  });
-
-  useEffect(() => {
-    localStorage.setItem("texrapide_compilation_engine", compilationEngine);
-  }, [compilationEngine]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_pdf_viewer_mode", pdfViewerMode);
@@ -2337,8 +2348,8 @@ function App() {
                       statusIcon = <Layers size={16} className={hasDistribution ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
                       statusText = "Distribution LaTeX";
                       statusSubtext = hasDistribution
-                        ? "Moteur TeX Live ou MacTeX opérationnel en arrière-plan."
-                        : "Aucune distribution LaTeX détectée (MacTeX ou TeX Live requis).";
+                        ? (compilationEngine === "tectonic" ? "Moteur Tectonic opérationnel." : "Moteur TeX Live ou MiKTeX/MacTeX opérationnel en arrière-plan.")
+                        : (compilationEngine === "tectonic" ? "Tectonic n'est pas détecté." : "Aucune distribution LaTeX détectée (MiKTeX, MacTeX ou TeX Live requis).");
                     } else if (activeDisplayNode === "cli") {
                       statusIcon = <Terminal size={16} className={hasCliTools ? "text-green-400 shrink-0" : "text-red-400 shrink-0"} />;
                       statusText = "Outils en Ligne de Commande";
@@ -2388,7 +2399,7 @@ function App() {
                             <Layers size={14} />
                           </div>
                           <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
-                            Distribution
+                            {compilationEngine === "tectonic" ? "Tectonic" : "Distribution"}
                           </span>
                         </div>
 
@@ -2422,7 +2433,7 @@ function App() {
                             <Terminal size={14} />
                           </div>
                           <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
-                            Outils CLI
+                            {compilationEngine === "tectonic" ? "CLI Intégré" : "Outils CLI"}
                           </span>
                         </div>
 
@@ -2456,7 +2467,7 @@ function App() {
                             <BookOpen size={14} />
                           </div>
                           <span className="absolute top-11 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-wider text-text-subtle whitespace-nowrap">
-                            Lecteur PDF
+                            Lecteur (Skim/Sumatra)
                           </span>
                         </div>
 
