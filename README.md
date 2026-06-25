@@ -1,6 +1,6 @@
 # TexRapide ⚡️
 
-**TexRapide** est un gestionnaire et centre de contrôle desktop pour vos projets LaTeX sur macOS, développé avec **Tauri v2**, **React** et **TailwindCSS**. Il propose un diagnostic d'environnement, l'initialisation de projets via templates et une compilation/aperçu automatique (via Skim) en mode "Watch" en temps réel.
+**TexRapide** est un gestionnaire et centre de contrôle desktop pour vos projets LaTeX sur macOS et Windows, développé avec **Tauri v2**, **React** et **TailwindCSS**. Il propose un diagnostic d'environnement, l'initialisation de projets via templates et une compilation/aperçu automatique (via Skim sur Mac ou SumatraPDF sur Windows) en mode "Watch" en temps réel.
 
 ---
 
@@ -12,15 +12,16 @@ Pour utiliser et développer TexRapide, plusieurs prérequis sont nécessaires s
 Pour pouvoir compiler vos projets `.tex` et profiter de l'aperçu automatique, vous devez disposer des outils système suivants :
 
 *   **Une distribution LaTeX** :
-    *   **MacTeX** (recommandé, complet) ou **BasicTeX** (léger).
-    *   *Installation via Homebrew :* `brew install --cask mactex` ou `brew install --cask basictex`
+    *   **macOS** : **MacTeX** (recommandé) ou **BasicTeX** (léger). *Installation via Homebrew :* `brew install --cask mactex`
+    *   **Windows** : **MiKTeX** (recommandé). Vous aurez aussi besoin de **Strawberry Perl** pour que `latexmk` fonctionne. *Installation via winget :* `winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl`
 *   **Outils LaTeX en ligne de commande** (doivent être disponibles dans votre `PATH`) :
     *   `pdflatex` (compilateur de base)
     *   `latexmk` (utilisé par le mode Watch de l'app pour automatiser la chaîne de compilation)
     *   `bibtex` (gestionnaire de bibliographies)
-*   **Lecteur PDF Skim** (recommandé) :
-    *   L'application utilise **Skim** pour afficher et rafraîchir en direct le PDF compilé sans verrouiller le fichier.
-    *   *Installation via Homebrew :* `brew install --cask skim`
+*   **Lecteur PDF (Recommandé)** :
+    *   L'application utilise un lecteur externe pour afficher et rafraîchir en direct le PDF compilé sans verrouiller le fichier.
+    *   **macOS** : **Skim** - `brew install --cask skim`
+    *   **Windows** : **SumatraPDF** - `winget install SumatraPDF.SumatraPDF`
 
 ---
 
@@ -30,10 +31,11 @@ Si vous souhaitez lancer l'application en mode développement ou compiler un bin
 *   **Node.js & pnpm** :
     *   **Node.js** (LTS >= 18 ou 20 recommandé)
     *   **pnpm** (installateur de paquets)
-*   **Outils de compilation macOS** :
-    *   **Xcode Command Line Tools** : `xcode-select --install`
+*   **Outils de compilation C++** :
+    *   **macOS** : **Xcode Command Line Tools** (`xcode-select --install`)
+    *   **Windows** : **Visual Studio Build Tools** (avec charge de travail C++)
 *   **Rust** :
-    *   Le compilateur Rust (installé via [rustup](https://rustup.rs/)) : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
+    *   Le compilateur Rust (installé via [rustup](https://rustup.rs/)) : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` (sur macOS/Linux) ou téléchargez `rustup-init.exe` sur Windows.
 
 ---
 

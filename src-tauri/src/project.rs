@@ -27,12 +27,29 @@ pub fn list_tex_files(path: String) -> Result<Vec<String>, String> {
 
 #[tauri::command]
 pub fn open_in_vscode(path: String) -> Result<(), String> {
-    Command::new("open")
-        .arg("-a")
-        .arg("Visual Studio Code")
-        .arg(path)
-        .spawn()
-        .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .arg("-a")
+            .arg("Visual Studio Code")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(&["/C", "code", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        Command::new("code")
+            .arg(&path)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
     Ok(())
 }
 
@@ -41,29 +58,49 @@ pub fn open_in_vscode_at_line(project_path: String, file: String, line: u32) -> 
     let full_path = Path::new(&project_path).join(file);
     let path_str = full_path.to_str().ok_or("Invalid path")?;
     
-    let code_bin_global = Path::new("/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code");
-    let home = std::env::var("HOME").unwrap_or_default();
-    let code_bin_user = Path::new(&home).join("Applications/Visual Studio Code.app/Contents/Resources/app/bin/code");
-    
-    let bin_to_use = if code_bin_global.exists() {
-        Some(code_bin_global)
-    } else if code_bin_user.exists() {
-        Some(code_bin_user.as_path())
-    } else {
-        None
-    };
+    #[cfg(target_os = "macos")]
+    {
+        let code_bin_global = Path::new("/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code");
+        let home = std::env::var("HOME").unwrap_or_default();
+        let code_bin_user = Path::new(&home).join("Applications/Visual Studio Code.app/Contents/Resources/app/bin/code");
+        
+        let bin_to_use = if code_bin_global.exists() {
+            Some(code_bin_global)
+        } else if code_bin_user.exists() {
+            Some(code_bin_user.as_path())
+        } else {
+            None
+        };
 
-    if let Some(bin) = bin_to_use {
-        Command::new(bin)
-            .arg("-g")
-            .arg(format!("{}:{}", path_str, line))
+        if let Some(bin) = bin_to_use {
+            Command::new(bin)
+                .arg("-g")
+                .arg(format!("{}:{}", path_str, line))
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        } else {
+            Command::new("open")
+                .arg("-a")
+                .arg("Visual Studio Code")
+                .arg(path_str)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(&["/C", "code", "-g", &format!("{}:{}", path_str, line)])
             .spawn()
             .map_err(|e| e.to_string())?;
-    } else {
-        Command::new("open")
-            .arg("-a")
-            .arg("Visual Studio Code")
-            .arg(path_str)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        Command::new("code")
+            .arg("-g")
+            .arg(format!("{}:{}", path_str, line))
             .spawn()
             .map_err(|e| e.to_string())?;
     }

@@ -15,7 +15,8 @@ pub fn start_watch(
     state: State<'_, WatcherState>,
     project_path: String, 
     main_file: String,
-    pdf_viewer_mode: String
+    pdf_viewer_mode: String,
+    engine: String,
 ) -> std::result::Result<(), String> {
     // Arrêter un watcher existant s'il y en a un
     stop_watch(state.clone())?;
@@ -32,6 +33,7 @@ pub fn start_watch(
     let file = main_file.clone();
     let handle_clone = handle.clone();
     let mode = pdf_viewer_mode.clone();
+    let eng = engine.clone();
     
     std::thread::spawn(move || {
         let (tx, rx) = channel();
@@ -43,7 +45,7 @@ pub fn start_watch(
         }
 
         println!("Watching: {} (main: {})", path, file);
-        run_build(&handle_clone, &path, &file, &mode);
+        run_build(&handle_clone, &path, &file, &mode, &eng);
 
         let debounce_duration = Duration::from_millis(500);
 
@@ -54,7 +56,7 @@ pub fn start_watch(
                     if is_relevant_event(event) {
                         while let Ok(_) = rx.try_recv() {}
                         std::thread::sleep(debounce_duration);
-                        run_build(&handle_clone, &path, &file, &mode);
+                        run_build(&handle_clone, &path, &file, &mode, &eng);
                     }
                 }
             }
@@ -80,8 +82,9 @@ pub fn compile_once(
     project_path: String,
     main_file: String,
     pdf_viewer_mode: String,
+    engine: String,
 ) -> std::result::Result<(), String> {
-    run_build(&handle, &project_path, &main_file, &pdf_viewer_mode);
+    run_build(&handle, &project_path, &main_file, &pdf_viewer_mode, &engine);
     Ok(())
 }
 
@@ -98,7 +101,7 @@ struct CompilePayload {
     logs: String,
 }
 
-fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer_mode: &str) {
+fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer_mode: &str, engine: &str) {
     let target = Path::new(project_path).join(main_file);
     if !target.exists() { return; }
 
@@ -121,32 +124,56 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
         logs: "".to_string(),
     });
 
-    // Lancer latexmk et capturer stdout et stderr
-    let (success, logs) = match Command::new("latexmk")
-        .arg("-pdf")
-        .arg("-synctex=1")
-        .arg("-interaction=nonstopmode")
-        .arg("-cd")
-        .arg(main_file)
-        .current_dir(project_path)
-        .output()
-    {
-        Ok(output) => {
-            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-            
-            let mut logs = stdout;
-            if !stderr.is_empty() {
-                if !logs.is_empty() {
-                    logs.push_str("\n");
+    // Lancer latexmk ou tectonic et capturer stdout et stderr
+    let (success, logs) = if engine == "tectonic" {
+        match Command::new("tectonic")
+            .arg("-X")
+            .arg("compile")
+            .arg("--synctex")
+            .arg("--keep-logs")
+            .arg(main_file)
+            .current_dir(project_path)
+            .output()
+        {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                let mut logs = stdout;
+                if !stderr.is_empty() {
+                    if !logs.is_empty() { logs.push_str("\n"); }
+                    logs.push_str(&stderr);
                 }
-                logs.push_str(&stderr);
+                (output.status.success(), logs)
             }
-            
-            (output.status.success(), logs)
+            Err(e) => (false, format!("Erreur lors du lancement de Tectonic : {}", e)),
         }
-        Err(e) => {
-            (false, format!("Erreur lors du lancement de latexmk : {}", e))
+    } else {
+        match Command::new("latexmk")
+            .arg("-pdf")
+            .arg("-synctex=1")
+            .arg("-interaction=nonstopmode")
+            .arg("-cd")
+            .arg(main_file)
+            .current_dir(project_path)
+            .output()
+        {
+            Ok(output) => {
+                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+                
+                let mut logs = stdout;
+                if !stderr.is_empty() {
+                    if !logs.is_empty() {
+                        logs.push_str("\n");
+                    }
+                    logs.push_str(&stderr);
+                }
+                
+                (output.status.success(), logs)
+            }
+            Err(e) => {
+                (false, format!("Erreur lors du lancement de latexmk : {}", e))
+            }
         }
     };
 
@@ -160,7 +187,7 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
     // Si la compilation a échoué, on nettoie les fichiers auxiliaires/temporaires pour le fichier principal
     // et on supprime le fichier de base de données .fdb_latexmk pour forcer latexmk à relancer
     // pdflatex lors de la prochaine tentative (ce qui génère l'erreur avec "!").
-    if !success {
+    if !success && engine != "tectonic" {
         let _ = Command::new("latexmk")
             .arg("-c")
             .arg(main_file)
@@ -207,9 +234,31 @@ fn open_system_pdf(pdf_path: &Path) {
 
     #[cfg(target_os = "windows")]
     {
-        let _ = Command::new("cmd")
-            .args(&["/C", "start", "", &pdf_path.to_string_lossy()])
-            .spawn();
+        let sumatra_paths = vec![
+            "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
+            "C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe",
+            "C:\\Users\\Default\\AppData\\Local\\SumatraPDF\\SumatraPDF.exe",
+        ];
+        
+        let mut sumatra_exe = None;
+        for path in sumatra_paths {
+            if Path::new(path).exists() {
+                sumatra_exe = Some(path.to_string());
+                break;
+            }
+        }
+
+        if let Some(exe) = sumatra_exe {
+            // SumatraPDF doesn't lock the file, great for latexmk
+            let _ = Command::new(exe)
+                .arg(pdf_path)
+                .spawn();
+        } else {
+            // Fallback to default system handler using cmd start
+            let _ = Command::new("cmd")
+                .args(&["/C", "start", "", &pdf_path.to_string_lossy()])
+                .spawn();
+        }
     }
 
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]

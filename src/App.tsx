@@ -175,8 +175,8 @@ function App() {
   })();
 
   const skimTooltip = hasSkim
-    ? `Lecteur PDF Skim${skimVer ? ` (${skimVer})` : ''}`
-    : "Lecteur PDF Skim : non détecté";
+    ? `Lecteur PDF externe${skimVer ? ` (${skimVer})` : ''}`
+    : "Lecteur PDF externe : non détecté";
 
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
@@ -213,6 +213,15 @@ function App() {
     const saved = localStorage.getItem("texrapide_pdf_viewer_mode");
     return saved === "system" ? "system" : "integrated";
   });
+
+  const [compilationEngine, setCompilationEngine] = useState<"system" | "tectonic">(() => {
+    const saved = localStorage.getItem("texrapide_compilation_engine");
+    return saved === "tectonic" ? "tectonic" : "system";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("texrapide_compilation_engine", compilationEngine);
+  }, [compilationEngine]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_pdf_viewer_mode", pdfViewerMode);
@@ -702,7 +711,8 @@ function App() {
         await invoke("compile_once", { 
           projectPath: activeProject, 
           mainFile: mainFile, 
-          pdfViewerMode: pdfViewerMode 
+          pdfViewerMode: pdfViewerMode,
+          engine: compilationEngine
         });
       }
     } catch (error) {
@@ -777,7 +787,7 @@ function App() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey, isWatching, mainFile, pdfViewerMode]);
+  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey, isWatching, mainFile, pdfViewerMode, compilationEngine]);
 
   // Default selected file loading
   useEffect(() => {
@@ -1104,7 +1114,8 @@ function App() {
           await invoke("start_watch", { 
             projectPath: activeProject, 
             mainFile: mainFile, 
-            pdfViewerMode: pdfViewerMode 
+            pdfViewerMode: pdfViewerMode,
+            engine: compilationEngine
           });
         } catch (error) {
           console.error("Failed to start watch mode:", error);
@@ -1120,7 +1131,7 @@ function App() {
     } else {
       invoke("stop_watch").catch(console.error);
     }
-  }, [activeProject, isWatching, mainFile, pdfViewerMode]);
+  }, [activeProject, isWatching, mainFile, pdfViewerMode, compilationEngine]);
 
   const handleToggleWatch = async () => {
     if (!activeProject) return;
@@ -1155,7 +1166,8 @@ function App() {
       await invoke("compile_once", {
         projectPath: activeProject,
         mainFile: mainFile,
-        pdfViewerMode: pdfViewerMode
+        pdfViewerMode: pdfViewerMode,
+        engine: compilationEngine
       });
     } catch (error) {
       console.error("Manual compilation failed:", error);
@@ -2292,8 +2304,8 @@ function App() {
                       statusSubtext = "Exécution de pdflatex, latexmk et bibtex...";
                     } else if (analysisStep === 2) {
                       statusIcon = <RefreshCw size={16} className="text-blue-500 animate-spin shrink-0" />;
-                      statusText = "Détecter le lecteur PDF Skim...";
-                      statusSubtext = "Vérification de la présence de Skim.app sur votre Mac...";
+                      statusText = "Détecter le lecteur PDF externe...";
+                      statusSubtext = "Vérification de la présence de Skim (Mac) ou SumatraPDF (Win)...";
                     }
                   } else if (activeDisplayNode) {
                     if (activeDisplayNode === "distribution") {
@@ -2310,10 +2322,10 @@ function App() {
                         : "Certains compilateurs requis (pdflatex, latexmk ou bibtex) sont absents ou inaccessibles.";
                     } else if (activeDisplayNode === "skim") {
                       statusIcon = <BookOpen size={16} className={hasSkim ? "text-green-400 shrink-0" : "text-amber-400 shrink-0"} />;
-                      statusText = "Lecteur PDF Skim";
+                      statusText = "Lecteur PDF Externe";
                       statusSubtext = hasSkim
-                        ? "Le visualiseur externe Skim est prêt pour l'aperçu dynamique du PDF."
-                        : "Skim n'est pas détecté. Recommandé pour l'aperçu PDF automatique sans blocage de fichier.";
+                        ? "Le visualiseur externe est prêt pour l'aperçu dynamique du PDF."
+                        : "Lecteur externe non détecté. Recommandé (Skim ou SumatraPDF) pour l'aperçu dynamique.";
                     }
                   } else if (health.length > 0) {
                     if (isSystemReady) {
@@ -2323,7 +2335,7 @@ function App() {
                     } else {
                       statusIcon = <Info size={16} className={hasDistribution && hasCliTools ? "text-amber-500 shrink-0" : "text-red-500 shrink-0"} />;
                       statusText = hasDistribution && hasCliTools 
-                        ? "Configuration fonctionnelle (Skim recommandé)" 
+                        ? "Configuration fonctionnelle (Lecteur externe recommandé)" 
                         : "Configuration requise incomplète";
                       statusSubtext = "Certains composants requis sont manquants. Survolez ou cliquez sur les cercles pour plus de détails.";
                     }
@@ -2549,6 +2561,27 @@ function App() {
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${pdfViewerMode === "system" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
                         >
                           Système
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between border-t border-border-subtle pt-5 mt-5">
+                      <div>
+                        <h4 className="text-sm font-bold text-text-main mb-1">Moteur de compilation</h4>
+                        <p className="text-text-subtle text-xs">Utiliser Tectonic pour une configuration zéro-effort.</p>
+                      </div>
+                      <div className="flex bg-bg-input p-1 rounded-lg border border-border-subtle transition-colors duration-300">
+                        <button 
+                          onClick={() => setCompilationEngine("system")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${compilationEngine === "system" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          Système (latexmk)
+                        </button>
+                        <button 
+                          onClick={() => setCompilationEngine("tectonic")}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${compilationEngine === "tectonic" ? 'bg-bg-card text-text-main shadow-sm' : 'text-text-subtle hover:text-text-main'}`}
+                        >
+                          Tectonic (Magique)
                         </button>
                       </div>
                     </div>
@@ -2790,15 +2823,15 @@ function App() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Windows</span>
                         <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
                       </div>
-                      <h3 className="text-base font-bold text-text-main mb-1">MiKTeX</h3>
-                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution moderne et légère pour Windows. Télécharge automatiquement les packages manquants à la volée.</p>
+                      <h3 className="text-base font-bold text-text-main mb-1">MiKTeX & Perl</h3>
+                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution moderne pour Windows. <br/><span className="text-amber-500 font-bold">Important :</span> <b>Strawberry Perl</b> est requis pour utiliser l'outil <code>latexmk</code>.</p>
                     </div>
                     
                     <div className="flex flex-col gap-3">
                       <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
-                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX</code>
+                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl</code>
                         <button 
-                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX", "win")}
+                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX && winget install --id=StrawberryPerl.StrawberryPerl", "win")}
                           className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
                           title="Copier la commande"
                         >
