@@ -1,6 +1,7 @@
 mod health;
 mod project;
 mod watcher;
+mod installer;
 use tauri::Manager;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
@@ -77,7 +78,8 @@ pub fn run() {
             project::clean_auxiliary_files,
             watcher::start_watch,
             watcher::stop_watch,
-            watcher::compile_once
+            watcher::compile_once,
+            installer::download_and_run_windows_installers
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

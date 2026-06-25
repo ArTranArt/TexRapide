@@ -219,6 +219,12 @@ function App() {
   const isSwitchLocked = compileStatus === "compiling";
   const [isLogsOpen, setIsLogsOpen] = useState(false);
   
+  const [activeOsTab, setActiveOsTab] = useState<"mac" | "windows" | "linux">(() => {
+    if (navigator.userAgent.indexOf("Win") !== -1) return "windows";
+    if (navigator.userAgent.indexOf("Linux") !== -1) return "linux";
+    return "mac";
+  });
+  
   const mainContentRef = useRef<HTMLDivElement>(null);
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
@@ -2719,9 +2725,31 @@ function App() {
                   <p className="text-text-subtle text-xs">Pour compiler vos fichiers PDF localement, vous devez installer une distribution LaTeX adaptée à votre système d'exploitation.</p>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="flex bg-bg-input/50 p-1 rounded-lg w-fit mb-2 border border-border-subtle">
+                  <button 
+                    onClick={() => setActiveOsTab("mac")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "mac" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
+                  >
+                    macOS
+                  </button>
+                  <button 
+                    onClick={() => setActiveOsTab("windows")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "windows" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
+                  >
+                    Windows
+                  </button>
+                  <button 
+                    onClick={() => setActiveOsTab("linux")}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "linux" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
+                  >
+                    Linux
+                  </button>
+                </div>
+
+                <div className="w-full">
                   {/* macOS Card */}
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                  {activeOsTab === "mac" && (
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">macOS</span>
@@ -2752,9 +2780,11 @@ function App() {
                       </a>
                     </div>
                   </div>
+                  )}
 
                   {/* Windows Card */}
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                  {activeOsTab === "windows" && (
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Windows</span>
@@ -2765,29 +2795,39 @@ function App() {
                     </div>
                     
                     <div className="flex flex-col gap-3">
-                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
-                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX</code>
+                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between mb-2">
+                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl</code>
                         <button 
-                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX", "win")}
+                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX && winget install --id=StrawberryPerl.StrawberryPerl", "win")}
                           className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
                           title="Copier la commande"
                         >
                           {copiedId === "win" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
                         </button>
                       </div>
+
+                      <button 
+                        onClick={() => invoke("download_and_run_windows_installers").catch(console.error)}
+                        className="flex items-center justify-center gap-1.5 w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                      >
+                        Télécharger les installeurs officiels <ExternalLink size={12} />
+                      </button>
+
                       <a 
                         href="https://miktex.org/download" 
                         target="_blank" 
                         rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                        className="flex items-center justify-center gap-1.5 w-full bg-bg-input hover:bg-bg-deep text-text-main border border-border-subtle font-bold text-xs py-2 rounded-lg transition-colors"
                       >
-                        Site officiel <ExternalLink size={12} />
+                        Voir le site officiel <ExternalLink size={12} />
                       </a>
                     </div>
                   </div>
+                  )}
 
                   {/* Linux Card */}
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group">
+                  {activeOsTab === "linux" && (
+                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Linux</span>
@@ -2818,6 +2858,7 @@ function App() {
                       </a>
                     </div>
                   </div>
+                  )}
                 </div>
               </section>
 
