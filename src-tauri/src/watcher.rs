@@ -127,8 +127,6 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
     // Lancer latexmk ou tectonic et capturer stdout et stderr
     let (success, logs) = if engine == "tectonic" {
         match Command::new("tectonic")
-            .arg("-X")
-            .arg("compile")
             .arg("--synctex")
             .arg("--keep-logs")
             .arg(main_file)
