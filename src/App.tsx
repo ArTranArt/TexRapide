@@ -954,6 +954,18 @@ function App() {
     if (!activeProject || !newFileName.trim()) return;
     
     let fileName = newFileName.trim();
+    
+    if (fileName.startsWith('.')) {
+      alert("Le nom du fichier ne peut pas commencer par un point (ces fichiers sont masqués).");
+      return;
+    }
+    
+    const invalidChars = /[<>:"\/\\|?*\x00-\x1F]/;
+    if (invalidChars.test(fileName)) {
+      alert("Veuillez choisir un autre nom. Les caractères spéciaux (comme / \\ : * ? \" < > |) ne sont pas autorisés.");
+      return;
+    }
+
     if (!fileName.includes(".")) {
       fileName += ".tex";
     }
@@ -994,8 +1006,21 @@ function App() {
   const [renamingValue, setRenamingValue] = useState<string>("");
 
   const handleRename = async (entry: FileEntry, newValue: string) => {
-    if (!newValue.trim() || newValue.trim() === entry.name) {
-      setRenamingPath(null);
+    setRenamingPath(null);
+    const trimmed = newValue.trim();
+    if (!trimmed || trimmed === entry.name) {
+      return;
+    }
+    
+    // Prevent invalid characters and accidental moves to subdirectories
+    const invalidChars = /[<>:"\/\\|?*\x00-\x1F]/;
+    if (invalidChars.test(trimmed)) {
+      setTimeout(() => alert("Veuillez choisir un autre nom. Les caractères spéciaux (comme / \\ : * ? \" < > |) ne sont pas autorisés."), 10);
+      return;
+    }
+    
+    if (trimmed.startsWith('.')) {
+      setTimeout(() => alert("Le nom du fichier ne peut pas commencer par un point (ces fichiers sont masqués)."), 10);
       return;
     }
     
@@ -1003,11 +1028,18 @@ function App() {
     const parentPath = entry.relative_path.includes("/") 
       ? entry.relative_path.substring(0, entry.relative_path.lastIndexOf("/")) 
       : "";
-    const newRelativePath = parentPath ? `${parentPath}/${newValue.trim()}` : newValue.trim();
+    const newRelativePath = parentPath ? `${parentPath}/${trimmed}` : trimmed;
     const newPath = `${activeProject}/${newRelativePath}`;
 
     try {
       if (isSwitchLocked) return;
+
+      const exists = await invoke<boolean>("file_exists", { path: newPath });
+      if (exists) {
+        alert("Un fichier (ou dossier) avec ce nom existe déjà. Le renommage a été annulé pour ne pas écraser vos données.");
+        return;
+      }
+
       if (hasUnsavedChanges && editingFile === entry.relative_path) {
         await saveFileContent(editingFile, editorContent);
       }
@@ -1049,8 +1081,6 @@ function App() {
       await fetchProjectTree(activeProject!);
     } catch (error) {
       alert(`Erreur lors du renommage : ${error}`);
-    } finally {
-      setRenamingPath(null);
     }
   };
 
@@ -1412,6 +1442,14 @@ function App() {
     if (days < 7) return `Il y a ${days} jours`;
     return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
   };
+
+  const editorExtensions = useMemo(() => [
+    latex(), 
+    lineHighlightField, 
+    cmEventHandlers,
+    ...(lineWrapping ? [EditorView.lineWrapping] : []),
+    ...(!autoIndent ? [keymap.of([{ key: "Enter", run: insertNewline }])] : [])
+  ], [lineWrapping, autoIndent, cmEventHandlers]);
 
   return (
     <div className="flex h-screen bg-bg-deep text-text-main font-sans selection:bg-blue-500/30 overflow-hidden">
@@ -2009,25 +2047,35 @@ function App() {
                     {/* Collapsible File Explorer Sidebar */}
                     {showFileTree && (
                       <div className="w-40 shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full select-none">
-                        {/* Sidebar Header */}
                         <div className="flex items-center justify-between px-2.5 py-2 border-b border-border-subtle/50 shrink-0 bg-bg-sidebar/40">
                           <span className="text-[9px] font-black uppercase tracking-wider text-text-extra-subtle">Fichiers</span>
-                          <button
-                            onClick={() => {
-                              if (!isSwitchLocked) {
-                                setIsCreatingFile(prev => !prev);
-                              }
-                            }}
-                            disabled={isSwitchLocked}
-                            className={`p-1 rounded text-text-muted transition-colors ${
-                              isSwitchLocked 
-                                ? "opacity-30 cursor-not-allowed" 
-                                : "hover:bg-bg-input-hover hover:text-text-main cursor-pointer"
-                            }`}
-                            title={isSwitchLocked ? "Création bloquée pendant la compilation/visualisation" : "Nouveau fichier"}
-                          >
-                            <Plus size={10} />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => {
+                                if (activeProject) fetchProjectTree(activeProject);
+                              }}
+                              className="p-1 rounded text-text-muted transition-colors hover:bg-bg-input-hover hover:text-text-main cursor-pointer"
+                              title="Recharger les fichiers"
+                            >
+                              <RefreshCw size={10} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (!isSwitchLocked) {
+                                  setIsCreatingFile(prev => !prev);
+                                }
+                              }}
+                              disabled={isSwitchLocked}
+                              className={`p-1 rounded text-text-muted transition-colors ${
+                                isSwitchLocked 
+                                  ? "opacity-30 cursor-not-allowed" 
+                                  : "hover:bg-bg-input-hover hover:text-text-main cursor-pointer"
+                              }`}
+                              title={isSwitchLocked ? "Création bloquée pendant la compilation/visualisation" : "Nouveau fichier"}
+                            >
+                              <Plus size={10} />
+                            </button>
+                          </div>
                         </div>
 
                         {/* Inline File Creation Input */}
@@ -2095,17 +2143,12 @@ function App() {
                     {/* Code Editor */}
                     <div className="flex-1 min-h-0 h-full overflow-hidden">
                       <CodeMirror
+                        key={editingFile}
                         ref={editorRef}
                         value={editorContent}
                         height="100%"
                         theme={theme}
-                        extensions={[
-                          latex(), 
-                          lineHighlightField, 
-                          cmEventHandlers,
-                          ...(lineWrapping ? [EditorView.lineWrapping] : []),
-                          ...(!autoIndent ? [keymap.of([{ key: "Enter", run: insertNewline }])] : [])
-                        ]}
+                        extensions={editorExtensions}
                         onChange={(value) => {
                           setEditorContent(value);
                           setHasUnsavedChanges(true);
@@ -3553,7 +3596,7 @@ function FileTreeItem({
               }}
               className="bg-bg-input border border-blue-500 rounded px-1.5 py-0.5 text-[11px] font-mono text-text-main focus:outline-none w-full"
               autoFocus
-              ref={(el) => { if (el) { el.focus(); el.select(); } }}
+              ref={(el) => { if (el && document.activeElement !== el) { el.focus(); el.select(); } }}
               onClick={(e) => e.stopPropagation()}
             />
           </div>
@@ -3630,7 +3673,7 @@ function FileTreeItem({
         className="bg-bg-input border border-blue-500 rounded px-1.5 py-0.5 text-[11px] font-mono text-text-main focus:outline-none w-full"
         autoFocus
         ref={(el) => {
-          if (el) {
+          if (el && document.activeElement !== el) {
             el.focus();
             const dotIndex = entry.name.lastIndexOf(".");
             if (dotIndex !== -1) {

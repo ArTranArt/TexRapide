@@ -47,6 +47,13 @@ pub fn run() {
             apply_vibrancy(&window, NSVisualEffectMaterial::UnderWindowBackground, None, None)
                 .expect("Unsupported platform! 'apply_vibrancy' is only supported on macOS");
 
+            #[cfg(target_os = "macos")]
+            {
+                use tauri::menu::Menu;
+                let menu = Menu::default(app.handle())?;
+                app.set_menu(menu)?;
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
