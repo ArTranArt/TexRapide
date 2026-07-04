@@ -75,6 +75,7 @@ pub fn run() {
             project::show_in_finder,
             project::synctex_inverse_search,
             project::synctex_forward_search,
+            project::clean_auxiliary_files,
             watcher::start_watch,
             watcher::stop_watch,
             watcher::compile_once,
