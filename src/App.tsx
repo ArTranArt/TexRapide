@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Keyboard, Repeat, Target } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Keyboard, Repeat, Target } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -1193,6 +1193,16 @@ function App() {
     }
   };
 
+  const handleCleanAuxiliaryFiles = async () => {
+    if (!activeProject) return;
+    try {
+      const deletedCount = await invoke<number>("clean_auxiliary_files", { path: activeProject });
+      alert(`${deletedCount} fichier(s) auxiliaire(s) supprimé(s) avec succès.`);
+    } catch (error) {
+      alert(`Erreur lors du nettoyage : ${error}`);
+    }
+  };
+
   useEffect(() => {
     setDashboardProjectsDir(targetDir);
   }, [targetDir]);
@@ -1946,6 +1956,15 @@ function App() {
                         }
                       >
                         {hasUnsavedChanges ? <Save size={12} /> : <Check size={12} />}
+                      </button>
+
+                      {/* Clean Auxiliary Files Button */}
+                      <button
+                        onClick={handleCleanAuxiliaryFiles}
+                        className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10 transition-all cursor-pointer"
+                        title="Nettoyer les fichiers auxiliaires (.aux, .log, .out, etc.)"
+                      >
+                        <Eraser size={12} />
                       </button>
 
                       {/* Line wrapping toggle button */}

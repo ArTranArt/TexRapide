@@ -480,6 +480,30 @@ pub fn show_in_finder(path: String) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+pub fn clean_auxiliary_files(path: String) -> Result<u32, String> {
+    let dir = Path::new(&path);
+    if !dir.is_dir() {
+        return Err("Le chemin fourni n'est pas un dossier.".to_string());
+    }
 
+    let ignored_exts = ["aux", "log", "toc", "lof", "lot", "out", "fls", "fdb_latexmk", "blg", "bbl", "run.xml", "bcf", "gz"];
+    let mut deleted_count = 0;
 
-
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
+                    if ignored_exts.contains(&ext.to_lowercase().as_str()) {
+                        if fs::remove_file(&path).is_ok() {
+                            deleted_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(deleted_count)
+}
