@@ -1502,16 +1502,7 @@ function App() {
         </nav>
 
         <div className="mt-auto pt-8 flex flex-col gap-3">
-          {/* Theme Toggle Button */}
-          <div className={`flex ${isSidebarCollapsed ? 'justify-center' : 'justify-start'}`}>
-            <button 
-              onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
-              className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
-              title={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
-            >
-              {theme === "dark" ? <Sun size={18} className="text-amber-400" /> : <Moon size={18} className="text-blue-400" />}
-            </button>
-          </div>
+          {/* Theme toggle moved to settings */}
 
           {activeProject && (
             <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'justify-start'} gap-2`}>
@@ -2297,11 +2288,24 @@ function App() {
                   <h1 className="text-3xl font-bold text-text-main mb-2">Configuration</h1>
                   <p className="text-text-subtle text-sm">Configuration de l'environnement.</p>
                 </div>
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
-                  <span className="text-[10px] font-black uppercase tracking-tight">
-                    {isSystemReady ? "Système Prêt" : "Configuration Requise"}
-                  </span>
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => setTheme(t => t === "dark" ? "light" : "dark")}
+                    className="flex items-center justify-center rounded-md bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-sm transition-all cursor-pointer text-text-main px-3 py-1.5 gap-2"
+                    title={theme === "dark" ? "Passer au mode clair" : "Passer au mode sombre"}
+                  >
+                    {theme === "dark" ? (
+                      <><Sun size={14} className="text-amber-400" /><span className="text-[10px] font-bold">Thème Clair</span></>
+                    ) : (
+                      <><Moon size={14} className="text-blue-400" /><span className="text-[10px] font-bold">Thème Sombre</span></>
+                    )}
+                  </button>
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all ${isSystemReady ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${isSystemReady ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] animate-pulse' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]'}`}></div>
+                    <span className="text-[10px] font-black uppercase tracking-tight">
+                      {isSystemReady ? "Système Prêt" : "Configuration Requise"}
+                    </span>
+                  </div>
                 </div>
               </header>
 
