@@ -60,7 +60,13 @@ export function PdfViewer({
 
     try {
       const safeProjectName = projectName ? projectName.replace(/[^a-zA-Z0-9_\-]/g, "_") : "document";
-      const filename = `${safeProjectName}.pdf`;
+      let filename = `${safeProjectName}.pdf`;
+      if (pdfPath) {
+        const lastPart = pdfPath.split(/[/\\]/).pop();
+        if (lastPart && lastPart.endsWith('.pdf')) {
+          filename = lastPart;
+        }
+      }
 
       const destPath = await invoke<string>("export_pdf_to_downloads", {
         pdfPath,
