@@ -1,65 +1,120 @@
-# TexRapide ⚡️
+<div align="center">
 
-**TexRapide** est un gestionnaire et centre de contrôle desktop pour vos projets LaTeX sur macOS et Windows, développé avec **Tauri v2**, **React** et **TailwindCSS**. Il propose un diagnostic d'environnement, l'initialisation de projets via templates et une compilation/aperçu automatique (via Skim sur Mac ou SumatraPDF sur Windows) en mode "Watch" en temps réel.
+# ⚡️ TexRapide
 
----
+**Un centre de contrôle desktop moderne et ultra-rapide pour vos projets LaTeX.**
 
-## 📋 Prérequis
+[![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)]()
+[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
+[![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white)]()
+[![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)]()
 
-Pour utiliser et développer TexRapide, plusieurs prérequis sont nécessaires selon votre cas d'usage.
+*Développez, compilez et visualisez vos documents LaTeX en temps réel, sans prise de tête.*
 
-### 1. Pour l'Utilisation (Compilation LaTeX & Aperçu)
-Pour pouvoir compiler vos projets `.tex` et profiter de l'aperçu automatique, vous devez disposer des outils système suivants :
-
-*   **Une distribution LaTeX** :
-    *   **macOS** : **MacTeX** (recommandé) ou **BasicTeX** (léger). *Installation via Homebrew :* `brew install --cask mactex`
-    *   **Windows** : **MiKTeX** (recommandé). Vous aurez aussi besoin de **Strawberry Perl** pour que `latexmk` fonctionne. *Installation via winget :* `winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl`
-*   **Outils LaTeX en ligne de commande** (doivent être disponibles dans votre `PATH`) :
-    *   `pdflatex` (compilateur de base)
-    *   `latexmk` (utilisé par le mode Watch de l'app pour automatiser la chaîne de compilation)
-    *   `bibtex` (gestionnaire de bibliographies)
-*   **Lecteur PDF (Recommandé)** :
-    *   L'application utilise un lecteur externe pour afficher et rafraîchir en direct le PDF compilé sans verrouiller le fichier.
-    *   **macOS** : **Skim** - `brew install --cask skim`
-    *   **Windows** : **SumatraPDF** - `winget install SumatraPDF.SumatraPDF`
+</div>
 
 ---
 
-### 2. Pour les Développeurs (Lancement & Compilation locale)
-Si vous souhaitez lancer l'application en mode développement ou compiler un binaire :
+## 📖 Table des matières
+- [Fonctionnalités Principales](#-fonctionnalités-principales)
+- [Prérequis (Important)](#-prérequis-système)
+  - [macOS](#-sur-macos)
+  - [Windows](#-sur-windows)
+- [Démarrage Rapide (Développeurs)](#-démarrage-rapide)
+- [Architecture Technique](#-architecture-technique)
+- [Contribuer](#-contribuer)
 
-*   **Node.js & pnpm** :
-    *   **Node.js** (LTS >= 18 ou 20 recommandé)
-    *   **pnpm** (installateur de paquets)
-*   **Outils de compilation C++** :
-    *   **macOS** : **Xcode Command Line Tools** (`xcode-select --install`)
-    *   **Windows** : **Visual Studio Build Tools** (avec charge de travail C++)
-*   **Rust** :
-    *   Le compilateur Rust (installé via [rustup](https://rustup.rs/)) : `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh` (sur macOS/Linux) ou téléchargez `rustup-init.exe` sur Windows.
+---
+
+## ✨ Fonctionnalités Principales
+
+*   🩺 **Diagnostic d'environnement intelligent** : TexRapide vérifie automatiquement si tous vos outils LaTeX sont correctement installés et configurés.
+*   🚀 **Initialisation via Templates** : Créez de nouveaux projets en un clic à partir de modèles prédéfinis.
+*   🔄 **Compilation "Watch" en temps réel** : Sauvegardez votre fichier `.tex`, le PDF se recompile tout seul en arrière-plan.
+*   👁️ **Aperçu dynamique** : Intégration fluide avec des lecteurs PDF externes (Skim sur Mac, SumatraPDF sur Windows) pour rafraîchir le document sans verrouillage.
+*   💻 **Multiplateforme natif** : Poids plume et performances maximales grâce à Tauri v2.
+
+---
+
+## 📋 Prérequis Système
+
+TexRapide repose sur trois piliers essentiels qui doivent être installés sur votre système pour pouvoir compiler vos projets `.tex` et profiter de l'aperçu automatique :
+
+1. **Une Distribution LaTeX** : Le moteur de base (ex: `pdflatex` ou `tectonic`) pour comprendre et compiler le code.
+2. **Des Outils CLI (`latexmk`, `perl`)** : Indispensables pour automatiser la chaîne de compilation.
+3. **Un Lecteur PDF externe** : Pour rafraîchir l'aperçu en direct sans verrouiller le fichier PDF.
+
+Voici la configuration recommandée selon votre système :
+
+### 🍎 Sur macOS
+Nous recommandons d'utiliser le gestionnaire de paquets **Homebrew**.
+* **Distribution & CLI** : MacTeX (complet) ou BasicTeX (léger).
+  ```bash
+  brew install --cask mactex
+  ```
+* **Lecteur PDF** : Skim.
+  ```bash
+  brew install --cask skim
+  ```
+
+### 🪟 Sur Windows
+Nous recommandons d'utiliser **winget** (intégré à Windows 10/11).
+* **Distribution** : MiKTeX.
+* **Outils CLI (Perl)** : Strawberry Perl (requis par MiKTeX pour l'outil `latexmk`).
+* **Lecteur PDF** : SumatraPDF.
+
+Vous pouvez tout installer en une seule commande depuis PowerShell :
+```powershell
+winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl SumatraPDF.SumatraPDF
+```
+
+> [!WARNING]
+> **IMPORTANT (Spécialement sur Windows)** : Après l'installation de ces outils, vous devez **impérativement redémarrer votre terminal**, votre éditeur de code, voire votre ordinateur. Cela permet au système de mettre à jour ses variables d'environnement (`PATH`) pour que TexRapide puisse les détecter.
 
 ---
 
 ## 🚀 Démarrage Rapide
 
-1. **Installer les dépendances frontend** :
-   ```bash
-   pnpm install
-   ```
+Si vous souhaitez modifier le code ou lancer l'application en mode développement local :
 
-2. **Lancer l'application en mode développement** :
-   ```bash
-   pnpm run tauri dev
-   ```
+### Outils de développement requis
+*   **Node.js** (LTS >= 18 ou 20 recommandé) & **pnpm**
+*   **Rust** (via `rustup`)
+*   *macOS* : Xcode Command Line Tools (`xcode-select --install`)
+*   *Windows* : Visual Studio Build Tools (avec charge de travail C++)
 
-3. **Compiler l'application pour la production** :
-   ```bash
-   pnpm run tauri build
-   ```
+### Installation & Lancement
+```bash
+# 1. Cloner le dépôt et installer les dépendances frontend
+pnpm install
+
+# 2. Lancer l'application en mode développement (avec Hot-Reload)
+pnpm run tauri dev
+
+# 3. Compiler un exécutable de production (.app ou .exe)
+pnpm run tauri build
+```
 
 ---
 
-## 🛠️ Configuration Recommandée de l'IDE
+## 🛠️ Architecture Technique
 
-Pour développer sur ce projet, nous recommandons d'utiliser **VS Code** avec les extensions suivantes :
-- [Tauri](https://marketplace.visualstudio.com/items?itemName=tauri-apps.tauri-vscode)
-- [rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
+TexRapide est construit avec une architecture moderne séparant le frontend du système :
+*   **Frontend** : React, TailwindCSS, TypeScript (Géré via Vite)
+*   **Backend / Core** : Rust (Tauri v2)
+*   **Communication** : Tauri IPC (Inter-Process Communication)
+
+Nous recommandons d'utiliser **VS Code** avec les extensions :
+- `Tauri` (pour les outils intégrés)
+- `rust-analyzer` (pour l'autocomplétion Rust)
+
+---
+
+## 🤝 Contribuer
+
+Les contributions sont les bienvenues ! 
+1. Forkez le projet
+2. Créez votre branche de fonctionnalité (`git checkout -b feature/IncroyableFonctionnalite`)
+3. Commitez vos changements (`git commit -m 'feat: ajout de la fonctionnalité'`)
+4. Pushez vers la branche (`git push origin feature/IncroyableFonctionnalite`)
+5. Ouvrez une Pull Request

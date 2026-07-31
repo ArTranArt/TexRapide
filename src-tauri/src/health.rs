@@ -105,15 +105,18 @@ pub fn check_latex_health() -> Vec<HealthStatus> {
 
     #[cfg(target_os = "windows")]
     let (has_viewer, viewer_version) = {
-        let sumatra_paths = vec![
-            "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe",
-            "C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe",
-            "C:\\Users\\Default\\AppData\\Local\\SumatraPDF\\SumatraPDF.exe",
+        let mut sumatra_paths = vec![
+            "C:\\Program Files\\SumatraPDF\\SumatraPDF.exe".to_string(),
+            "C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe".to_string(),
         ];
+        
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            sumatra_paths.push(format!("{}\\SumatraPDF\\SumatraPDF.exe", local_app_data));
+        }
         
         let mut found = false;
         for path in sumatra_paths {
-            if Path::new(path).exists() {
+            if Path::new(&path).exists() {
                 found = true;
                 break;
             }
