@@ -40,7 +40,7 @@
 
 TexRapide repose sur trois piliers essentiels qui doivent être installés sur votre système pour pouvoir compiler vos projets `.tex` et profiter de l'aperçu automatique :
 
-1. **Une Distribution LaTeX** : Le moteur de base (ex: `pdflatex` ou `tectonic`) pour comprendre et compiler le code.
+1. **Une Distribution LaTeX** : Le moteur de base (ex: `pdflatex` ou `lualatex`) pour comprendre et compiler le code.
 2. **Des Outils CLI (`latexmk`, `perl`)** : Indispensables pour automatiser la chaîne de compilation.
 3. **Un Lecteur PDF externe** : Pour rafraîchir l'aperçu en direct sans verrouiller le fichier PDF.
 
