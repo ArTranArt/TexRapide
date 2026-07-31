@@ -9,7 +9,14 @@ pub struct HealthStatus {
 }
 
 fn check_command_exists(bin: &str) -> bool {
-    Command::new(bin).arg("--version").output().map(|o| o.status.success()).unwrap_or(false)
+    let mut cmd = Command::new(bin);
+    cmd.arg("--version");
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd.output().map(|o| o.status.success()).unwrap_or(false)
 }
 
 #[tauri::command]
@@ -48,7 +55,14 @@ pub fn check_latex_health() -> Vec<HealthStatus> {
         let installed = check_command_exists(bin);
         
         let version = if installed {
-            let ver_output = Command::new(bin).arg("--version").output();
+            let mut cmd = Command::new(bin);
+            cmd.arg("--version");
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000);
+            }
+            let ver_output = cmd.output();
             if let Ok(o) = ver_output {
                 let stdout = String::from_utf8_lossy(&o.stdout);
                 // Clean version string a bit (usually first line contains what we need)
@@ -123,8 +137,14 @@ pub fn check_latex_health() -> Vec<HealthStatus> {
         }
         
         if !found {
-            // Some users might have it in PATH
-            let output = Command::new("SumatraPDF").arg("-help").output();
+            let mut cmd = Command::new("SumatraPDF");
+            cmd.arg("-help");
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000);
+            }
+            let output = cmd.output();
             found = output.is_ok();
         }
 

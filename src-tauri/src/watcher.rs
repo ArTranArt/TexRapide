@@ -126,12 +126,17 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
 
     // Lancer latexmk ou tectonic et capturer stdout et stderr
     let (success, logs) = if engine == "tectonic" {
-        match Command::new("tectonic")
-            .arg("--synctex")
-            .arg("--keep-logs")
-            .arg(main_file)
-            .current_dir(project_path)
-            .output()
+        let mut cmd = Command::new("tectonic");
+        cmd.arg("--synctex")
+           .arg("--keep-logs")
+           .arg(main_file)
+           .current_dir(project_path);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        match cmd.output()
         {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -146,14 +151,19 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
             Err(e) => (false, format!("Erreur lors du lancement de Tectonic : {}", e)),
         }
     } else {
-        match Command::new("latexmk")
-            .arg("-pdf")
-            .arg("-synctex=1")
-            .arg("-interaction=nonstopmode")
-            .arg("-cd")
-            .arg(main_file)
-            .current_dir(project_path)
-            .output()
+        let mut cmd = Command::new("latexmk");
+        cmd.arg("-pdf")
+           .arg("-synctex=1")
+           .arg("-interaction=nonstopmode")
+           .arg("-cd")
+           .arg(main_file)
+           .current_dir(project_path);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        match cmd.output()
         {
             Ok(output) => {
                 let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -186,11 +196,16 @@ fn run_build(handle: &AppHandle, project_path: &str, main_file: &str, pdf_viewer
     // et on supprime le fichier de base de données .fdb_latexmk pour forcer latexmk à relancer
     // pdflatex lors de la prochaine tentative (ce qui génère l'erreur avec "!").
     if !success && engine != "tectonic" {
-        let _ = Command::new("latexmk")
-            .arg("-c")
-            .arg(main_file)
-            .current_dir(project_path)
-            .status();
+        let mut cmd = Command::new("latexmk");
+        cmd.arg("-c")
+           .arg(main_file)
+           .current_dir(project_path);
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            cmd.creation_flags(0x08000000);
+        }
+        let _ = cmd.status();
 
         let fdb_path = target.with_extension("fdb_latexmk");
         if fdb_path.exists() {
@@ -253,9 +268,14 @@ fn open_system_pdf(pdf_path: &Path) {
                 .spawn();
         } else {
             // Fallback to default system handler using cmd start
-            let _ = Command::new("cmd")
-                .args(&["/C", "start", "", &pdf_path.to_string_lossy()])
-                .spawn();
+            let mut cmd = Command::new("cmd");
+            cmd.args(&["/C", "start", "", &pdf_path.to_string_lossy()]);
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                cmd.creation_flags(0x08000000);
+            }
+            let _ = cmd.spawn();
         }
     }
 
