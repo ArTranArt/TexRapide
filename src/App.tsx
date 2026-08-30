@@ -3003,7 +3003,7 @@ x_{n}         % Indice (x indice n)
         className={`fixed bottom-6 ${floatingPos === "right" ? "right-6" : "left-6"} z-50 flex flex-col gap-2 ${floatingDragOffset === 0 ? 'transition-all duration-300 ease-in-out' : ''}`}
         style={{ transform: floatingDragOffset ? `translateX(${floatingDragOffset}px)` : 'none' }}
       >
-        <div className="flex flex-col items-center gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
+        <div className="w-[60px] flex flex-col items-center gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
           
           {activeProject && view !== "settings" && (
             <>
