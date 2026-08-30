@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, PanelBottom, PanelLeft, PanelTop, LayoutTemplate, Download, FileText, X, Eye } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, PanelBottom, PanelLeft, PanelTop, LayoutTemplate, Download, FileText, X, Eye, List } from "lucide-react";
 
 interface Shortcut {
   key: string;
@@ -440,7 +440,7 @@ export function PdfViewer({
             }`}
             title="Afficher la navigation par pages"
           >
-            <PanelRight size={14} />
+            <List size={14} />
           </button>
         </div>
       </div>
