@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Repeat, Target } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Repeat, Target } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -1811,15 +1811,6 @@ function App() {
                   
                   {/* Ultra-compact Header (Single Row) */}
                   <div className="h-12 border-b border-border-subtle bg-bg-sidebar flex items-center justify-between pr-3 shrink-0 select-none">
-                    
-                    {/* Compact Square Back Button - Stuck to top-left */}
-                    <button 
-                      onClick={() => setView("dashboard")}
-                      className="w-12 h-12 flex items-center justify-center border-r border-border-subtle hover:bg-bg-input-hover text-text-muted hover:text-text-main transition-colors cursor-pointer shrink-0"
-                      title="Retour au Dashboard"
-                    >
-                      <ChevronLeft size={20} />
-                    </button>
 
                     {/* Collapsible File Explorer Toggle Button */}
                     <button 
