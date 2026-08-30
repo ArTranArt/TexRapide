@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Keyboard, Repeat, Target } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronLeft, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Repeat, Target } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -10,7 +10,7 @@ import { EditorView, Decoration, keymap } from "@codemirror/view";
 import { toggleComment, insertNewline } from "@codemirror/commands";
 import { PdfViewer } from "./PdfViewer";
 import "./index.css";
-import logo from "./assets/logo.png";
+
 
 interface HealthStatus {
   binary: String;
@@ -230,7 +230,6 @@ function App() {
   const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
   const [unfilteredTexCount, setUnfilteredTexCount] = useState(0);
   const [isWatching, setIsWatching] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingInline, setIsCreatingInline] = useState(false);
@@ -371,8 +370,7 @@ function App() {
       }
 
       // 2. Clamp editor sizes to ensure PDF panel remains visible and editor remains readable
-      const sidebarWidth = isSidebarCollapsed ? 80 : 288;
-      const maxAllowedWidth = Math.max(350, window.innerWidth - sidebarWidth - 200); // PDF min-width 200px
+      const maxAllowedWidth = Math.max(350, window.innerWidth - 200); // PDF min-width 200px
       setLeftPanelWidth(currentWidth => {
         return Math.max(350, Math.min(currentWidth, maxAllowedWidth));
       });
@@ -388,7 +386,7 @@ function App() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [splitOrientation, isSidebarCollapsed]);
+  }, [splitOrientation]);
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_editor_font_size");
     return saved ? parseInt(saved, 10) : 13;
@@ -562,10 +560,9 @@ function App() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
       if (splitOrientation === "horizontal") {
-        const sidebarWidth = isSidebarCollapsed ? 80 : 288;
-        const calculatedWidth = e.clientX - sidebarWidth;
+        const calculatedWidth = e.clientX;
         const minWidth = 350;
-        const maxWidth = Math.max(minWidth, window.innerWidth - sidebarWidth - 150); // leave at least 150px for PDF
+        const maxWidth = Math.max(minWidth, window.innerWidth - 150); // leave at least 150px for PDF
         if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
           setLeftPanelWidth(calculatedWidth);
         }
@@ -592,7 +589,7 @@ function App() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [isSidebarCollapsed, splitOrientation]);
+  }, [splitOrientation]);
 
   const jumpToEditorLine = (lineNum: number) => {
     const view = editorRef.current?.view;
@@ -1463,132 +1460,6 @@ function App() {
 
   return (
     <div className="flex h-screen bg-bg-deep text-text-main font-sans selection:bg-blue-500/30 overflow-hidden">
-      {/* Sidebar */}
-      <aside className={`${isSidebarCollapsed ? 'w-20' : 'w-72'} bg-bg-sidebar border-r border-border-subtle flex flex-col p-6 transition-all duration-300 z-10 shrink-0 relative group`}>
-        <button 
-          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute -right-3 top-20 bg-bg-sidebar-button border border-border-input rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 hover:bg-blue-500 hover:border-blue-500"
-        >
-          {isSidebarCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
-
-        <div 
-          onClick={() => {
-            if (isSwitchLocked) return;
-            setDashboardProjectsDir(targetDir);
-            setActiveProject(null);
-            setView("dashboard");
-            setIsCreatingInline(false);
-          }}
-          className={`flex items-center ${isSidebarCollapsed ? 'justify-center' : 'justify-between'} w-full mb-12 cursor-pointer active:scale-95 transition-transform`}
-          title="Retour au dossier par défaut"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg shrink-0 overflow-hidden flex items-center justify-center bg-white border border-border-subtle shadow-md shadow-black/10">
-              <img src={logo} alt="Logo" className="w-full h-full object-contain p-0.5" />
-            </div>
-            {!isSidebarCollapsed && (
-              <span className="font-display text-xl font-bold tracking-tight text-text-main/90">
-                TexRapide
-              </span>
-            )}
-          </div>
-        </div>
-        
-        <nav className={`flex flex-col gap-1.5 ${isSidebarCollapsed ? 'items-center' : ''}`}>
-          <NavItem collapsed={isSidebarCollapsed} active={view === "dashboard"} onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} icon={<Layers size={18} />} label="Dashboard" />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "settings"} onClick={() => { setView("settings"); setIsCreatingInline(false); }} icon={<Settings size={18} />} label="Configuration" />
-          <NavItem collapsed={isSidebarCollapsed} active={view === "help"} onClick={() => { setView("help"); setIsCreatingInline(false); }} icon={<BookOpen size={18} />} label="Guide & Aide" />
-        </nav>
-
-        <div className="mt-auto pt-8 flex flex-col gap-3">
-          {/* Theme toggle moved to settings */}
-
-          {activeProject && (
-            <div className={`flex ${isSidebarCollapsed ? 'flex-col items-center' : 'justify-start'} gap-2`}>
-              {/* 1. VSCode Button */}
-              <button 
-                onClick={handleOpenVSCode}
-                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
-                title="VSCode"
-              >
-                <VSCodeIcon size={20} />
-              </button>
-
-              {/* 2. Terminal Button */}
-              <button 
-                onClick={() => {
-                  if (compileStatus !== "idle") setIsLogsOpen(true);
-                }}
-                disabled={compileStatus === "idle"}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
-                  compileStatus === "idle"
-                    ? 'bg-bg-input text-text-extra-subtle border-border-subtle cursor-not-allowed opacity-50'
-                    : compileStatus === "error"
-                      ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red cursor-pointer shadow-lg shadow-red-500/20'
-                      : 'bg-bg-input text-green-400 border-border-subtle hover:bg-bg-input-hover shadow-md shadow-black/10 cursor-pointer'
-                }`}
-                title={compileStatus === "idle" ? "Logs non disponibles" : "Logs de compilation"}
-              >
-                <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin text-blue-400" : ""} />
-                {compileStatus === "error" && (
-                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                  </span>
-                )}
-                {compileStatus === "success" && (
-                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </span>
-                )}
-              </button>
-
-              {/* 3. Manual Compilation Button */}
-              <button 
-                onClick={handleCompileOnce}
-                disabled={projectTexFiles.length === 0 || compileStatus === "compiling" || isWatching}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
-                  projectTexFiles.length === 0 || isWatching
-                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
-                    : compileStatus === "compiling"
-                      ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
-                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md shadow-black/10'
-                }`}
-                title={
-                  projectTexFiles.length === 0 
-                    ? "Compilation impossible (aucun fichier racine valide)" 
-                    : isWatching 
-                      ? "Compilation continue active" 
-                      : "Compiler une fois (Cmd + S)"
-                }
-              >
-                {compileStatus === "compiling" ? (
-                  <RefreshCw size={16} className="animate-spin text-amber-500" />
-                ) : (
-                  <Play size={18} fill="currentColor" className="text-blue-400" />
-                )}
-              </button>
-
-              {/* 4. Continuous compilation button */}
-              <button 
-                onClick={handleToggleWatch}
-                disabled={projectTexFiles.length === 0}
-                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
-                  projectTexFiles.length === 0 
-                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
-                    : isWatching 
-                      ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
-                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main shadow-md shadow-black/10'
-                }`}
-                title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
-              >
-                <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
-              </button>
-            </div>
-          )}
-        </div>
-      </aside>
 
       <main ref={mainContentRef} className={`flex-1 scroll-smooth ${view === "project" ? "h-screen overflow-hidden" : "overflow-y-auto p-6 md:p-12"}`}>
         <div className={view === "project" ? "h-full w-full" : "max-w-6xl mx-auto flex flex-col gap-8"}>
@@ -3126,6 +2997,104 @@ x_{n}         % Indice (x indice n)
         </div>
       </main>
 
+      {/* Floating Action Bar */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+        <div className="flex flex-col gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
+          <button onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "dashboard" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Dashboard">
+            <Layers size={18} />
+          </button>
+          <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
+            <Settings size={18} />
+          </button>
+          
+          {activeProject && (
+            <>
+              <div className="w-full h-px bg-border-subtle/50 my-1"></div>
+              {/* VSCode Button */}
+              <button 
+                onClick={handleOpenVSCode}
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl bg-bg-input hover:bg-bg-input-hover border border-border-subtle shadow-md shadow-black/10 transition-all cursor-pointer text-text-main"
+                title="VSCode"
+              >
+                <VSCodeIcon size={20} />
+              </button>
+
+              {/* Terminal Button */}
+              <button 
+                onClick={() => {
+                  if (compileStatus !== "idle") setIsLogsOpen(true);
+                }}
+                disabled={compileStatus === "idle"}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border transition-all relative ${
+                  compileStatus === "idle"
+                    ? 'bg-bg-input text-text-extra-subtle border-border-subtle cursor-not-allowed opacity-50'
+                    : compileStatus === "error"
+                      ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red cursor-pointer shadow-lg shadow-red-500/20'
+                      : 'bg-bg-input text-green-400 border-border-subtle hover:bg-bg-input-hover shadow-md shadow-black/10 cursor-pointer'
+                }`}
+                title={compileStatus === "idle" ? "Logs non disponibles" : "Logs de compilation"}
+              >
+                <Terminal size={18} className={compileStatus === "compiling" ? "animate-spin text-blue-400" : ""} />
+                {compileStatus === "error" && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                  </span>
+                )}
+                {compileStatus === "success" && (
+                  <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                )}
+              </button>
+
+              {/* Manual Compilation Button */}
+              <button 
+                onClick={handleCompileOnce}
+                disabled={projectTexFiles.length === 0 || compileStatus === "compiling" || isWatching}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  projectTexFiles.length === 0 || isWatching
+                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
+                    : compileStatus === "compiling"
+                      ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
+                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md shadow-black/10'
+                }`}
+                title={
+                  projectTexFiles.length === 0 
+                    ? "Compilation impossible (aucun fichier racine valide)" 
+                    : isWatching 
+                      ? "Compilation continue active" 
+                      : "Compiler une fois (Cmd + S)"
+                }
+              >
+                {compileStatus === "compiling" ? (
+                  <RefreshCw size={16} className="animate-spin text-amber-500" />
+                ) : (
+                  <Play size={18} fill="currentColor" className="text-blue-400" />
+                )}
+              </button>
+
+              {/* Continuous compilation button */}
+              <button 
+                onClick={handleToggleWatch}
+                disabled={projectTexFiles.length === 0}
+                className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all cursor-pointer ${
+                  projectTexFiles.length === 0 
+                    ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
+                    : isWatching 
+                      ? 'bg-blue-950 border border-blue-800/60 text-blue-400 hover:bg-blue-900/60 hover:text-blue-300 shadow-lg shadow-blue-950/10 animate-pulse' 
+                      : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-subtle hover:text-text-main shadow-md shadow-black/10'
+                }`}
+                title={projectTexFiles.length === 0 ? "Compilation impossible (aucun fichier racine valide)" : isWatching ? "Arrêter la compilation continue" : "Activer la compilation continue"}
+              >
+                <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+
       {/* Overlay de fond pour la console */}
       {isLogsOpen && (
         <div 
@@ -3330,19 +3299,6 @@ x_{n}         % Indice (x indice n)
   );
 }
 
-function NavItem({ active, onClick, icon, label, collapsed, disabled }: { active: boolean, onClick: () => void, icon: any, label: string, collapsed: boolean, disabled?: boolean }) {
-  return (
-    <button 
-      onClick={onClick}
-      disabled={disabled}
-      className={`flex items-center ${collapsed ? 'justify-center w-11 h-11' : 'gap-3 px-4 py-2.5'} rounded-xl transition-all duration-200 border group ${active ? 'bg-blue-600/10 text-blue-500 border-blue-600/20' : 'border-transparent text-text-subtle hover:bg-bg-input-hover hover:text-text-main'} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}
-      title={collapsed ? label : ""}
-    >
-      <div className={`${active ? 'text-blue-500' : 'group-hover:text-text-muted'} transition-colors shrink-0`}>{icon}</div>
-      {!collapsed && <span className="text-sm font-semibold">{label}</span>}
-    </button>
-  );
-}
 
 function ProjectListRow({ name, date, active, isWatching, disabled, onClick }: { name: string, date: string, active: boolean, isWatching: boolean, disabled: boolean, onClick: () => void }) {
   const activeColorClass = isWatching ? 'text-green-400' : 'text-blue-400';
