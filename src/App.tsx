@@ -230,6 +230,7 @@ function App() {
   const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
   const [unfilteredTexCount, setUnfilteredTexCount] = useState(0);
   const [floatingPos, setFloatingPos] = useState<"left" | "right">("right");
+  const [floatingDragOffset, setFloatingDragOffset] = useState<number>(0);
   const [isWatching, setIsWatching] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
@@ -2999,7 +3000,8 @@ x_{n}         % Indice (x indice n)
       </main>
       {/* Floating Action Bar */}
       <div 
-        className={`fixed bottom-6 ${floatingPos === "right" ? "right-6" : "left-6"} z-50 flex flex-col gap-2 transition-all duration-300 ease-in-out`}
+        className={`fixed bottom-6 ${floatingPos === "right" ? "right-6" : "left-6"} z-50 flex flex-col gap-2 ${floatingDragOffset === 0 ? 'transition-all duration-300 ease-in-out' : ''}`}
+        style={{ transform: floatingDragOffset ? `translateX(${floatingDragOffset}px)` : 'none' }}
       >
         <div className="flex flex-col gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
           
@@ -3103,15 +3105,18 @@ x_{n}         % Indice (x indice n)
               e.preventDefault();
               const startX = e.clientX;
               const startPos = floatingPos;
+              let currentDiff = 0;
               const onMouseMove = (moveEvent: MouseEvent) => {
-                const diffX = moveEvent.clientX - startX;
-                if (startPos === "right" && diffX < -50) {
-                  setFloatingPos("left");
-                } else if (startPos === "left" && diffX > 50) {
-                  setFloatingPos("right");
-                }
+                currentDiff = moveEvent.clientX - startX;
+                setFloatingDragOffset(currentDiff);
               };
               const onMouseUp = () => {
+                if (startPos === "right" && currentDiff < -100) {
+                  setFloatingPos("left");
+                } else if (startPos === "left" && currentDiff > 100) {
+                  setFloatingPos("right");
+                }
+                setFloatingDragOffset(0);
                 document.removeEventListener("mousemove", onMouseMove);
                 document.removeEventListener("mouseup", onMouseUp);
               };
