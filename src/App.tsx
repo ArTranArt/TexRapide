@@ -3091,10 +3091,10 @@ x_{n}         % Indice (x indice n)
             </>
           )}
 
-          <button onClick={() => { if (isSwitchLocked) return; setView("dashboard"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "dashboard" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Dashboard">
+          <button onClick={() => { if (isSwitchLocked) return; setView("dashboard"); setIsCreatingInline(false); }} className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "dashboard" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Dashboard">
             <Layers size={18} />
           </button>
-          <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
+          <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
             <Settings size={18} />
           </button>
 
