@@ -1785,7 +1785,7 @@ function App() {
 
             return (
               <div className={`flex h-full w-full bg-bg-deep overflow-hidden fade-in ${
-                (pdfPosition === "right" || pdfPosition === "left") ? "flex-row" : "flex-col"
+                pdfPosition === "right" ? "flex-row" : pdfPosition === "left" ? "flex-row-reverse" : pdfPosition === "bottom" ? "flex-col" : "flex-col-reverse"
               }`}>
                 {/* Left/Top Panel - Dynamic Size */}
                 <div 
