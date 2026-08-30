@@ -231,6 +231,7 @@ function App() {
   const [unfilteredTexCount, setUnfilteredTexCount] = useState(0);
   const [floatingPos, setFloatingPos] = useState<"left" | "right">("right");
   const [floatingDragOffset, setFloatingDragOffset] = useState<number>(0);
+  const [isFloatingCollapsed, setIsFloatingCollapsed] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
@@ -3003,9 +3004,11 @@ x_{n}         % Indice (x indice n)
         className={`fixed bottom-6 ${floatingPos === "right" ? "right-6" : "left-6"} z-50 flex flex-col gap-2 ${floatingDragOffset === 0 ? 'transition-all duration-300 ease-in-out' : ''}`}
         style={{ transform: floatingDragOffset ? `translateX(${floatingDragOffset}px)` : 'none' }}
       >
-        <div className="w-[60px] flex flex-col items-center gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
+        <div className="w-[60px] flex flex-col items-center bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
           
-          {activeProject && view !== "settings" && (
+          <div className={`grid transition-all duration-300 ease-in-out w-full ${isFloatingCollapsed ? 'grid-rows-[0fr] opacity-0' : 'grid-rows-[1fr] opacity-100'}`}>
+            <div className="overflow-hidden flex flex-col items-center gap-2">
+              {activeProject && view !== "settings" && (
             <>
               {/* VSCode Button */}
               <button 
@@ -3097,6 +3100,8 @@ x_{n}         % Indice (x indice n)
           <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-9 h-9 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
             <Settings size={18} />
           </button>
+            </div>
+          </div>
 
           {/* Drag Handle */}
           <div 
@@ -3106,15 +3111,21 @@ x_{n}         % Indice (x indice n)
               const startX = e.clientX;
               const startPos = floatingPos;
               let currentDiff = 0;
+              let hasDragged = false;
               const onMouseMove = (moveEvent: MouseEvent) => {
                 currentDiff = moveEvent.clientX - startX;
+                if (Math.abs(currentDiff) > 5) hasDragged = true;
                 setFloatingDragOffset(currentDiff);
               };
               const onMouseUp = () => {
-                if (startPos === "right" && currentDiff < -100) {
-                  setFloatingPos("left");
-                } else if (startPos === "left" && currentDiff > 100) {
-                  setFloatingPos("right");
+                if (!hasDragged) {
+                  setIsFloatingCollapsed(prev => !prev);
+                } else {
+                  if (startPos === "right" && currentDiff < -100) {
+                    setFloatingPos("left");
+                  } else if (startPos === "left" && currentDiff > 100) {
+                    setFloatingPos("right");
+                  }
                 }
                 setFloatingDragOffset(0);
                 document.removeEventListener("mousemove", onMouseMove);
