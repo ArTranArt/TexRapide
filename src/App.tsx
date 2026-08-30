@@ -233,6 +233,13 @@ function App() {
   const [floatingDragOffset, setFloatingDragOffset] = useState<number>(0);
   const [isFloatingCollapsed, setIsFloatingCollapsed] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
+  const [fileExplorerWidth, setFileExplorerWidth] = useState(() => {
+    const saved = localStorage.getItem("texrapide_file_explorer_width");
+    return saved ? parseInt(saved, 10) : 160;
+  });
+  useEffect(() => {
+    localStorage.setItem("texrapide_file_explorer_width", fileExplorerWidth.toString());
+  }, [fileExplorerWidth]);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingInline, setIsCreatingInline] = useState(false);
@@ -1930,7 +1937,11 @@ function App() {
                   <div className="flex-1 min-h-0 w-full flex flex-row overflow-hidden bg-bg-sidebar">
                     {/* Collapsible File Explorer Sidebar */}
                     {showFileTree && (
-                      <div className="w-40 shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full select-none">
+                      <>
+                        <div 
+                          style={{ width: fileExplorerWidth }}
+                          className="shrink-0 border-r border-border-subtle bg-bg-sidebar/30 flex flex-col h-full select-none"
+                        >
                         <div className="flex items-center justify-between px-2.5 py-2 border-b border-border-subtle/50 shrink-0 bg-bg-sidebar/40">
                           <span className="text-[9px] font-black uppercase tracking-wider text-text-extra-subtle">Fichiers</span>
                           <div className="flex items-center gap-1">
@@ -2022,6 +2033,29 @@ function App() {
                           }}
                         />
                       </div>
+                      {/* File Explorer Resizer */}
+                      <div
+                        className="w-1 cursor-col-resize hover:bg-blue-500/50 active:bg-blue-500 transition-colors z-20 shrink-0 bg-border-subtle/10"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          const startX = e.clientX;
+                          const startWidth = fileExplorerWidth;
+                          
+                          const onMouseMove = (moveEvent: MouseEvent) => {
+                            const newWidth = Math.max(120, Math.min(600, startWidth + (moveEvent.clientX - startX)));
+                            setFileExplorerWidth(newWidth);
+                          };
+                          
+                          const onMouseUp = () => {
+                            document.removeEventListener("mousemove", onMouseMove);
+                            document.removeEventListener("mouseup", onMouseUp);
+                          };
+                          
+                          document.addEventListener("mousemove", onMouseMove);
+                          document.addEventListener("mouseup", onMouseUp);
+                        }}
+                      />
+                    </>
                     )}
 
                     {/* Code Editor */}
