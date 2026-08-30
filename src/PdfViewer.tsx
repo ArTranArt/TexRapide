@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, Download, FileText, X, Columns2, Rows2, Eye } from "lucide-react";
+import { ZoomIn, ZoomOut, AlertCircle, RefreshCw, PanelRight, PanelBottom, PanelLeft, PanelTop, LayoutTemplate, Download, FileText, X, Eye } from "lucide-react";
 
 interface Shortcut {
   key: string;
@@ -15,8 +15,8 @@ interface PdfViewerProps {
   compileStatus: string;
   zoomInKey?: Shortcut | null;
   zoomOutKey?: Shortcut | null;
-  splitOrientation?: "horizontal" | "vertical";
-  onToggleSplitOrientation?: () => void;
+  pdfPosition?: "right" | "bottom" | "left" | "top";
+  onChangePdfPosition?: (pos: "right" | "bottom" | "left" | "top") => void;
   forwardSearchRipple?: { page: number; x: number; y: number; timestamp: number } | null;
 }
 
@@ -28,8 +28,8 @@ export function PdfViewer({
   compileStatus,
   zoomInKey = null,
   zoomOutKey = null,
-  splitOrientation = "horizontal",
-  onToggleSplitOrientation,
+  pdfPosition = "right",
+  onChangePdfPosition,
   forwardSearchRipple = null
 }: PdfViewerProps) {
   const [pdf, setPdf] = useState<any>(null);
@@ -340,14 +340,21 @@ export function PdfViewer({
       {/* PDF Controls */}
       <div className="h-10 border-b border-border-subtle bg-bg-sidebar px-4 flex items-center justify-between shrink-0 select-none z-10">
         <div className="flex items-center gap-2">
-          {onToggleSplitOrientation && (
-            <button
-              onClick={onToggleSplitOrientation}
-              className="w-6 h-6 flex items-center justify-center rounded border bg-bg-input/30 hover:bg-bg-input-hover border-border-subtle text-text-muted hover:text-text-main transition-colors cursor-pointer"
-              title={splitOrientation === "horizontal" ? "Disposer en bas" : "Disposer sur le côté"}
-            >
-              {splitOrientation === "horizontal" ? <Rows2 size={12} /> : <Columns2 size={12} />}
-            </button>
+          {onChangePdfPosition && (
+            <div className="relative group">
+              <button
+                className="w-6 h-6 flex items-center justify-center rounded border bg-bg-input/30 hover:bg-bg-input-hover border-border-subtle text-text-muted hover:text-text-main transition-colors cursor-pointer"
+                title="Disposition"
+              >
+                <LayoutTemplate size={12} />
+              </button>
+              <div className="absolute left-0 top-full mt-1 p-1 bg-bg-sidebar border border-border-subtle rounded-lg shadow-xl shadow-black/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex gap-1 z-50">
+                <button onClick={() => onChangePdfPosition("right")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "right" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF à droite"><PanelRight size={14} /></button>
+                <button onClick={() => onChangePdfPosition("bottom")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "bottom" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF en bas"><PanelBottom size={14} /></button>
+                <button onClick={() => onChangePdfPosition("left")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "left" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF à gauche"><PanelLeft size={14} /></button>
+                <button onClick={() => onChangePdfPosition("top")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "top" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF en haut"><PanelTop size={14} /></button>
+              </div>
+            </div>
           )}
           {compileStatus === "compiling" && (
             <RefreshCw size={10} className="animate-spin text-blue-500" />

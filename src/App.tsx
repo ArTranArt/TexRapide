@@ -343,10 +343,10 @@ function App() {
     const saved = localStorage.getItem("texrapide_top_panel_height");
     return saved ? parseInt(saved, 10) : 400;
   });
-  const [splitOrientation, setSplitOrientation] = useState<"horizontal" | "vertical">(() => {
-    const saved = localStorage.getItem("texrapide_split_orientation");
-    if (saved === "horizontal" || saved === "vertical") return saved;
-    return window.innerWidth < 850 ? "vertical" : "horizontal";
+  const [pdfPosition, setPdfPosition] = useState<"right" | "bottom" | "left" | "top">(() => {
+    const saved = localStorage.getItem("texrapide_pdf_position");
+    if (saved === "right" || saved === "bottom" || saved === "left" || saved === "top") return saved;
+    return window.innerWidth < 850 ? "bottom" : "right";
   });
   const [showPdfPanel, setShowPdfPanel] = useState<boolean>(() => {
     const saved = localStorage.getItem("texrapide_show_pdf_panel");
@@ -360,8 +360,8 @@ function App() {
   }, [showPdfPanel]);
 
   useEffect(() => {
-    localStorage.setItem("texrapide_split_orientation", splitOrientation);
-  }, [splitOrientation]);
+    localStorage.setItem("texrapide_pdf_position", pdfPosition);
+  }, [pdfPosition]);
 
   useEffect(() => {
     localStorage.setItem("texrapide_top_panel_height", topPanelHeight.toString());
@@ -372,10 +372,10 @@ function App() {
       // 1. Manage orientation based on window width
       if (!isManualOrientationRef.current) {
         const width = window.innerWidth;
-        if (width < 850 && splitOrientation !== "vertical") {
-          setSplitOrientation("vertical");
-        } else if (width >= 850 && splitOrientation !== "horizontal") {
-          setSplitOrientation("horizontal");
+        if (width < 850 && (pdfPosition === "right" || pdfPosition === "left")) {
+          setPdfPosition("bottom");
+        } else if (width >= 850 && (pdfPosition === "bottom" || pdfPosition === "top")) {
+          setPdfPosition("right");
         }
       }
 
@@ -396,7 +396,7 @@ function App() {
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [splitOrientation]);
+  }, [pdfPosition]);
   const [editorFontSize, setEditorFontSize] = useState<number>(() => {
     const saved = localStorage.getItem("texrapide_editor_font_size");
     return saved ? parseInt(saved, 10) : 13;
@@ -563,21 +563,25 @@ function App() {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     isResizingRef.current = true;
-    document.body.style.cursor = splitOrientation === "horizontal" ? "col-resize" : "row-resize";
+    document.body.style.cursor = (pdfPosition === "right" || pdfPosition === "left") ? "col-resize" : "row-resize";
   };
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizingRef.current) return;
-      if (splitOrientation === "horizontal") {
-        const calculatedWidth = e.clientX;
+      
+      const isHorizontal = pdfPosition === "right" || pdfPosition === "left";
+      const isReversed = pdfPosition === "left" || pdfPosition === "top";
+      
+      if (isHorizontal) {
+        const calculatedWidth = isReversed ? window.innerWidth - e.clientX : e.clientX;
         const minWidth = 350;
-        const maxWidth = Math.max(minWidth, window.innerWidth - 150); // leave at least 150px for PDF
+        const maxWidth = Math.max(minWidth, window.innerWidth - 200);
         if (calculatedWidth >= minWidth && calculatedWidth <= maxWidth) {
           setLeftPanelWidth(calculatedWidth);
         }
       } else {
-        const calculatedHeight = e.clientY;
+        const calculatedHeight = isReversed ? window.innerHeight - e.clientY : e.clientY;
         const minHeight = 150;
         const maxHeight = window.innerHeight - 150;
         if (calculatedHeight >= minHeight && calculatedHeight <= maxHeight) {
@@ -599,7 +603,7 @@ function App() {
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [splitOrientation]);
+  }, [pdfPosition]);
 
   const jumpToEditorLine = (lineNum: number) => {
     const view = editorRef.current?.view;
@@ -1781,24 +1785,24 @@ function App() {
 
             return (
               <div className={`flex h-full w-full bg-bg-deep overflow-hidden fade-in ${
-                splitOrientation === "horizontal" ? "flex-row" : "flex-col"
+                (pdfPosition === "right" || pdfPosition === "left") ? "flex-row" : "flex-col"
               }`}>
                 {/* Left/Top Panel - Dynamic Size */}
                 <div 
                   style={
                     showPdfPanel 
-                      ? (splitOrientation === "horizontal" 
+                      ? ((pdfPosition === "right" || pdfPosition === "left") 
                           ? { width: `${leftPanelWidth}px` } 
                           : { height: `${topPanelHeight}px` })
                       : undefined
                   }
                   className={`bg-bg-sidebar flex flex-col overflow-hidden ${
-                    splitOrientation === "horizontal" 
+                    (pdfPosition === "right" || pdfPosition === "left") 
                       ? "h-full border-r border-border-subtle" 
                       : "w-full border-b border-border-subtle"
                   } ${
                     showPdfPanel 
-                      ? (splitOrientation === "horizontal" 
+                      ? ((pdfPosition === "right" || pdfPosition === "left") 
                           ? "min-w-[350px] shrink-0" 
                           : "min-h-[150px] shrink-0")
                       : "flex-1"
@@ -2084,13 +2088,13 @@ function App() {
                     <div 
                       onMouseDown={handleMouseDown}
                       className={`${
-                        splitOrientation === "horizontal" 
+                        (pdfPosition === "right" || pdfPosition === "left") 
                           ? "w-1.5 h-full cursor-col-resize" 
                           : "h-1.5 w-full cursor-row-resize"
                       } bg-border-subtle hover:bg-blue-500/50 active:bg-blue-500 shrink-0 transition-all select-none z-30 relative group/resizer`}
                     >
                       <div className={`absolute bg-border-subtle group-hover/resizer:bg-blue-500/50 group-active/resizer:bg-blue-500 ${
-                        splitOrientation === "horizontal"
+                        (pdfPosition === "right" || pdfPosition === "left")
                           ? "inset-y-0 left-[2px] w-[1px]"
                           : "inset-x-0 top-[2px] h-[1px]"
                       }`} />
@@ -2098,7 +2102,7 @@ function App() {
 
                     {/* Right Panel */}
                     <div className={`flex-1 bg-bg-deep flex flex-col relative overflow-hidden ${
-                      splitOrientation === "horizontal" ? "h-full" : "w-full"
+                      (pdfPosition === "right" || pdfPosition === "left") ? "h-full" : "w-full"
                     }`}>
                       {pdfViewerMode === "integrated" ? (
                         pdfExists ? (
@@ -2111,10 +2115,10 @@ function App() {
                               onLineSelect={handleLineSelect}
                               zoomInKey={zoomInKey}
                               zoomOutKey={zoomOutKey}
-                              splitOrientation={splitOrientation}
-                              onToggleSplitOrientation={() => {
+                              pdfPosition={pdfPosition}
+                              onChangePdfPosition={(pos) => {
                                 isManualOrientationRef.current = true;
-                                setSplitOrientation(prev => prev === "horizontal" ? "vertical" : "horizontal");
+                                setPdfPosition(pos);
                               }}
                               forwardSearchRipple={forwardSearchRipple}
                             />
