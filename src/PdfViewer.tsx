@@ -348,7 +348,7 @@ export function PdfViewer({
               >
                 <LayoutTemplate size={12} />
               </button>
-              <div className="absolute left-0 top-full mt-1 p-1 bg-bg-sidebar border border-border-subtle rounded-lg shadow-xl shadow-black/30 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all flex gap-1 z-50">
+              <div className="absolute left-0 top-full mt-1 p-1 bg-bg-sidebar border border-border-subtle rounded-lg shadow-xl shadow-black/30 hidden group-hover:flex gap-1 z-50">
                 <button onClick={() => onChangePdfPosition("right")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "right" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF à droite"><PanelRight size={14} /></button>
                 <button onClick={() => onChangePdfPosition("bottom")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "bottom" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF en bas"><PanelBottom size={14} /></button>
                 <button onClick={() => onChangePdfPosition("left")} className={`p-1.5 rounded-md hover:bg-bg-input-hover ${pdfPosition === "left" ? "bg-bg-input text-blue-400" : "text-text-subtle hover:text-text-main"}`} title="PDF à gauche"><PanelLeft size={14} /></button>
