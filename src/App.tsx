@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { listen } from "@tauri-apps/api/event";
-import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Repeat, Target } from "lucide-react";
+import { Activity, Plus, Settings, Play, FolderOpen, Layers, Code, ChevronRight, Info, FolderPlus, X, ChevronDown, SortAsc, Clock, Calendar, Lock, EyeOff, Search, Check, RefreshCw, Terminal, BookOpen, Sun, Moon, Copy, ExternalLink, Laptop, WrapText, Save, Edit2, Trash2, Eraser, Repeat } from "lucide-react";
 import CodeMirror from "@uiw/react-codemirror";
 import { latex } from "codemirror-lang-latex";
 import { StateEffect, StateField } from "@codemirror/state";
@@ -1894,23 +1894,6 @@ function App() {
                         <WrapText size={12} />
                       </button>
 
-                      {/* Forward Search Button */}
-                      {showPdfPanel && (
-                        <button
-                          onClick={() => {
-                            const view = editorRef.current?.view;
-                            if (view) {
-                              const pos = view.state.selection.main.head;
-                              const line = view.state.doc.lineAt(pos);
-                              handleForwardSearch(line.number);
-                            }
-                          }}
-                          className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input transition-all cursor-pointer"
-                          title="Localiser la ligne actuelle dans le PDF (ou Double Clic / Cmd+Clic sur le code)"
-                        >
-                          <Target size={12} />
-                        </button>
-                      )}
 
                       {/* Toggle PDF Panel Button */}
                       <button
