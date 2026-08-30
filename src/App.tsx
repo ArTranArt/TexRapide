@@ -1873,15 +1873,6 @@ function App() {
                         {hasUnsavedChanges ? <Save size={12} /> : <Check size={12} />}
                       </button>
 
-                      {/* Clean Auxiliary Files Button */}
-                      <button
-                        onClick={handleCleanAuxiliaryFiles}
-                        className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-red-400 hover:border-red-500/30 hover:bg-red-500/10 transition-all cursor-pointer"
-                        title="Nettoyer les fichiers auxiliaires (.aux, .log, .out, etc.)"
-                      >
-                        <Eraser size={12} />
-                      </button>
-
                       {/* Line wrapping toggle button */}
                       <button
                         onClick={() => setLineWrapping(prev => !prev)}
@@ -1948,6 +1939,13 @@ function App() {
                               title="Recharger les fichiers"
                             >
                               <RefreshCw size={10} />
+                            </button>
+                            <button
+                              onClick={handleCleanAuxiliaryFiles}
+                              className="p-1 rounded text-text-muted transition-colors hover:bg-red-500/10 hover:text-red-400 cursor-pointer"
+                              title="Nettoyer les fichiers auxiliaires (.aux, .log, .out, etc.)"
+                            >
+                              <Eraser size={10} />
                             </button>
                             <button
                               onClick={() => {
