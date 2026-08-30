@@ -451,6 +451,14 @@ function App() {
           }
         }
         return false;
+      },
+      dblclick: (event, view) => {
+        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+        if (pos !== null) {
+          const line = view.state.doc.lineAt(pos);
+          handleForwardSearch(line.number);
+        }
+        return false;
       }
     });
   }, [handleForwardSearch]);
@@ -1898,7 +1906,7 @@ function App() {
                             }
                           }}
                           className="w-6 h-6 flex items-center justify-center rounded-md border bg-bg-input border-border-subtle text-text-muted hover:text-text-main hover:border-border-input transition-all cursor-pointer"
-                          title="Localiser la ligne actuelle dans le PDF (ou Cmd + Click sur le code)"
+                          title="Localiser la ligne actuelle dans le PDF (ou Double Clic / Cmd+Clic sur le code)"
                         >
                           <Target size={12} />
                         </button>
