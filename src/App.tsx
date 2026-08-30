@@ -229,6 +229,7 @@ function App() {
   const [activeProject, setActiveProject] = useState<string | null>(null);
   const [projectTexFiles, setProjectTexFiles] = useState<string[]>([]);
   const [unfilteredTexCount, setUnfilteredTexCount] = useState(0);
+  const [floatingPos, setFloatingPos] = useState<"left" | "right">("right");
   const [isWatching, setIsWatching] = useState(false);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
@@ -2996,20 +2997,14 @@ x_{n}         % Indice (x indice n)
           )}
         </div>
       </main>
-
       {/* Floating Action Bar */}
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+      <div 
+        className={`fixed bottom-6 ${floatingPos === "right" ? "right-6" : "left-6"} z-50 flex flex-col gap-2 transition-all duration-300 ease-in-out`}
+      >
         <div className="flex flex-col gap-2 bg-bg-sidebar/90 backdrop-blur-md p-2 rounded-2xl border border-border-subtle shadow-xl shadow-black/20">
-          <button onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "dashboard" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Dashboard">
-            <Layers size={18} />
-          </button>
-          <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
-            <Settings size={18} />
-          </button>
           
           {activeProject && (
             <>
-              <div className="w-full h-px bg-border-subtle/50 my-1"></div>
               {/* VSCode Button */}
               <button 
                 onClick={handleOpenVSCode}
@@ -3089,8 +3084,44 @@ x_{n}         % Indice (x indice n)
               >
                 <Repeat size={18} className={isWatching ? "animate-pulse" : ""} />
               </button>
+
+              <div className="w-full h-px bg-border-subtle/50 my-1"></div>
             </>
           )}
+
+          <button onClick={() => { setView("dashboard"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "dashboard" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Dashboard">
+            <Layers size={18} />
+          </button>
+          <button onClick={() => { setView("settings"); setIsCreatingInline(false); }} className={`w-11 h-11 shrink-0 flex items-center justify-center rounded-xl transition-all ${view === "settings" ? "bg-bg-input-hover text-text-main" : "text-text-subtle hover:text-text-main hover:bg-bg-input"}`} title="Configuration">
+            <Settings size={18} />
+          </button>
+
+          {/* Drag Handle */}
+          <div 
+            className="w-full h-4 mt-1 flex items-center justify-center cursor-grab active:cursor-grabbing opacity-30 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => {
+              e.preventDefault();
+              const startX = e.clientX;
+              const startPos = floatingPos;
+              const onMouseMove = (moveEvent: MouseEvent) => {
+                const diffX = moveEvent.clientX - startX;
+                if (startPos === "right" && diffX < -50) {
+                  setFloatingPos("left");
+                } else if (startPos === "left" && diffX > 50) {
+                  setFloatingPos("right");
+                }
+              };
+              const onMouseUp = () => {
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+              };
+              document.addEventListener("mousemove", onMouseMove);
+              document.addEventListener("mouseup", onMouseUp);
+            }}
+            title="Glisser pour déplacer"
+          >
+            <div className="w-6 h-1 bg-text-subtle rounded-full" />
+          </div>
         </div>
       </div>
 
