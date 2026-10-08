@@ -39,7 +39,7 @@ export function Sidebar() {
                   compileStatus === "idle"
                     ? 'bg-bg-input text-text-extra-subtle border-border-subtle cursor-not-allowed opacity-50'
                     : compileStatus === "error"
-                      ? 'bg-red-600/10 text-red-400 border-red-500/30 animate-blink-red cursor-pointer shadow-lg shadow-red-500/20'
+                      ? 'bg-bg-input text-red-400 border-border-subtle hover:bg-bg-input-hover cursor-pointer shadow-md shadow-black/10'
                       : 'bg-bg-input text-green-400 border-border-subtle hover:bg-bg-input-hover shadow-md shadow-black/10 cursor-pointer'
                 }`}
                 title={compileStatus === "idle" ? "Logs non disponibles" : "Logs de compilation"}
@@ -66,7 +66,7 @@ export function Sidebar() {
                   projectTexFiles.length === 0 || isWatching
                     ? 'bg-bg-input text-text-extra-subtle border border-border-subtle cursor-not-allowed opacity-50' 
                     : compileStatus === "compiling"
-                      ? 'bg-amber-600/10 border border-amber-500/30 text-amber-500 animate-spin'
+                      ? 'bg-bg-input text-amber-500 border border-border-subtle shadow-md shadow-black/10'
                       : 'bg-bg-input hover:bg-bg-input-hover border border-border-subtle text-text-main shadow-md shadow-black/10'
                 }`}
                 title={
