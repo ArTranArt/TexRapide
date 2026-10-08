@@ -27,149 +27,30 @@ export function Help() {
                 </div>
               </header>
 
+              
               {/* Section 1: De quoi ai-je besoin ? */}
-              <section className="bg-bg-card border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col gap-6">
+              <section className="bg-bg-card border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col gap-4">
                 <div>
-                  <h2 className="text-xl font-bold text-text-main mb-1">De quoi ai-je besoin ?</h2>
-                  <p className="text-text-subtle text-xs">Pour compiler vos fichiers PDF localement, vous devez installer une distribution LaTeX adaptée à votre système d'exploitation.</p>
+                  <h2 className="text-xl font-bold text-text-main mb-2">De quoi ai-je besoin ?</h2>
+                  <div className="flex items-center gap-3 bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-xl w-fit">
+                    <Check size={18} className="shrink-0" />
+                    <p className="text-sm font-medium">Absolument rien ! TexRapide s'occupe de tout.</p>
+                  </div>
                 </div>
-                
-                <div className="flex bg-bg-input/50 p-1 rounded-lg w-fit mb-2 border border-border-subtle">
+                <p className="text-text-subtle text-xs leading-relaxed max-w-2xl mt-2">
+                  Contrairement aux anciens éditeurs LaTeX qui nécessitent l'installation lourde de MacTeX ou MiKTeX (plusieurs gigaoctets), TexRapide télécharge et utilise automatiquement <strong>Tectonic</strong> en arrière-plan.<br/><br/>
+                  Tectonic est un moteur moderne, extrêmement léger, qui télécharge les paquets manquants à la volée depuis le cloud. Vous n'avez pas non plus besoin d'installer un lecteur PDF externe (comme Skim ou Sumatra) car notre lecteur natif intégré est synchronisé en temps réel avec le code (SyncTeX bidirectionnel).
+                </p>
+                <div className="mt-4">
                   <button 
-                    onClick={() => setActiveOsTab("mac")}
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "mac" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
+                    onClick={() => invoke("download_tectonic").catch(console.error)}
+                    className="flex items-center justify-center gap-2 w-fit bg-blue-600/10 hover:bg-blue-600/20 border border-blue-500/30 text-blue-400 font-bold text-xs px-5 py-2.5 rounded-xl transition-all"
                   >
-                    macOS
+                    <RefreshCw size={14} /> Forcer la réinstallation du moteur
                   </button>
-                  <button 
-                    onClick={() => setActiveOsTab("windows")}
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "windows" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
-                  >
-                    Windows
-                  </button>
-                  <button 
-                    onClick={() => setActiveOsTab("linux")}
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${activeOsTab === "linux" ? "bg-bg-card shadow-sm text-blue-500" : "text-text-subtle hover:text-text-main"}`}
-                  >
-                    Linux
-                  </button>
-                </div>
-
-                <div className="w-full">
-                  {/* macOS Card */}
-                  {activeOsTab === "mac" && (
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">macOS</span>
-                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
-                      </div>
-                      <h3 className="text-base font-bold text-text-main mb-1">MacTeX</h3>
-                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution recommandée pour macOS. Complète et s'intègre parfaitement avec les outils du système.</p>
-                    </div>
-                    
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
-                        <code className="text-[10px] font-mono text-text-muted truncate select-all">brew install --cask mactex</code>
-                        <button 
-                          onClick={() => handleCopy("brew install --cask mactex", "mac")}
-                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
-                          title="Copier la commande"
-                        >
-                          {copiedId === "mac" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <a 
-                        href="https://www.tug.org/mactex/" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
-                      >
-                        Site officiel <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </div>
-                  )}
-
-                  {/* Windows Card */}
-                  {activeOsTab === "windows" && (
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Windows</span>
-                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
-                      </div>
-                      <h3 className="text-base font-bold text-text-main mb-1">MiKTeX & Perl</h3>
-                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution moderne pour Windows. <br/><span className="text-amber-500 font-bold">Important :</span> <b>Strawberry Perl</b> est requis pour utiliser l'outil <code>latexmk</code>.</p>
-                    </div>
-                    
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between mb-2">
-                        <code className="text-[10px] font-mono text-text-muted truncate select-all">winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl</code>
-                        <button 
-                          onClick={() => handleCopy("winget install --id=MiKTeX.MiKTeX && winget install --id=StrawberryPerl.StrawberryPerl", "win")}
-                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
-                          title="Copier la commande"
-                        >
-                          {copiedId === "win" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-
-                      <button 
-                        onClick={() => invoke("download_tectonic").catch(console.error)}
-                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
-                      >
-                        Télécharger et installer Tectonic
-                      </button>
-
-                      <a 
-                        href="https://miktex.org/download" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 w-full bg-bg-input hover:bg-bg-deep text-text-main border border-border-subtle font-bold text-xs py-2 rounded-lg transition-colors"
-                      >
-                        Voir le site officiel <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </div>
-                  )}
-
-                  {/* Linux Card */}
-                  {activeOsTab === "linux" && (
-                  <div className="bg-bg-input/30 hover:bg-bg-input/50 border border-border-subtle hover:border-blue-500/20 rounded-xl p-5 flex flex-col justify-between transition-all duration-300 group max-w-lg">
-                    <div>
-                      <div className="flex items-center justify-between mb-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-blue-500 bg-blue-500/10 px-2.5 py-1 rounded-md">Linux</span>
-                        <Laptop size={16} className="text-text-subtle group-hover:text-blue-500 transition-colors" />
-                      </div>
-                      <h3 className="text-base font-bold text-text-main mb-1">TeX Live</h3>
-                      <p className="text-text-subtle text-xs mb-4 leading-relaxed">Distribution standard pour Unix/Linux. Disponible directement dans les gestionnaires de paquets.</p>
-                    </div>
-                    
-                    <div className="flex flex-col gap-3">
-                      <div className="bg-bg-deep border border-border-input rounded-lg p-2.5 flex items-center justify-between">
-                        <code className="text-[10px] font-mono text-text-muted truncate select-all">sudo apt install texlive-full</code>
-                        <button 
-                          onClick={() => handleCopy("sudo apt install texlive-full", "linux")}
-                          className="p-1.5 text-text-subtle hover:text-text-main bg-bg-card hover:bg-bg-input rounded border border-border-subtle transition-colors shrink-0 ml-2"
-                          title="Copier la commande"
-                        >
-                          {copiedId === "linux" ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                      <a 
-                        href="https://www.tug.org/texlive/" 
-                        target="_blank" 
-                        rel="noreferrer"
-                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
-                      >
-                        Site officiel <ExternalLink size={12} />
-                      </a>
-                    </div>
-                  </div>
-                  )}
                 </div>
               </section>
+
 
               {/* Section 2: Antisèche LaTeX */}
               <section className="bg-bg-card border border-border-subtle rounded-2xl p-6 md:p-8 flex flex-col gap-6">

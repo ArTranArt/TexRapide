@@ -6,10 +6,11 @@
 
 [![macOS](https://img.shields.io/badge/macOS-000000?style=for-the-badge&logo=apple&logoColor=white)]()
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)]()
+[![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)]()
 [![Tauri](https://img.shields.io/badge/Tauri-FFC131?style=for-the-badge&logo=tauri&logoColor=white)]()
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)]()
 
-*Développez, compilez et visualisez vos documents LaTeX en temps réel, sans prise de tête.*
+*Développez, compilez et visualisez vos documents LaTeX en temps réel, sans aucune installation complexe.*
 
 </div>
 
@@ -17,10 +18,9 @@
 
 ## 📖 Table des matières
 - [Fonctionnalités Principales](#-fonctionnalités-principales)
-- [Prérequis (Important)](#-prérequis-système)
-  - [macOS](#-sur-macos)
-  - [Windows](#-sur-windows)
-- [Démarrage Rapide (Développeurs)](#-démarrage-rapide)
+- [Pourquoi TexRapide ?](#-pourquoi-texrapide-)
+- [Démarrage Rapide (Utilisateurs)](#-démarrage-rapide-utilisateurs)
+- [Démarrage Rapide (Développeurs)](#-démarrage-rapide-développeurs)
 - [Architecture Technique](#-architecture-technique)
 - [Contribuer](#-contribuer)
 
@@ -28,52 +28,34 @@
 
 ## ✨ Fonctionnalités Principales
 
-*   🩺 **Diagnostic d'environnement intelligent** : TexRapide vérifie automatiquement si tous vos outils LaTeX sont correctement installés et configurés.
-*   🚀 **Initialisation via Templates** : Créez de nouveaux projets en un clic à partir de modèles prédéfinis.
-*   🔄 **Compilation "Watch" en temps réel** : Sauvegardez votre fichier `.tex`, le PDF se recompile tout seul en arrière-plan.
-*   👁️ **Aperçu dynamique** : Intégration fluide avec des lecteurs PDF externes (Skim sur Mac, SumatraPDF sur Windows) pour rafraîchir le document sans verrouillage.
-*   💻 **Multiplateforme natif** : Poids plume et performances maximales grâce à Tauri v2.
+*   🚀 **Zéro Installation ("Clé en main")** : TexRapide installe automatiquement le moteur léger **Tectonic** en arrière-plan. Vous n'avez pas besoin d'installer l'énorme MacTeX ou MiKTeX. Vous téléchargez l'app, et ça marche directement.
+*   📖 **Lecteur PDF Natif Intégré** : L'application embarque un lecteur PDF ultra-rapide qui se met à jour en temps réel à chaque sauvegarde, sans clignotement.
+*   🔗 **SyncTeX Bidirectionnel** : Double-cliquez sur le PDF pour sauter directement à la ligne de code correspondante, et vice versa.
+*   🔄 **Compilation "Watch" automatique** : Sauvegardez votre fichier `.tex`, le PDF se recompile tout seul en une fraction de seconde grâce à une gestion fine de l'état.
+*   💻 **Multiplateforme natif** : Poids plume et performances maximales grâce à Tauri v2 (Mac, Windows, Linux).
 
 ---
 
-## 📋 Prérequis Système
+## 🤔 Pourquoi TexRapide ?
 
-TexRapide repose sur trois piliers essentiels qui doivent être installés sur votre système pour pouvoir compiler vos projets `.tex` et profiter de l'aperçu automatique :
+L'écosystème LaTeX est historiquement lourd : il nécessite de télécharger des gigaoctets de paquets, de configurer des scripts obscurs (`latexmk`), et de synchroniser des éditeurs tiers avec des lecteurs PDF externes (comme Skim ou SumatraPDF).
 
-1. **Une Distribution LaTeX** : Le moteur de base (ex: `pdflatex` ou `tectonic`) pour comprendre et compiler le code.
-2. **Des Outils CLI (`latexmk`, `perl`)** : Indispensables pour automatiser la chaîne de compilation.
-3. **Un Lecteur PDF externe** : Pour rafraîchir l'aperçu en direct sans verrouiller le fichier PDF.
-
-Voici la configuration recommandée selon votre système :
-
-### 🍎 Sur macOS
-Nous recommandons d'utiliser le gestionnaire de paquets **Homebrew**.
-* **Distribution & CLI** : MacTeX (complet) ou BasicTeX (léger).
-  ```bash
-  brew install --cask mactex
-  ```
-* **Lecteur PDF** : Skim.
-  ```bash
-  brew install --cask skim
-  ```
-
-### 🪟 Sur Windows
-Nous recommandons d'utiliser **winget** (intégré à Windows 10/11).
-* **Distribution** : MiKTeX.
-* **Outils CLI (Perl)** : Strawberry Perl (requis par MiKTeX pour l'outil `latexmk`).
-* **Lecteur PDF** : SumatraPDF.
-
-Vous pouvez tout installer en une seule commande depuis PowerShell :
-```powershell
-winget install MiKTeX.MiKTeX StrawberryPerl.StrawberryPerl SumatraPDF.SumatraPDF
-```
-
-> [!WARNING]
-> **IMPORTANT (Spécialement sur Windows)** : Après l'installation de ces outils, vous devez **impérativement redémarrer votre terminal**, votre éditeur de code, voire votre ordinateur. Cela permet au système de mettre à jour ses variables d'environnement (`PATH`) pour que TexRapide puisse les détecter.
+**TexRapide casse ce modèle.** 
+Grâce à **Tectonic**, le moteur télécharge les paquets nécessaires "à la volée" depuis le cloud. Et grâce au **lecteur PDF natif**, vous n'avez plus besoin d'aucun outil externe. Tout est géré dans une seule interface moderne, rapide, et esthétique.
 
 ---
 
-## 🚀 Démarrage Rapide
+## 🚀 Démarrage Rapide (Utilisateurs)
+
+1. Allez dans l'onglet **Releases** de ce dépôt GitHub.
+2. Téléchargez la version correspondante à votre système (`.dmg` pour Mac, `.exe` pour Windows, ou `.AppImage` pour Linux).
+3. Ouvrez TexRapide. C'est prêt !
+
+*(À la première ouverture, TexRapide téléchargera discrètement le moteur Tectonic en tâche de fond. Cela peut prendre quelques secondes).*
+
+---
+
+## 🛠️ Démarrage Rapide (Développeurs)
 
 Si vous souhaitez modifier le code ou lancer l'application en mode développement local :
 
@@ -97,12 +79,12 @@ pnpm run tauri build
 
 ---
 
-## 🛠️ Architecture Technique
+## 🧠 Architecture Technique
 
 TexRapide est construit avec une architecture moderne séparant le frontend du système :
-*   **Frontend** : React, TailwindCSS, TypeScript (Géré via Vite)
-*   **Backend / Core** : Rust (Tauri v2)
-*   **Communication** : Tauri IPC (Inter-Process Communication)
+*   **Frontend** : React, TailwindCSS, TypeScript (Géré via Vite). Le "God Hook" React a été découpé, et Zustand est utilisé pour une gestion d'état ultra-performante sans re-rendus inutiles.
+*   **Backend / Core** : Rust (Tauri v2). Rust gère le Watcher système (pour surveiller les fichiers) et l'installation/exécution asynchrone des moteurs LaTeX.
+*   **Communication** : Tauri IPC (Inter-Process Communication).
 
 Nous recommandons d'utiliser **VS Code** avec les extensions :
 - `Tauri` (pour les outils intégrés)
