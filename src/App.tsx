@@ -8,7 +8,7 @@ import { Sidebar } from "./components/Sidebar";
 import "./index.css";
 
 function MainLayout() {
-  const { view, activeProject, mainContentRef } = useAppContext();
+    const { view, mainContentRef } = useAppContext();
 
   return (
     <div className="flex h-screen bg-bg-deep text-text-main font-sans selection:bg-blue-500/30 overflow-hidden">

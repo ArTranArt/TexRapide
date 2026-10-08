@@ -1,3 +1,4 @@
+import { useSettingsStore } from '../store/settingsStore';
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
@@ -59,11 +60,32 @@ const lineHighlightField = StateField.define<any>({
 
 export function useAppState() {
 
+  const theme = useSettingsStore(s => s.theme);
+  const setTheme = useSettingsStore(s => s.setTheme);
+  const leftPanelWidth = useSettingsStore(s => s.leftPanelWidth);
+  const setLeftPanelWidth = useSettingsStore(s => s.setLeftPanelWidth);
+  const topPanelHeight = useSettingsStore(s => s.topPanelHeight);
+  const setTopPanelHeight = useSettingsStore(s => s.setTopPanelHeight);
+  const drawerHeight = useSettingsStore(s => s.drawerHeight);
+  const setDrawerHeight = useSettingsStore(s => s.setDrawerHeight);
+  const fileExplorerWidth = useSettingsStore(s => s.fileExplorerWidth);
+  const setFileExplorerWidth = useSettingsStore(s => s.setFileExplorerWidth);
+  const pdfPosition = useSettingsStore(s => s.pdfPosition);
+  const setPdfPosition = useSettingsStore(s => s.setPdfPosition);
+  const showPdfPanel = useSettingsStore(s => s.showPdfPanel);
+  const setShowPdfPanel = useSettingsStore(s => s.setShowPdfPanel);
+  const showFileTree = useSettingsStore(s => s.showFileTree);
+  const setShowFileTree = useSettingsStore(s => s.setShowFileTree);
+  const editorFontSize = useSettingsStore(s => s.editorFontSize);
+  const setEditorFontSize = useSettingsStore(s => s.setEditorFontSize);
+  const lineWrapping = useSettingsStore(s => s.lineWrapping);
+  const setLineWrapping = useSettingsStore(s => s.setLineWrapping);
+  const autoIndent = useSettingsStore(s => s.autoIndent);
+  const setAutoIndent = useSettingsStore(s => s.setAutoIndent);
+
   const [view, setView] = useState<"dashboard" | "settings" | "project" | "help">("dashboard");
   const [helpTab, setHelpTab] = useState<"basics" | "text" | "math" | "media">("basics");
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [lineWrapping, setLineWrapping] = useState<boolean>(false);
-  const [showFileTree, setShowFileTree] = useState<boolean>(true);
   const [projectTree, setProjectTree] = useState<FileEntry[]>([]);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [isCreatingFile, setIsCreatingFile] = useState<boolean>(false);
@@ -96,15 +118,7 @@ export function useAppState() {
       setCopiedId(null);
     }, 2000);
   };
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    const saved = localStorage.getItem("texrapide_theme");
-    return saved === "light" || saved === "dark" ? saved : "dark";
-  });
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_theme", theme);
-    document.documentElement.setAttribute("data-theme", theme);
-  }, [theme]);
   const [compilationEngine, setCompilationEngine] = useState<"system" | "tectonic">(() => {
     const saved = localStorage.getItem("texrapide_compilation_engine");
     return saved === "tectonic" ? "tectonic" : "system";
@@ -252,13 +266,6 @@ export function useAppState() {
   const [floatingDragOffset, setFloatingDragOffset] = useState<number>(0);
   const [isFloatingCollapsed, setIsFloatingCollapsed] = useState(false);
   const [isWatching, setIsWatching] = useState(false);
-  const [fileExplorerWidth, setFileExplorerWidth] = useState(() => {
-    const saved = localStorage.getItem("texrapide_file_explorer_width");
-    return saved ? parseInt(saved, 10) : 160;
-  });
-  useEffect(() => {
-    localStorage.setItem("texrapide_file_explorer_width", fileExplorerWidth.toString());
-  }, [fileExplorerWidth]);
   const [sortBy, setSortBy] = useState<"recent" | "alphabetical">("recent");
   const [searchQuery, setSearchQuery] = useState("");
   const [isCreatingInline, setIsCreatingInline] = useState(false);
@@ -277,23 +284,13 @@ export function useAppState() {
   const inlineInputRef = useRef<HTMLInputElement>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const [drawerHeight, setDrawerHeight] = useState(() => {
-    const saved = localStorage.getItem("texrapide_drawer_height");
-    return saved ? parseInt(saved, 10) : 400;
-  });
 
   const [pdfViewerMode, setPdfViewerMode] = useState<"integrated" | "system">(() => {
     const saved = localStorage.getItem("texrapide_pdf_viewer_mode");
     return saved === "system" ? "system" : "integrated";
   });
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_pdf_viewer_mode", pdfViewerMode);
-  }, [pdfViewerMode]);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_drawer_height", drawerHeight.toString());
-  }, [drawerHeight]);
 
   const [pdfExists, setPdfExists] = useState(false);
 
@@ -354,37 +351,11 @@ export function useAppState() {
   const [editingFile, setEditingFile] = useState<string>("");
   const [editorContent, setEditorContent] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [leftPanelWidth, setLeftPanelWidth] = useState(() => {
-    const saved = localStorage.getItem("texrapide_left_panel_width");
-    return saved ? Math.max(350, parseInt(saved, 10)) : 450;
-  });
-  const [topPanelHeight, setTopPanelHeight] = useState<number>(() => {
-    const saved = localStorage.getItem("texrapide_top_panel_height");
-    return saved ? parseInt(saved, 10) : 400;
-  });
-  const [pdfPosition, setPdfPosition] = useState<"right" | "bottom" | "left" | "top">(() => {
-    const saved = localStorage.getItem("texrapide_pdf_position");
-    if (saved === "right" || saved === "bottom" || saved === "left" || saved === "top") return saved;
-    return window.innerWidth < 850 ? "bottom" : "right";
-  });
-  const [showPdfPanel, setShowPdfPanel] = useState<boolean>(() => {
-    const saved = localStorage.getItem("texrapide_show_pdf_panel");
-    return saved !== "false";
-  });
 
   const isManualOrientationRef = useRef<boolean>(false);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_show_pdf_panel", showPdfPanel.toString());
-  }, [showPdfPanel]);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_pdf_position", pdfPosition);
-  }, [pdfPosition]);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_top_panel_height", topPanelHeight.toString());
-  }, [topPanelHeight]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -416,10 +387,6 @@ export function useAppState() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, [pdfPosition]);
-  const [editorFontSize, setEditorFontSize] = useState<number>(() => {
-    const saved = localStorage.getItem("texrapide_editor_font_size");
-    return saved ? parseInt(saved, 10) : 13;
-  });
   const isResizingRef = useRef(false);
   const editorRef = useRef<any>(null);
   const [pendingHighlightLine, setPendingHighlightLine] = useState<number | null>(null);
@@ -508,22 +475,9 @@ export function useAppState() {
     return parseShortcut(localStorage.getItem("texrapide_comment_shortcut"));
   });
   const [recordingField, setRecordingField] = useState<"zoomIn" | "zoomOut" | "comment" | null>(null);
-  const [autoIndent, setAutoIndent] = useState<boolean>(() => {
-    const saved = localStorage.getItem("texrapide_auto_indent");
-    return saved ? saved === "true" : false; // Default is false (n'indente pas par défaut)
-  });
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_auto_indent", autoIndent.toString());
-  }, [autoIndent]);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_left_panel_width", leftPanelWidth.toString());
-  }, [leftPanelWidth]);
 
-  useEffect(() => {
-    localStorage.setItem("texrapide_editor_font_size", editorFontSize.toString());
-  }, [editorFontSize]);
 
   useEffect(() => {
     if (zoomInKey) {
