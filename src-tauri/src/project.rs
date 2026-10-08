@@ -4,6 +4,26 @@ use fs_extra::dir::{copy, CopyOptions};
 use std::process::Command;
 use tauri::Manager;
 
+fn enforce_project_scope(project_path: &str, target_path: &str) -> Result<(), String> {
+    let base = Path::new(project_path).canonicalize()
+        .map_err(|_| "Dossier projet invalide.".to_string())?;
+    let mut current = Path::new(target_path).to_path_buf();
+    while !current.exists() {
+        if let Some(parent) = current.parent() {
+            current = parent.to_path_buf();
+        } else {
+            break;
+        }
+    }
+    let canonical_target = current.canonicalize()
+        .map_err(|_| "Chemin cible invalide.".to_string())?;
+    if !canonical_target.starts_with(&base) {
+        return Err("Accès refusé : Tentative d'accès en dehors du dossier du projet.".to_string());
+    }
+    Ok(())
+}
+
+
 #[tauri::command]
 pub fn list_tex_files(path: String) -> Result<Vec<String>, String> {
     let mut tex_files = Vec::new();
@@ -199,17 +219,22 @@ pub fn create_project(args: CreateProjectArgs) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn file_exists(path: String) -> bool {
+pub fn file_exists(project_path: String, path: String) -> bool {
+    if enforce_project_scope(&project_path, &path).is_err() {
+        return false;
+    }
     std::path::Path::new(&path).exists()
 }
 
 #[tauri::command]
-pub fn read_file(path: String) -> Result<String, String> {
+pub fn read_file(project_path: String, path: String) -> Result<String, String> {
+    enforce_project_scope(&project_path, &path)?;
     std::fs::read_to_string(path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub fn write_file(path: String, content: String) -> Result<(), String> {
+pub fn write_file(project_path: String, path: String, content: String) -> Result<(), String> {
+    enforce_project_scope(&project_path, &path)?;
     let path_obj = Path::new(&path);
     if let Some(parent) = path_obj.parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
@@ -406,13 +431,16 @@ fn scan_dir_recursive(dir_path: &Path, root_path: &Path) -> Result<Vec<FileEntry
 }
 
 #[tauri::command]
-pub fn list_project_tree(path: String) -> Result<Vec<FileEntry>, String> {
+pub fn list_project_tree(project_path: String, path: String) -> Result<Vec<FileEntry>, String> {
+    enforce_project_scope(&project_path, &path)?;
     let root = Path::new(&path);
     scan_dir_recursive(root, root)
 }
 
 #[tauri::command]
-pub fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
+pub fn rename_file(project_path: String, old_path: String, new_path: String) -> Result<(), String> {
+    enforce_project_scope(&project_path, &old_path)?;
+    enforce_project_scope(&project_path, &new_path)?;
     let old = Path::new(&old_path);
     let new = Path::new(&new_path);
     if let Some(parent) = new.parent() {
@@ -423,7 +451,9 @@ pub fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn duplicate_file(src_path: String, dest_path: String) -> Result<(), String> {
+pub fn duplicate_file(project_path: String, src_path: String, dest_path: String) -> Result<(), String> {
+    enforce_project_scope(&project_path, &src_path)?;
+    enforce_project_scope(&project_path, &dest_path)?;
     let src = Path::new(&src_path);
     let dest = Path::new(&dest_path);
     if let Some(parent) = dest.parent() {
@@ -434,7 +464,8 @@ pub fn duplicate_file(src_path: String, dest_path: String) -> Result<(), String>
 }
 
 #[tauri::command]
-pub fn delete_file(path: String) -> Result<(), String> {
+pub fn delete_file(project_path: String, path: String) -> Result<(), String> {
+    enforce_project_scope(&project_path, &path)?;
     let p = Path::new(&path);
     if p.is_dir() {
         fs::remove_dir_all(p).map_err(|e| e.to_string())?;
@@ -518,7 +549,8 @@ pub fn show_in_finder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn clean_auxiliary_files(path: String) -> Result<u32, String> {
+pub fn clean_auxiliary_files(project_path: String, path: String) -> Result<u32, String> {
+    enforce_project_scope(&project_path, &path)?;
     let dir = Path::new(&path);
     if !dir.is_dir() {
         return Err("Le chemin fourni n'est pas un dossier.".to_string());
@@ -543,4 +575,70 @@ pub fn clean_auxiliary_files(path: String) -> Result<u32, String> {
     }
     
     Ok(deleted_count)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::path::{Path, PathBuf};
+
+    fn setup_test_env() -> PathBuf {
+        let mut temp_dir = std::env::temp_dir();
+        // Dossier unique pour le projet de test
+        let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_micros();
+        temp_dir.push(format!("texrapide_sec_test_{}", timestamp));
+        fs::create_dir_all(&temp_dir).unwrap();
+
+        // Fichier externe fictif (simule /etc/passwd)
+        let mut outside_file = temp_dir.clone();
+        outside_file.pop();
+        outside_file.push("mock_sensitive_file.txt");
+        fs::write(&outside_file, "secret").unwrap_or_default();
+
+        // Fichier interne au projet
+        let mut inside_file = temp_dir.clone();
+        inside_file.push("main.tex");
+        fs::write(&inside_file, "\\documentclass").unwrap();
+
+        temp_dir
+    }
+
+    fn cleanup(test_dir: &Path) {
+        let _ = fs::remove_dir_all(test_dir);
+        let mut outside_file = test_dir.to_path_buf();
+        outside_file.pop();
+        outside_file.push("mock_sensitive_file.txt");
+        let _ = fs::remove_file(outside_file);
+    }
+
+    #[test]
+    fn test_enforce_project_scope_security() {
+        let project_dir = setup_test_env();
+        let project_dir_str = project_dir.to_str().unwrap();
+
+        // 1. SCÉNARIO VALIDE : Fichier existant dans le projet
+        let valid_path = project_dir.join("main.tex");
+        let res = enforce_project_scope(project_dir_str, valid_path.to_str().unwrap());
+        assert!(res.is_ok(), "Doit autoriser un fichier dans le projet");
+
+        // 2. SCÉNARIO VALIDE : Nouveau fichier dans le projet (n'existe pas encore)
+        let new_file_path = project_dir.join("new_file.tex");
+        let res = enforce_project_scope(project_dir_str, new_file_path.to_str().unwrap());
+        assert!(res.is_ok(), "Doit autoriser un chemin pointant dans le projet, même s'il n'existe pas");
+
+        // 3. ATTAQUE : Path Traversal (remontée de répertoires avec ../)
+        let traversal_path = project_dir.join("../mock_sensitive_file.txt");
+        let res = enforce_project_scope(project_dir_str, traversal_path.to_str().unwrap());
+        assert!(res.is_err(), "Doit bloquer le Path Traversal (../)");
+
+        // 4. ATTAQUE : Chemin absolu en dehors du projet
+        let mut outside_path = project_dir.clone();
+        outside_path.pop();
+        outside_path.push("mock_sensitive_file.txt");
+        let res = enforce_project_scope(project_dir_str, outside_path.to_str().unwrap());
+        assert!(res.is_err(), "Doit bloquer l'accès à un chemin absolu externe");
+
+        cleanup(&project_dir);
+    }
 }
