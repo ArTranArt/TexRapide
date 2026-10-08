@@ -257,7 +257,7 @@ export function PdfViewer({
         behavior: "smooth" 
       });
     }
-  }, [forwardSearchRipple, scale]);
+  }, [forwardSearchRipple?.timestamp, scale]);
 
   // Listen to global Cmd + and Cmd - keys to zoom the PDF
   useEffect(() => {
@@ -636,7 +636,7 @@ function PdfPage({ pdf, pageNumber, scale, pdfPath, onLineSelect, pdfFilter, for
     }, 1000);
 
     return () => clearTimeout(timeout);
-  }, [forwardSearchRipple, scale]);
+  }, [forwardSearchRipple?.timestamp, scale]);
 
   const handleDoubleClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
