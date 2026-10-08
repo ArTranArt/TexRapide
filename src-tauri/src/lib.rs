@@ -39,7 +39,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .manage(watcher::WatcherState(std::sync::Arc::new(std::sync::Mutex::new(None))))
+        .manage(watcher::WatcherState(std::sync::Arc::new(tokio::sync::Mutex::new(None))))
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
 
