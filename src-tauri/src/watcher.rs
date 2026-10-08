@@ -77,14 +77,18 @@ pub fn stop_watch(state: State<'_, WatcherState>) -> std::result::Result<(), Str
 }
 
 #[tauri::command]
-pub fn compile_once(
+pub async fn compile_once(
     handle: AppHandle,
     project_path: String,
     main_file: String,
     pdf_viewer_mode: String,
     engine: String,
 ) -> std::result::Result<(), String> {
-    run_build(&handle, &project_path, &main_file, &pdf_viewer_mode, &engine);
+    tauri::async_runtime::spawn_blocking(move || {
+        run_build(&handle, &project_path, &main_file, &pdf_viewer_mode, &engine);
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     Ok(())
 }
 

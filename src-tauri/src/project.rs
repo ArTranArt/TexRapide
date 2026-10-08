@@ -249,7 +249,13 @@ pub struct SynctexResult {
 }
 
 #[tauri::command]
-pub fn synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Result<SynctexResult, String> {
+pub async fn synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Result<SynctexResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        _synctex_inverse_search(pdf_path, page, x, y)
+    }).await.map_err(|e| e.to_string())?
+}
+
+fn _synctex_inverse_search(pdf_path: String, page: u32, x: f64, y: f64) -> Result<SynctexResult, String> {
     let arg_coords = format!("{}:{}:{}:{}", page, x.round(), y.round(), pdf_path);
     
     let output = Command::new("synctex")
@@ -303,7 +309,13 @@ pub struct SynctexForwardResult {
 }
 
 #[tauri::command]
-pub fn synctex_forward_search(pdf_path: String, line: u32, column: u32, tex_path: String) -> Result<SynctexForwardResult, String> {
+pub async fn synctex_forward_search(pdf_path: String, line: u32, column: u32, tex_path: String) -> Result<SynctexForwardResult, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        _synctex_forward_search(pdf_path, line, column, tex_path)
+    }).await.map_err(|e| e.to_string())?
+}
+
+fn _synctex_forward_search(pdf_path: String, line: u32, column: u32, tex_path: String) -> Result<SynctexForwardResult, String> {
     let arg_input = format!("{}:{}:{}", line, column, tex_path);
     
     let output = Command::new("synctex")
@@ -549,7 +561,13 @@ pub fn show_in_finder(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn clean_auxiliary_files(project_path: String, path: String) -> Result<u32, String> {
+pub async fn clean_auxiliary_files(project_path: String, path: String) -> Result<u32, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        _clean_auxiliary_files(project_path, path)
+    }).await.map_err(|e| e.to_string())?
+}
+
+fn _clean_auxiliary_files(project_path: String, path: String) -> Result<u32, String> {
     enforce_project_scope(&project_path, &path)?;
     let dir = Path::new(&path);
     if !dir.is_dir() {
