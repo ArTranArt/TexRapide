@@ -1,3 +1,4 @@
+import { useEditorStore } from '../store/editorStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useRef, useEffect } from "react";
 
@@ -33,8 +34,22 @@ export function Project() {
   const showFileTree = useSettingsStore(s => s.showFileTree);
   const showPdfPanel = useSettingsStore(s => s.showPdfPanel);
   const theme = useSettingsStore(s => s.theme);
+
   const topPanelHeight = useSettingsStore(s => s.topPanelHeight);
-  const { activeProject, compileStatus, editingFile, editorContent, editorExtensions, editorRef, expandedDirs, fetchProjectTree, forwardSearchRipple, handleCleanAuxiliaryFiles, handleCompileOnce, handleCreateFile, handleLineSelect, handleMouseDown, handleRename, handleToggleWatch, hasUnsavedChanges, isCreatingFile, isManualOrientationRef, isSwitchLocked, isWatching, mainFile, newFileInputRef, newFileName, pdfExists, pdfViewerMode, projectName, projectTexFiles, projectTree, renamingPath, renamingValue, saveFileContent, setContextMenu, setEditingFile, setEditorContent, setHasUnsavedChanges, setIsCreatingFile, setMainFile, setNewFileName, setPdfViewerMode, setRenamingPath, setRenamingValue, toggleDir, view, zoomInKey, zoomOutKey } = useAppContext();
+  const { editorContent, setEditorContent } = useEditorStore();
+  const { autoSaveEnabled, activeProject, compileStatus, editingFile, editorExtensions, editorRef, expandedDirs, fetchProjectTree, forwardSearchRipple, handleCleanAuxiliaryFiles, handleCompileOnce, handleCreateFile, handleLineSelect, handleMouseDown, handleRename, handleToggleWatch, hasUnsavedChanges, isCreatingFile, isManualOrientationRef, isSwitchLocked, isWatching, mainFile, newFileInputRef, newFileName, pdfExists, pdfViewerMode, projectName, projectTexFiles, projectTree, renamingPath, renamingValue, saveFileContent, setContextMenu, setEditingFile, setHasUnsavedChanges, setIsCreatingFile, setMainFile, setNewFileName, setPdfViewerMode, setRenamingPath, setRenamingValue, toggleDir, view, zoomInKey, zoomOutKey } = useAppContext();
+
+  // Auto-save logic
+  useEffect(() => {
+    if (!autoSaveEnabled || !activeProject || !editingFile || !hasUnsavedChanges) return;
+    
+    const delayDebounce = setTimeout(() => {
+      saveFileContent(editingFile, editorContent);
+    }, 1000); // 1s debounce
+
+    return () => clearTimeout(delayDebounce);
+  }, [autoSaveEnabled, editorContent, activeProject, editingFile, hasUnsavedChanges, saveFileContent]);
+
   return (
     <>
           {view === "project" && activeProject && (() => {

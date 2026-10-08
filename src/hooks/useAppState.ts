@@ -1,3 +1,4 @@
+import { useEditorStore } from '../store/editorStore';
 import { useSettingsStore } from '../store/settingsStore';
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
@@ -349,7 +350,6 @@ export function useAppState() {
     }
   };
   const [editingFile, setEditingFile] = useState<string>("");
-  const [editorContent, setEditorContent] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const isManualOrientationRef = useRef<boolean>(false);
@@ -693,7 +693,7 @@ export function useAppState() {
 
     if (relativeFile !== editingFile) {
       if (hasUnsavedChanges && editingFile) {
-        await saveFileContent(editingFile, editorContent);
+        await saveFileContent(editingFile, useEditorStore.getState().editorContent);
       }
       setEditingFile(relativeFile);
       if (relativeFile.toLowerCase().endsWith(".tex") && !relativeFile.includes("/")) {
@@ -707,21 +707,21 @@ export function useAppState() {
 
 
   useEffect(() => {
-    if (pendingHighlightLine && editorContent) {
+    if (pendingHighlightLine && useEditorStore.getState().editorContent) {
       const timer = setTimeout(() => {
         jumpToEditorLine(pendingHighlightLine);
         setPendingHighlightLine(null);
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [editorContent, pendingHighlightLine]);
+  }, [pendingHighlightLine]);
 
   const loadFileContent = async (fileName: string) => {
     if (!activeProject) return;
     const filePath = `${activeProject}/${fileName}`;
     try {
       const content = await invoke<string>("read_file", { projectPath: activeProject, path: filePath });
-      setEditorContent(content);
+      useEditorStore.getState().setEditorContent(content);
       setHasUnsavedChanges(false);
     } catch (error) {
       console.error("Failed to read file:", error);
@@ -749,16 +749,7 @@ export function useAppState() {
     }
   };
 
-  // Auto-save logic
-  useEffect(() => {
-    if (!autoSaveEnabled || !activeProject || !editingFile || !hasUnsavedChanges) return;
-    
-    const delayDebounce = setTimeout(() => {
-      saveFileContent(editingFile, editorContent);
-    }, 1000); // 1s debounce
 
-    return () => clearTimeout(delayDebounce);
-  }, [autoSaveEnabled, editorContent, activeProject, editingFile, hasUnsavedChanges]);
 
   // Keyboard shortcut listener
   useEffect(() => {
@@ -768,7 +759,7 @@ export function useAppState() {
         if (activeProject) {
           if (isWatching) {
             if (editingFile && hasUnsavedChanges) {
-              saveFileContent(editingFile, editorContent);
+              saveFileContent(editingFile, useEditorStore.getState().editorContent);
             }
           } else {
             handleCompileOnce();
@@ -815,7 +806,7 @@ export function useAppState() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [editorContent, activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey, isWatching, mainFile, pdfViewerMode, compilationEngine]);
+  }, [activeProject, editingFile, hasUnsavedChanges, zoomInKey, zoomOutKey, commentKey, isWatching, mainFile, pdfViewerMode, compilationEngine]);
 
   // Default selected file loading
   useEffect(() => {
@@ -971,7 +962,7 @@ export function useAppState() {
       }
       
       if (hasUnsavedChanges && editingFile) {
-        await saveFileContent(editingFile, editorContent);
+        await saveFileContent(editingFile, useEditorStore.getState().editorContent);
       }
 
       await invoke("write_file", { projectPath: activeProject, path: filePath, content: "" });
@@ -1032,7 +1023,7 @@ export function useAppState() {
       }
 
       if (hasUnsavedChanges && editingFile === entry.relative_path) {
-        await saveFileContent(editingFile, editorContent);
+        await saveFileContent(editingFile, useEditorStore.getState().editorContent);
       }
       
       await invoke("rename_file", { projectPath: activeProject, oldPath, newPath });
@@ -1134,7 +1125,7 @@ export function useAppState() {
 
       if (matchesPath(editingFile, entry.relative_path, entry.is_dir)) {
         setEditingFile("");
-        setEditorContent("");
+        useEditorStore.getState().setEditorContent("");
         setHasUnsavedChanges(false);
       }
       if (matchesPath(mainFile, entry.relative_path, entry.is_dir)) {
@@ -1215,7 +1206,7 @@ export function useAppState() {
     
     // Save current file if there are unsaved changes
     if (editingFile && hasUnsavedChanges) {
-      await saveFileContent(editingFile, editorContent);
+      await saveFileContent(editingFile, useEditorStore.getState().editorContent);
     }
     
     try {
@@ -1310,7 +1301,7 @@ export function useAppState() {
     setCompileLogs("");
     setIsLogsOpen(false);
     setEditingFile("");
-    setEditorContent("");
+    useEditorStore.getState().setEditorContent("");
     setHasUnsavedChanges(false);
     setView("dashboard");
 
@@ -1326,7 +1317,7 @@ export function useAppState() {
     setCompileLogs("");
     setIsLogsOpen(false);
     setEditingFile("");
-    setEditorContent("");
+    useEditorStore.getState().setEditorContent("");
     setHasUnsavedChanges(false);
     setView("dashboard");
   };
@@ -1478,7 +1469,6 @@ export function useAppState() {
   distributionTooltip,
   drawerHeight,
   editingFile,
-  editorContent,
   editorExtensions,
   editorFontSize,
   editorRef,
@@ -1579,7 +1569,6 @@ export function useAppState() {
   setDashboardProjectsDir,
   setDrawerHeight,
   setEditingFile,
-  setEditorContent,
   setEditorFontSize,
   setExistingProjects,
   setExpandedDirs,
