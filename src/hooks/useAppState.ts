@@ -200,15 +200,35 @@ export function useAppState() {
   const [projectName, setProjectName] = useState("");
   const [newProjectName, setNewProjectName] = useState("");
   const [mainFile, setMainFile] = useState("main.tex");
-  const [targetDir, setTargetDir] = useState(() => {
-    return localStorage.getItem("texrapide_target_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\LaTeX_Projects";
-  });
-  const [dashboardProjectsDir, setDashboardProjectsDir] = useState(() => {
-    return localStorage.getItem("texrapide_dashboard_dir") || localStorage.getItem("texrapide_target_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\LaTeX_Projects";
-  });
-  const [templateDir, setTemplateDir] = useState(() => {
-    return localStorage.getItem("texrapide_template_dir") || "C:\\Users\\Art\\Documents\\LaTeX\\templates";
-  });
+  const [targetDir, setTargetDir] = useState(() => localStorage.getItem("texrapide_target_dir") || "");
+  const [dashboardProjectsDir, setDashboardProjectsDir] = useState(() => localStorage.getItem("texrapide_dashboard_dir") || localStorage.getItem("texrapide_target_dir") || "");
+  const [templateDir, setTemplateDir] = useState(() => localStorage.getItem("texrapide_template_dir") || "");
+
+  useEffect(() => {
+    async function loadDefaults() {
+      if (!targetDir || !dashboardProjectsDir || !templateDir) {
+        try {
+          const [projectsDir, templatesDir] = await invoke<[string, string]>("get_default_paths");
+          
+          if (!targetDir) {
+            setTargetDir(projectsDir);
+            localStorage.setItem("texrapide_target_dir", projectsDir);
+          }
+          if (!dashboardProjectsDir) {
+            setDashboardProjectsDir(projectsDir);
+            localStorage.setItem("texrapide_dashboard_dir", projectsDir);
+          }
+          if (!templateDir) {
+            setTemplateDir(templatesDir);
+            localStorage.setItem("texrapide_template_dir", templatesDir);
+          }
+        } catch (e) {
+          console.error("Failed to load default paths:", e);
+        }
+      }
+    }
+    loadDefaults();
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("texrapide_target_dir", targetDir);

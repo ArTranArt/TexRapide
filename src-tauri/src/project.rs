@@ -642,3 +642,23 @@ mod tests {
         cleanup(&project_dir);
     }
 }
+
+
+#[tauri::command]
+pub fn get_default_paths(app: tauri::AppHandle) -> Result<(String, String), String> {
+    use tauri::Manager;
+    let docs = app.path().document_dir().map_err(|e| e.to_string())?;
+    
+    let mut projects_dir = docs.clone();
+    projects_dir.push("LaTeX");
+    projects_dir.push("LaTeX_Projects");
+    
+    let mut templates_dir = docs.clone();
+    templates_dir.push("LaTeX");
+    templates_dir.push("templates");
+
+    Ok((
+        projects_dir.to_string_lossy().to_string(),
+        templates_dir.to_string_lossy().to_string()
+    ))
+}

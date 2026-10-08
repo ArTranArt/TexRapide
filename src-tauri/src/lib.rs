@@ -58,6 +58,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             health::check_latex_health,
+            project::get_default_paths,
             project::create_project,
             project::list_projects,
             project::list_templates,
