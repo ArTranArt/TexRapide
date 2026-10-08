@@ -116,10 +116,10 @@ export function Help() {
                       </div>
 
                       <button 
-                        onClick={() => invoke("download_and_run_windows_installers").catch(console.error)}
-                        className="flex items-center justify-center gap-1.5 w-full bg-green-600 hover:bg-green-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
+                        onClick={() => invoke("download_tectonic").catch(console.error)}
+                        className="flex items-center justify-center gap-1.5 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs py-2 rounded-lg transition-colors"
                       >
-                        Télécharger les installeurs officiels <ExternalLink size={12} />
+                        Télécharger et installer Tectonic
                       </button>
 
                       <a 

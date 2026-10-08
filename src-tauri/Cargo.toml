@@ -22,4 +22,8 @@ fs_extra = "1.3.0"
 notify = "8.2.0"
 window-vibrancy = "0.7.1"
 tokio = { version = "1.53.2", features = ["full"] }
+reqwest = { version = "0.13.5", features = ["blocking"] }
+flate2 = "1.1.10"
+tar = "0.4.46"
+zip = "8.6.0"
 

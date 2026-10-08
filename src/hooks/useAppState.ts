@@ -918,7 +918,21 @@ export function useAppState() {
           })
           .map(node => {
             if (node.is_dir && node.children) {
-              return {
+            
+  // Auto-download Tectonic if missing
+  useEffect(() => {
+    invoke<HealthStatus[]>("check_latex_health").then((status) => {
+      const tectonic = status.find(s => s.binary === "tectonic");
+      if (tectonic && !tectonic.installed) {
+        console.log("Tectonic not found, initiating background download...");
+        invoke("download_tectonic").then(() => {
+          console.log("Tectonic successfully downloaded.");
+        }).catch(console.error);
+      }
+    }).catch(console.error);
+  }, []);
+
+  return {
                 ...node,
               };
             }
@@ -1442,6 +1456,20 @@ export function useAppState() {
     ...(lineWrapping ? [EditorView.lineWrapping] : []),
     ...(!autoIndent ? [keymap.of([{ key: "Enter", run: insertNewline }])] : [])
   ], [lineWrapping, autoIndent, cmEventHandlers]);
+
+
+  // Auto-download Tectonic if missing
+  useEffect(() => {
+    invoke<HealthStatus[]>("check_latex_health").then((status) => {
+      const tectonic = status.find(s => s.binary === "tectonic");
+      if (tectonic && !tectonic.installed) {
+        console.log("Tectonic not found, initiating background download...");
+        invoke("download_tectonic").then(() => {
+          console.log("Tectonic successfully downloaded.");
+        }).catch(console.error);
+      }
+    }).catch(console.error);
+  }, []);
 
   return {
   activateProject,
